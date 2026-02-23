@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlopMog — AI Visibility Starts Here</title>
+<meta name="description" content="Strategic Reddit presence. Measurable AI visibility. Real customers. SlopMog gets your brand recommended by AI.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --white: #FEFEFE;
+  --bg: #FEFEFE;
+  --text: #1A1A2E;
+  --text-secondary: #64648B;
+  --text-tertiary: #9494B8;
+  --pink: #EC4899;
+  --pink-light: #FDF2F8;
+  --pink-glow: rgba(236, 72, 153, 0.25);
+  --violet: #8B5CF6;
+  --violet-light: #F5F3FF;
+  --violet-glow: rgba(139, 92, 246, 0.2);
+  --coral: #F97066;
+  --coral-light: #FFF1F0;
+  --teal: #14B8A6;
+  --teal-light: #F0FDFA;
+  --border: rgba(0,0,0,0.06);
+  --radius: 20px;
+  --radius-sm: 14px;
+  --radius-pill: 100px;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.08);
+  --shadow-pink: 0 4px 20px rgba(236, 72, 153, 0.15);
+  --shadow-violet: 0 4px 20px rgba(139, 92, 246, 0.15);
+  --shadow-coral: 0 4px 20px rgba(249, 112, 102, 0.15);
+  --shadow-teal: 0 4px 20px rgba(20, 184, 166, 0.15);
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ===== Mascot ===== */
+.mascot {
+  display: inline-block;
+  position: relative;
+  width: 40px;
+  height: 36px;
+}
+.mascot-body {
+  width: 40px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--pink), var(--violet));
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  position: relative;
+  animation: mascotFloat 4s ease-in-out infinite;
+}
+.mascot-eye {
+  width: 5px;
+  height: 5px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 12px;
+  animation: mascotBlink 4s ease-in-out infinite;
+}
+.mascot-eye.left { left: 11px; }
+.mascot-eye.right { left: 24px; }
+.mascot-sm .mascot-body { width: 28px; height: 22px; }
+.mascot-sm .mascot-eye { width: 3.5px; height: 3.5px; top: 8px; }
+.mascot-sm .mascot-eye.left { left: 8px; }
+.mascot-sm .mascot-eye.right { left: 17px; }
+.mascot-sm { width: 28px; height: 26px; }
+.mascot-lg .mascot-body { width: 56px; height: 44px; }
+.mascot-lg .mascot-eye { width: 7px; height: 7px; top: 16px; }
+.mascot-lg .mascot-eye.left { left: 16px; }
+.mascot-lg .mascot-eye.right { left: 33px; }
+.mascot-lg { width: 56px; height: 48px; }
+
+@keyframes mascotFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes mascotBlink {
+  0%, 42%, 48%, 100% { transform: scaleY(1); }
+  45% { transform: scaleY(0.1); }
+}
+
+/* ===== Reveal Animations ===== */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1), transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* ===== Nav ===== */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 16px 0;
+  transition: var(--transition);
+}
+.nav.scrolled {
+  background: rgba(254, 254, 254, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+}
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 1.25rem;
+  color: var(--text);
+  text-decoration: none;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+  list-style: none;
+}
+.nav-links a {
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: color var(--transition);
+}
+.nav-links a:hover { color: var(--text); }
+.btn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: transform var(--transition-bounce), box-shadow var(--transition);
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+.btn-pill:hover { transform: scale(1.04); }
+.btn-pink {
+  background: var(--pink);
+  color: white;
+  box-shadow: var(--shadow-pink);
+}
+.btn-pink:hover { box-shadow: 0 6px 30px rgba(236, 72, 153, 0.3); }
+.btn-outline {
+  background: transparent;
+  color: var(--text);
+  border: 1.5px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.btn-outline:hover {
+  border-color: rgba(0,0,0,0.12);
+  box-shadow: var(--shadow-md);
+}
+.btn-lg { padding: 14px 32px; font-size: 1rem; }
+.nav-mobile-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+}
+.nav-mobile-toggle span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 2px;
+  transition: var(--transition);
+}
+
+/* ===== Hero ===== */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 140px 24px 100px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+.hero-orb-1 {
+  width: 500px;
+  height: 500px;
+  background: var(--pink);
+  top: -100px;
+  right: -100px;
+  animation: orbDrift1 12s ease-in-out infinite;
+}
+.hero-orb-2 {
+  width: 400px;
+  height: 400px;
+  background: var(--violet);
+  bottom: -50px;
+  left: -100px;
+  animation: orbDrift2 14s ease-in-out infinite;
+}
+.hero-orb-3 {
+  width: 300px;
+  height: 300px;
+  background: var(--teal);
+  top: 40%;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: orbDrift3 10s ease-in-out infinite;
+  opacity: 0.15;
+}
+@keyframes orbDrift1 {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(-40px, 30px); }
+  66% { transform: translate(20px, -20px); }
+}
+@keyframes orbDrift2 {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(30px, -20px); }
+  66% { transform: translate(-20px, 40px); }
+}
+@keyframes orbDrift3 {
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, -30px); }
+}
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px 6px 8px;
+  background: var(--pink-light);
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--pink);
+  margin-bottom: 32px;
+  border: 1px solid rgba(236, 72, 153, 0.1);
+}
+.hero h1 {
+  font-size: clamp(2.8rem, 6vw, 4.5rem);
+  font-weight: 900;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  margin-bottom: 24px;
+  color: var(--text);
+}
+.hero h1 .accent-pink { color: var(--pink); }
+.hero h1 .accent-violet { color: var(--violet); }
+.hero-sub {
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  color: var(--text-secondary);
+  max-width: 560px;
+  margin: 0 auto 40px;
+  line-height: 1.7;
+  font-weight: 400;
+}
+.hero-ctas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.hero-mascot {
+  position: absolute;
+  bottom: 60px;
+  right: 10%;
+  z-index: 2;
+  opacity: 0.7;
+  animation: mascotFloat 5s ease-in-out infinite;
+}
+
+/* ===== Logos / Trust ===== */
+.trust {
+  padding: 60px 0 80px;
+  text-align: center;
+}
+.trust-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 32px;
+}
+.trust-logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 48px;
+  flex-wrap: wrap;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.trust-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-tertiary);
+  opacity: 0.5;
+  transition: opacity var(--transition);
+}
+.trust-logo:hover { opacity: 0.7; }
+.trust-logo-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* ===== Section Helpers ===== */
+.section {
+  padding: 100px 0;
+}
+.section-lg { padding: 120px 0; }
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin-bottom: 16px;
+}
+.section-label-pink { color: var(--pink); }
+.section-label-violet { color: var(--violet); }
+.section-label-teal { color: var(--teal); }
+.section-label-coral { color: var(--coral); }
+.section-title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  margin-bottom: 16px;
+}
+.section-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  max-width: 560px;
+  line-height: 1.7;
+}
+.section-header {
+  text-align: center;
+  margin-bottom: 64px;
+}
+.section-header .section-subtitle {
+  margin: 0 auto;
+}
+
+/* ===== How It Works ===== */
+.how-bg {
+  background: linear-gradient(180deg, var(--white) 0%, #FAFAFF 50%, var(--white) 100%);
+}
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  position: relative;
+}
+.steps-grid::before {
+  content: '';
+  position: absolute;
+  top: 56px;
+  left: calc(16.66% + 24px);
+  right: calc(16.66% + 24px);
+  height: 2px;
+  background: linear-gradient(90deg, var(--pink), var(--violet), var(--teal));
+  border-radius: 2px;
+  opacity: 0.3;
+}
+.step-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 40px 28px 36px;
+  text-align: center;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-bounce), box-shadow var(--transition);
+  position: relative;
+  z-index: 1;
+}
+.step-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg);
+}
+.step-number {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: white;
+  margin: 0 auto 24px;
+}
+.step-number-1 { background: var(--pink); box-shadow: var(--shadow-pink); }
+.step-number-2 { background: var(--violet); box-shadow: var(--shadow-violet); }
+.step-number-3 { background: var(--teal); box-shadow: var(--shadow-teal); }
+.step-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.step-card h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.step-card p {
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+/* ===== Benefits ===== */
+.benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.benefit-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 36px 28px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-bounce), box-shadow var(--transition);
+}
+.benefit-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+.benefit-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.benefit-icon-pink { background: var(--pink-light); color: var(--pink); }
+.benefit-icon-violet { background: var(--violet-light); color: var(--violet); }
+.benefit-icon-coral { background: var(--coral-light); color: var(--coral); }
+.benefit-icon-teal { background: var(--teal-light); color: var(--teal); }
+.benefit-card h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.benefit-card p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+/* ===== Stats ===== */
+.stats-section {
+  background: linear-gradient(135deg, #1A1A2E 0%, #2D1B4E 100%);
+  padding: 80px 0;
+  position: relative;
+  overflow: hidden;
+}
+.stats-section::before {
+  content: '';
+  position: absolute;
+  top: -200px;
+  right: -200px;
+  width: 500px;
+  height: 500px;
+  background: var(--pink);
+  border-radius: 50%;
+  filter: blur(150px);
+  opacity: 0.12;
+}
+.stats-section::after {
+  content: '';
+  position: absolute;
+  bottom: -200px;
+  left: -200px;
+  width: 400px;
+  height: 400px;
+  background: var(--violet);
+  border-radius: 50%;
+  filter: blur(150px);
+  opacity: 0.12;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 40px;
+  position: relative;
+  z-index: 2;
+}
+.stat-item {
+  text-align: center;
+}
+.stat-number {
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+.stat-number-pink { color: var(--pink); }
+.stat-number-violet { color: var(--violet); }
+.stat-number-teal { color: var(--teal); }
+.stat-number-coral { color: var(--coral); }
+.stat-label {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.6);
+  font-weight: 500;
+}
+
+/* ===== Pricing ===== */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.pricing-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 40px 32px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-bounce), box-shadow var(--transition);
+  position: relative;
+}
+.pricing-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+.pricing-card.featured {
+  border: 2px solid transparent;
+  background: linear-gradient(var(--white), var(--white)) padding-box,
+              linear-gradient(135deg, var(--pink), var(--violet)) border-box;
+  box-shadow: var(--shadow-lg);
+  transform: scale(1.03);
+}
+.pricing-card.featured:hover {
+  transform: scale(1.03) translateY(-4px);
+}
+.pricing-popular {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--pink), var(--violet));
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 5px 18px;
+  border-radius: var(--radius-pill);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.pricing-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.pricing-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+.pricing-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.pricing-amount {
+  font-size: 2.8rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.pricing-period {
+  font-size: 0.9rem;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.pricing-note {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  margin-bottom: 28px;
+}
+.pricing-features {
+  list-style: none;
+  margin-bottom: 32px;
+}
+.pricing-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+.pricing-check {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+.pricing-check-pink { background: var(--pink-light); color: var(--pink); }
+.pricing-check-violet { background: var(--violet-light); color: var(--violet); }
+.pricing-check-teal { background: var(--teal-light); color: var(--teal); }
+.pricing-card .btn-pill { width: 100%; justify-content: center; }
+.btn-violet {
+  background: var(--violet);
+  color: white;
+  box-shadow: var(--shadow-violet);
+}
+.btn-violet:hover { box-shadow: 0 6px 30px rgba(139, 92, 246, 0.3); }
+.btn-teal {
+  background: var(--teal);
+  color: white;
+  box-shadow: var(--shadow-teal);
+}
+.btn-teal:hover { box-shadow: 0 6px 30px rgba(20, 184, 166, 0.3); }
+
+/* ===== FAQ ===== */
+.faq-bg {
+  background: linear-gradient(180deg, var(--white) 0%, #FAFAFF 100%);
+}
+.faq-list {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.faq-item {
+  border-bottom: 1px solid var(--border);
+}
+.faq-item:first-child {
+  border-top: 1px solid var(--border);
+}
+.faq-question {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  gap: 16px;
+  transition: color var(--transition);
+}
+.faq-question:hover { color: var(--violet); }
+.faq-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--violet-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform var(--transition), background var(--transition);
+}
+.faq-item.active .faq-icon {
+  transform: rotate(45deg);
+  background: var(--violet);
+  color: white;
+}
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.faq-item.active .faq-answer {
+  max-height: 300px;
+}
+.faq-answer p {
+  padding: 0 0 22px;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 620px;
+}
+
+/* ===== CTA ===== */
+.cta-section {
+  padding: 100px 0;
+}
+.cta-box {
+  background: linear-gradient(135deg, #1A1A2E 0%, #2D1B4E 50%, #1A1A2E 100%);
+  border-radius: 28px;
+  padding: 80px 40px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.cta-box::before {
+  content: '';
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 300px;
+  background: linear-gradient(135deg, var(--pink), var(--violet));
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.2;
+}
+.cta-box h2 {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-weight: 800;
+  color: white;
+  letter-spacing: -0.025em;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 2;
+}
+.cta-box p {
+  font-size: 1.1rem;
+  color: rgba(255,255,255,0.6);
+  max-width: 480px;
+  margin: 0 auto 36px;
+  line-height: 1.7;
+  position: relative;
+  z-index: 2;
+}
+.cta-box .btn-pill { position: relative; z-index: 2; }
+.cta-mascot {
+  position: absolute;
+  bottom: 30px;
+  right: 40px;
+  z-index: 2;
+  opacity: 0.4;
+}
+
+/* ===== Footer ===== */
+.footer {
+  padding: 48px 0;
+  border-top: 1px solid var(--border);
+}
+.footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  color: var(--text);
+  font-size: 1rem;
+}
+.footer-links {
+  display: flex;
+  gap: 28px;
+  list-style: none;
+}
+.footer-links a {
+  text-decoration: none;
+  color: var(--text-tertiary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: color var(--transition);
+}
+.footer-links a:hover { color: var(--text); }
+.footer-copy {
+  font-size: 0.82rem;
+  color: var(--text-tertiary);
+}
+
+/* ===== Mobile Menu ===== */
+.mobile-menu {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(254,254,254,0.98);
+  backdrop-filter: blur(20px);
+  z-index: 999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition);
+}
+.mobile-menu.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.mobile-menu a {
+  text-decoration: none;
+  color: var(--text);
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+.mobile-menu-close {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  color: var(--text);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1024px) {
+  .steps-grid, .benefits-grid, .pricing-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .steps-grid::before { display: none; }
+  .pricing-card.featured {
+    transform: scale(1);
+  }
+  .pricing-card.featured:hover {
+    transform: translateY(-4px);
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+  }
+}
+
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .nav-mobile-toggle { display: flex; }
+  .mobile-menu { display: flex; }
+  .hero { padding: 120px 24px 80px; min-height: auto; }
+  .hero h1 { font-size: 2.4rem; }
+  .hero-mascot { display: none; }
+  .section { padding: 72px 0; }
+  .section-lg { padding: 80px 0; }
+  .section-header { margin-bottom: 40px; }
+  .steps-grid, .benefits-grid, .pricing-grid {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 28px;
+  }
+  .trust-logos { gap: 28px; }
+  .cta-box { padding: 56px 24px; border-radius: 20px; }
+  .footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .hero-ctas { flex-direction: column; }
+  .hero-ctas .btn-pill { width: 100%; justify-content: center; }
+}
+
+@media (max-width: 480px) {
+  .container { padding: 0 16px; }
+  .hero h1 { font-size: 2rem; }
+  .stat-item { text-align: center; }
+  .stats-grid { gap: 24px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <div class="mascot mascot-sm">
+        <div class="mascot-body">
+          <div class="mascot-eye left"></div>
+          <div class="mascot-eye right"></div>
+        </div>
+      </div>
+      SlopMog
+    </a>
+    <ul class="nav-links">
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#benefits">Benefits</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="#cta" class="btn-pill btn-pink">Get Started</a></li>
+    </ul>
+    <button class="nav-mobile-toggle" id="mobileToggle" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <button class="mobile-menu-close" id="mobileClose" aria-label="Close menu">&times;</button>
+  <a href="#how" class="mobile-link">How It Works</a>
+  <a href="#benefits" class="mobile-link">Benefits</a>
+  <a href="#pricing" class="mobile-link">Pricing</a>
+  <a href="#faq" class="mobile-link">FAQ</a>
+  <a href="#cta" class="btn-pill btn-pink btn-lg mobile-link">Get Started</a>
+</div>
+
+<!-- Hero -->
+<section class="hero" id="hero">
+  <div class="hero-orb hero-orb-1"></div>
+  <div class="hero-orb hero-orb-2"></div>
+  <div class="hero-orb hero-orb-3"></div>
+  <div class="hero-content">
+    <div class="hero-badge reveal">
+      <div class="mascot mascot-sm">
+        <div class="mascot-body">
+          <div class="mascot-eye left"></div>
+          <div class="mascot-eye right"></div>
+        </div>
+      </div>
+      Now serving 200+ brands
+    </div>
+    <h1 class="reveal reveal-delay-1">
+      Make AI <span class="accent-pink">recommend</span><br>your brand.
+    </h1>
+    <p class="hero-sub reveal reveal-delay-2">
+      AI recommendations start with real conversations. We start those conversations.
+    </p>
+    <div class="hero-ctas reveal reveal-delay-3">
+      <a href="#pricing" class="btn-pill btn-pink btn-lg">See Plans</a>
+      <a href="#how" class="btn-pill btn-outline btn-lg">How It Works</a>
+    </div>
+  </div>
+  <div class="hero-mascot">
+    <div class="mascot mascot-lg">
+      <div class="mascot-body">
+        <div class="mascot-eye left"></div>
+        <div class="mascot-eye right"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Trust Bar -->
+<section class="trust reveal" id="trust">
+  <div class="container">
+    <p class="trust-label">Trusted by 200+ brands across every vertical</p>
+    <div class="trust-logos">
+      <div class="trust-logo">
+        <div class="trust-logo-dot" style="background: var(--pink)"></div>
+        TechFlow
+      </div>
+      <div class="trust-logo">
+        <div class="trust-logo-dot" style="background: var(--violet)"></div>
+        Meridian
+      </div>
+      <div class="trust-logo">
+        <div class="trust-logo-dot" style="background: var(--teal)"></div>
+        Basecamp
+      </div>
+      <div class="trust-logo">
+        <div class="trust-logo-dot" style="background: var(--coral)"></div>
+        Streamline
+      </div>
+      <div class="trust-logo">
+        <div class="trust-logo-dot" style="background: var(--pink)"></div>
+        NovaPeak
+      </div>
+      <div class="trust-logo">
+        <div class="trust-logo-dot" style="background: var(--violet)"></div>
+        Arclight
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section class="section how-bg" id="how">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label section-label-violet reveal">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3" fill="currentColor"/></svg>
+        How It Works
+      </div>
+      <h2 class="section-title reveal reveal-delay-1">Simple process.<br>Measurable results.</h2>
+      <p class="section-subtitle reveal reveal-delay-2">We write authentic Reddit comments about your brand. AI models train on them. You show up in recommendations. That's it.</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card reveal reveal-delay-1">
+        <div class="step-number step-number-1">1</div>
+        <div class="step-icon">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <rect x="4" y="8" width="32" height="24" rx="4" stroke="var(--pink)" stroke-width="2.5" fill="none"/>
+            <path d="M4 14h32" stroke="var(--pink)" stroke-width="2.5"/>
+            <rect x="8" y="18" width="12" height="3" rx="1.5" fill="var(--pink)" opacity="0.4"/>
+            <rect x="8" y="24" width="8" height="3" rx="1.5" fill="var(--pink)" opacity="0.25"/>
+          </svg>
+        </div>
+        <h3>Share your brand</h3>
+        <p>Tell us your product, target keywords, and the AI queries you want to own. Takes five minutes.</p>
+      </div>
+      <div class="step-card reveal reveal-delay-2">
+        <div class="step-number step-number-2">2</div>
+        <div class="step-icon">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <path d="M8 28V12l12-6 12 6v16l-12 6-12-6z" stroke="var(--violet)" stroke-width="2.5" fill="none"/>
+            <path d="M8 12l12 6 12-6" stroke="var(--violet)" stroke-width="2.5"/>
+            <path d="M20 18v16" stroke="var(--violet)" stroke-width="2.5"/>
+          </svg>
+        </div>
+        <h3>We deploy campaigns</h3>
+        <p>Our team crafts authentic, helpful Reddit comments that naturally mention your brand in relevant discussions.</p>
+      </div>
+      <div class="step-card reveal reveal-delay-3">
+        <div class="step-number step-number-3">3</div>
+        <div class="step-icon">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <circle cx="20" cy="20" r="14" stroke="var(--teal)" stroke-width="2.5" fill="none"/>
+            <path d="M14 20l4 4 8-8" stroke="var(--teal)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h3>AI recommends you</h3>
+        <p>AI models ingest these conversations and start recommending your brand. Track visibility growth in your dashboard.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Benefits -->
+<section class="section" id="benefits">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label section-label-pink reveal">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3" fill="currentColor"/></svg>
+        Why SlopMog
+      </div>
+      <h2 class="section-title reveal reveal-delay-1">The brands AI keeps recommending?<br>They didn't get lucky.</h2>
+      <p class="section-subtitle reveal reveal-delay-2">Strategic Reddit presence. Measurable AI visibility. Real customers.</p>
+    </div>
+    <div class="benefits-grid">
+      <div class="benefit-card reveal reveal-delay-1">
+        <div class="benefit-icon benefit-icon-pink">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <h3>Multi-Model Coverage</h3>
+        <p>ChatGPT, Perplexity, Claude, Gemini. We ensure your brand shows up across every major AI platform.</p>
+      </div>
+      <div class="benefit-card reveal reveal-delay-2">
+        <div class="benefit-icon benefit-icon-violet">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3>Undetectable Quality</h3>
+        <p>Written by experienced Redditors, not bots. Every comment reads like genuine advice because it is.</p>
+      </div>
+      <div class="benefit-card reveal reveal-delay-3">
+        <div class="benefit-icon benefit-icon-teal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <h3>Measurable Results</h3>
+        <p>Track exactly when and where AI starts recommending your brand. Real data, real attribution.</p>
+      </div>
+      <div class="benefit-card reveal reveal-delay-1">
+        <div class="benefit-icon benefit-icon-coral">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <h3>Fast Time to Value</h3>
+        <p>Most brands see AI recommendation improvements within 30 days. Some in under two weeks.</p>
+      </div>
+      <div class="benefit-card reveal reveal-delay-2">
+        <div class="benefit-icon benefit-icon-pink">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+        <h3>Dedicated Team</h3>
+        <p>Experienced strategists manage your campaigns. Not an automated tool. Humans who understand Reddit culture.</p>
+      </div>
+      <div class="benefit-card reveal reveal-delay-3">
+        <div class="benefit-icon benefit-icon-violet">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        </div>
+        <h3>Full Dashboard</h3>
+        <p>Campaign management, keyword tracking, and AI visibility metrics. Everything in one clean interface.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<section class="stats-section" id="stats">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-item reveal reveal-delay-1">
+        <div class="stat-number stat-number-pink" data-target="200" data-suffix="+">0</div>
+        <div class="stat-label">Brands served</div>
+      </div>
+      <div class="stat-item reveal reveal-delay-2">
+        <div class="stat-number stat-number-violet" data-target="15000" data-suffix="+">0</div>
+        <div class="stat-label">Comments deployed</div>
+      </div>
+      <div class="stat-item reveal reveal-delay-3">
+        <div class="stat-number stat-number-teal" data-target="89" data-suffix="%">0</div>
+        <div class="stat-label">Visibility improvement</div>
+      </div>
+      <div class="stat-item reveal reveal-delay-4">
+        <div class="stat-number stat-number-coral" data-target="30" data-prefix="<" data-suffix=" days">0</div>
+        <div class="stat-label">Avg. time to results</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section class="section section-lg" id="pricing">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label section-label-teal reveal">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3" fill="currentColor"/></svg>
+        Pricing
+      </div>
+      <h2 class="section-title reveal reveal-delay-1">Invest in being recommended.</h2>
+      <p class="section-subtitle reveal reveal-delay-2">200+ brands. Exposed. We mean visible.</p>
+    </div>
+    <div class="pricing-grid">
+      <!-- Launch -->
+      <div class="pricing-card reveal reveal-delay-1">
+        <div class="pricing-name">Launch</div>
+        <div class="pricing-desc">Start building AI visibility</div>
+        <div class="pricing-price">
+          <span class="pricing-amount">$499</span>
+          <span class="pricing-period">/mo</span>
+        </div>
+        <div class="pricing-note">Billed monthly</div>
+        <ul class="pricing-features">
+          <li>
+            <span class="pricing-check pricing-check-pink"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            25 Reddit comments / month
+          </li>
+          <li>
+            <span class="pricing-check pricing-check-pink"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            5 target keywords
+          </li>
+          <li>
+            <span class="pricing-check pricing-check-pink"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            Basic AI visibility dashboard
+          </li>
+          <li>
+            <span class="pricing-check pricing-check-pink"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            Monthly performance report
+          </li>
+          <li>
+            <span class="pricing-check pricing-check-pink"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            Email support
+          </li>
+        </ul>
+        <a href="#" class="btn-pill btn-outline">Get Started</a>
+      </div>
+      <!-- Accelerate -->
+      <div class="pricing-card featured reveal reveal-delay-2">
+        <div class="pricing-popular">Most Popular</div>
+        <div class="pricing-name">Accelerate</div>
+        <div class="pricing-desc">Scale your AI presence fast</div>
+        <div class="pricing-price">
+          <span class="pricing-amount">$1,499</span>
+          <span class="pricing-period">/mo</span>
+        </div>
+        <div class="pricing-note">Billed monthly</div>
+        <ul class="pricing-features">
+          <li>
+            <span class="pricing-check pricing-check-violet"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            100 Reddit comments / month
+          </li>
+          <li>
+            <span class="pricing-check pricing-check-violet"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            20 target keywords
+          </li>
+          <li>
+            <span class="pricing-check pricing-check-violet"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            Advanced AI visibility analytics
+          </li>
+          <li>
+            <span class="pricing-check pricing-check-violet"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            Weekly performance reports
+          </li>
+          <li>
+            <span class="pricing-check pricing-check-violet"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            Dedicated account manager
+          </li>
+          <li>
+            <span class="pricing-check pricing-check-violet"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            Multi-subreddit targeting
+          </li>
+        </ul>
+        <a href="#" class="btn-pill btn-pink btn-lg">Get Started</a>
+      </div>
+      <!-- Dominate -->
+      <div class="pricing-card reveal reveal-delay-3">
+        <div class="pricing-name">Dominate</div>
+        <div class="pricing-desc">Full-scale AI dominance</div>
+        <div class="pricing-price">
+          <span class="pricing-amount">Custom</span>
+        </div>
+        <div class="pricing-note">Tailored to your goals</div>
+        <ul class="pricing-features">
+          <li>
+            <span class="pricing-check pricing-check-teal"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            Unlimited comments
+          </li>
+          <li>
+            <span class="pricing-check pricing-check-teal"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            Unlimited keywords
+          </li>
+          <li>
+            <span class="pricing-check pricing-check-teal"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            Enterprise analytics & API
+          </li>
+          <li>
+            <span class="pricing-check pricing-check-teal"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            Custom campaign strategy
+          </li>
+          <li>
+            <span class="pricing-check pricing-check-teal"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            Dedicated success team
+          </li>
+          <li>
+            <span class="pricing-check pricing-check-teal"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            Priority Slack support
+          </li>
+        </ul>
+        <a href="#" class="btn-pill btn-teal">Contact Sales</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section faq-bg" id="faq">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label section-label-coral reveal">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3" fill="currentColor"/></svg>
+        FAQ
+      </div>
+      <h2 class="section-title reveal reveal-delay-1">Questions? Answered.</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item reveal reveal-delay-1">
+        <button class="faq-question" aria-expanded="false">
+          Is this actually effective for AI recommendations?
+          <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        </button>
+        <div class="faq-answer">
+          <p>Yes. AI models like ChatGPT, Perplexity, and Claude are trained on web data, including Reddit. When your brand is consistently mentioned in relevant, helpful discussions, AI models learn to associate your brand with those topics. 89% of our clients see measurable improvement in AI recommendations within 60 days.</p>
+        </div>
+      </div>
+      <div class="faq-item reveal reveal-delay-2">
+        <button class="faq-question" aria-expanded="false">
+          Won't these comments get flagged as spam?
+          <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        </button>
+        <div class="faq-answer">
+          <p>Our comments are written by experienced Redditors who understand community norms. They provide genuine value in discussions. They're helpful recommendations, not advertisements. We maintain aged, reputable accounts and follow each subreddit's rules carefully.</p>
+        </div>
+      </div>
+      <div class="faq-item reveal reveal-delay-3">
+        <button class="faq-question" aria-expanded="false">
+          How do you measure AI visibility?
+          <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        </button>
+        <div class="faq-answer">
+          <p>We systematically query major AI platforms with your target keywords and track how often your brand appears in recommendations. Your dashboard shows visibility scores over time, comparative rankings against competitors, and attribution data linking specific campaigns to visibility improvements.</p>
+        </div>
+      </div>
+      <div class="faq-item reveal reveal-delay-4">
+        <button class="faq-question" aria-expanded="false">
+          What's the minimum commitment?
+          <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        </button>
+        <div class="faq-answer">
+          <p>All plans are month-to-month with no long-term contracts. We recommend at least 90 days to see the full compound effect of consistent Reddit presence on AI recommendations. Most clients stay because the results speak for themselves.</p>
+        </div>
+      </div>
+      <div class="faq-item reveal">
+        <button class="faq-question" aria-expanded="false">
+          Can you target specific AI queries?
+          <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        </button>
+        <div class="faq-answer">
+          <p>Absolutely. During onboarding, you provide us with the exact queries you want to rank for, such as "What's the best project management tool?" or "Best CRM for startups." We build campaigns specifically around those queries and the subreddits where those conversations happen.</p>
+        </div>
+      </div>
+      <div class="faq-item reveal">
+        <button class="faq-question" aria-expanded="false">
+          Is this ethical?
+          <span class="faq-icon"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+        </button>
+        <div class="faq-answer">
+          <p>We only work with products we believe are genuinely good. Our comments provide real value to Reddit discussions. We see this as strategic word-of-mouth marketing for the AI age. We don't fabricate claims or mislead users. Every comment is an honest recommendation of a product worth recommending.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="cta">
+  <div class="container">
+    <div class="cta-box reveal">
+      <h2>Ready to be AI's<br>top recommendation?</h2>
+      <p>Join 200+ brands already showing up when AI answers the questions that matter.</p>
+      <a href="#pricing" class="btn-pill btn-pink btn-lg">See Plans &amp; Pricing</a>
+      <div class="cta-mascot">
+        <div class="mascot mascot-lg">
+          <div class="mascot-body">
+            <div class="mascot-eye left"></div>
+            <div class="mascot-eye right"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="mascot mascot-sm">
+          <div class="mascot-body">
+            <div class="mascot-eye left"></div>
+            <div class="mascot-eye right"></div>
+          </div>
+        </div>
+        SlopMog
+      </div>
+      <ul class="footer-links">
+        <li><a href="#how">How It Works</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#">Privacy</a></li>
+        <li><a href="#">Terms</a></li>
+      </ul>
+      <div class="footer-copy">&copy; 2026 SlopMog. All rights reserved.</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ===== Nav Scroll =====
+const nav = document.getElementById('nav');
+let lastScroll = 0;
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 40);
+}, { passive: true });
+
+// ===== Mobile Menu =====
+const mobileToggle = document.getElementById('mobileToggle');
+const mobileMenu = document.getElementById('mobileMenu');
+const mobileClose = document.getElementById('mobileClose');
+
+mobileToggle.addEventListener('click', () => {
+  mobileMenu.classList.add('open');
+  document.body.style.overflow = 'hidden';
+});
+
+function closeMenu() {
+  mobileMenu.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+mobileClose.addEventListener('click', closeMenu);
+document.querySelectorAll('.mobile-link').forEach(link => {
+  link.addEventListener('click', closeMenu);
+});
+
+// ===== Scroll Reveal =====
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      revealObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => {
+  revealObserver.observe(el);
+});
+
+// ===== Counter Animation =====
+function animateCounter(el) {
+  const target = parseInt(el.dataset.target);
+  const suffix = el.dataset.suffix || '';
+  const prefix = el.dataset.prefix || '';
+  const duration = 2000;
+  const start = performance.now();
+
+  function update(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(target * eased);
+
+    if (target >= 1000) {
+      el.textContent = prefix + current.toLocaleString() + suffix;
+    } else {
+      el.textContent = prefix + current + suffix;
+    }
+
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    }
+  }
+
+  requestAnimationFrame(update);
+}
+
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      animateCounter(entry.target);
+      counterObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.5 });
+
+document.querySelectorAll('.stat-number[data-target]').forEach(el => {
+  counterObserver.observe(el);
+});
+
+// ===== FAQ Accordion =====
+document.querySelectorAll('.faq-question').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item = btn.parentElement;
+    const isActive = item.classList.contains('active');
+
+    // Close all others
+    document.querySelectorAll('.faq-item.active').forEach(i => {
+      if (i !== item) {
+        i.classList.remove('active');
+        i.querySelector('.faq-question').setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    item.classList.toggle('active', !isActive);
+    btn.setAttribute('aria-expanded', !isActive);
+  });
+});
+
+// ===== Smooth scroll for anchor links =====
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function(e) {
+    const targetId = this.getAttribute('href');
+    if (targetId === '#') return;
+    e.preventDefault();
+    const target = document.querySelector(targetId);
+    if (target) {
+      const offset = 80;
+      const top = target.getBoundingClientRect().top + window.pageYOffset - offset;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  });
+});
+</script>
+</body>
+</html>

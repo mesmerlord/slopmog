@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlopMog — Get Your Brand Recommended by AI</title>
+<meta name="description" content="SlopMog posts Reddit comments about your brand so AI recommends you. It sounds ridiculous. It works incredibly well.">
+<meta property="og:title" content="SlopMog — Get Your Brand Recommended by AI">
+<meta property="og:description" content="We post Reddit comments. AI picks up on them. You get recommended. Beautifully simple.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  background: #FFF8F0;
+  color: #2D2A32;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif; line-height: 1.2; }
+a { text-decoration: none; color: inherit; }
+button { border: none; cursor: pointer; font-family: inherit; }
+ul { list-style: none; }
+
+/* ===== COLOR VARS ===== */
+:root {
+  --coral: #FF6B6B;
+  --coral-light: #FF8A8A;
+  --teal: #2EC4B6;
+  --teal-dark: #25A99D;
+  --yellow: #FFD93D;
+  --yellow-light: #FFE46A;
+  --lavender: #B197FC;
+  --lavender-light: #C9B5FF;
+  --cream: #FFF8F0;
+  --cream-warm: #FFF2E4;
+  --cream-cool: #F5F0FF;
+  --dark: #2D2A32;
+  --dark-soft: #4A4553;
+  --gray: #8E8A95;
+  --white: #FFFFFF;
+  --shadow-sm: 0 2px 8px rgba(45,42,50,0.06);
+  --shadow-md: 0 4px 20px rgba(45,42,50,0.08);
+  --shadow-lg: 0 8px 40px rgba(45,42,50,0.1);
+  --shadow-coral: 0 4px 20px rgba(255,107,107,0.25);
+  --shadow-teal: 0 4px 20px rgba(46,196,182,0.25);
+  --shadow-lavender: 0 4px 20px rgba(177,151,252,0.25);
+  --radius: 20px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
+}
+
+/* ===== UTILITY ===== */
+.container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.section-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+  padding: 6px 16px; border-radius: 50px;
+  margin-bottom: 16px;
+}
+.section-title { font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 800; margin-bottom: 12px; }
+.section-sub { font-size: 1.1rem; color: var(--dark-soft); max-width: 560px; }
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 32px; border-radius: 50px; font-weight: 700; font-size: 1rem;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative; overflow: hidden;
+}
+.btn-primary {
+  background: var(--coral); color: var(--white);
+  box-shadow: var(--shadow-coral);
+}
+.btn-primary:hover { transform: scale(1.05); box-shadow: 0 6px 28px rgba(255,107,107,0.35); }
+.btn-secondary {
+  background: var(--white); color: var(--dark); border: 2px solid #E8E4EE;
+  box-shadow: var(--shadow-sm);
+}
+.btn-secondary:hover { transform: scale(1.05); border-color: var(--lavender); }
+.btn-teal {
+  background: var(--teal); color: var(--white);
+  box-shadow: var(--shadow-teal);
+}
+.btn-teal:hover { transform: scale(1.05); box-shadow: 0 6px 28px rgba(46,196,182,0.35); }
+
+/* ===== MASCOT (Blob character) ===== */
+.mascot {
+  position: relative; display: inline-block;
+}
+.mascot-body {
+  width: 80px; height: 72px;
+  background: var(--coral);
+  border-radius: 50% 50% 48% 52% / 60% 60% 40% 40%;
+  position: relative;
+  animation: mascotBob 3s ease-in-out infinite;
+}
+.mascot-body::before {
+  content: ''; position: absolute;
+  width: 10px; height: 18px; background: var(--coral);
+  border-radius: 50% 50% 20% 20%;
+  top: -12px; left: 50%; transform: translateX(-50%);
+  animation: antennaWiggle 4s ease-in-out infinite;
+}
+.mascot-body::after {
+  content: ''; position: absolute;
+  width: 8px; height: 8px; background: var(--yellow);
+  border-radius: 50%; top: -18px; left: 50%; transform: translateX(-50%);
+}
+.mascot-eyes {
+  position: absolute; top: 28%; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 14px;
+}
+.mascot-eye {
+  width: 14px; height: 16px; background: var(--white);
+  border-radius: 50%; position: relative;
+}
+.mascot-eye::after {
+  content: ''; position: absolute;
+  width: 7px; height: 8px; background: var(--dark);
+  border-radius: 50%; bottom: 3px; left: 50%; transform: translateX(-50%);
+  animation: mascotBlink 4s ease-in-out infinite;
+}
+.mascot-mouth {
+  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  width: 20px; height: 10px;
+  border-bottom: 3px solid var(--white);
+  border-radius: 0 0 50% 50%;
+}
+/* Mascot arms */
+.mascot-arm-left, .mascot-arm-right {
+  position: absolute; top: 50%;
+  width: 20px; height: 8px; background: var(--coral);
+  border-radius: 50px;
+}
+.mascot-arm-left { left: -14px; transform: rotate(-20deg); animation: armWaveLeft 3s ease-in-out infinite; }
+.mascot-arm-right { right: -14px; transform: rotate(20deg); animation: armWaveRight 3s ease-in-out infinite; }
+
+/* Mascot size variants */
+.mascot-sm .mascot-body { width: 50px; height: 45px; }
+.mascot-sm .mascot-eye { width: 10px; height: 12px; }
+.mascot-sm .mascot-eye::after { width: 5px; height: 6px; }
+.mascot-sm .mascot-eyes { gap: 9px; }
+.mascot-sm .mascot-mouth { width: 14px; height: 7px; bottom: 12px; border-width: 2px; }
+.mascot-sm .mascot-body::before { width: 7px; height: 12px; top: -8px; }
+.mascot-sm .mascot-body::after { width: 6px; height: 6px; top: -12px; }
+.mascot-sm .mascot-arm-left, .mascot-sm .mascot-arm-right { width: 14px; height: 6px; }
+.mascot-sm .mascot-arm-left { left: -10px; }
+.mascot-sm .mascot-arm-right { right: -10px; }
+
+.mascot-lg .mascot-body { width: 120px; height: 108px; }
+.mascot-lg .mascot-eye { width: 20px; height: 24px; }
+.mascot-lg .mascot-eye::after { width: 10px; height: 12px; }
+.mascot-lg .mascot-eyes { gap: 20px; }
+.mascot-lg .mascot-mouth { width: 30px; height: 14px; bottom: 26px; border-width: 4px; }
+.mascot-lg .mascot-body::before { width: 14px; height: 24px; top: -16px; }
+.mascot-lg .mascot-body::after { width: 12px; height: 12px; top: -24px; }
+.mascot-lg .mascot-arm-left, .mascot-lg .mascot-arm-right { width: 28px; height: 12px; }
+.mascot-lg .mascot-arm-left { left: -20px; }
+.mascot-lg .mascot-arm-right { right: -20px; }
+
+/* Mascot teal variant */
+.mascot-teal .mascot-body { background: var(--teal); }
+.mascot-teal .mascot-body::before { background: var(--teal); }
+.mascot-teal .mascot-arm-left, .mascot-teal .mascot-arm-right { background: var(--teal); }
+
+/* Mascot lavender variant */
+.mascot-lavender .mascot-body { background: var(--lavender); }
+.mascot-lavender .mascot-body::before { background: var(--lavender); }
+.mascot-lavender .mascot-arm-left, .mascot-lavender .mascot-arm-right { background: var(--lavender); }
+
+/* Mascot peek (for pricing) */
+.mascot-peek {
+  position: absolute; bottom: -10px; right: 20px; z-index: 2;
+}
+.mascot-peek .mascot-body {
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  height: 45px;
+}
+.mascot-peek .mascot-eyes { top: 16%; }
+.mascot-peek .mascot-mouth { display: none; }
+.mascot-peek .mascot-arm-left, .mascot-peek .mascot-arm-right { display: none; }
+
+@keyframes mascotBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes mascotBlink {
+  0%, 42%, 46%, 100% { transform: translateX(-50%) scaleY(1); }
+  44% { transform: translateX(-50%) scaleY(0.1); }
+}
+@keyframes antennaWiggle {
+  0%, 100% { transform: translateX(-50%) rotate(0); }
+  25% { transform: translateX(-50%) rotate(8deg); }
+  75% { transform: translateX(-50%) rotate(-8deg); }
+}
+@keyframes armWaveLeft {
+  0%, 100% { transform: rotate(-20deg); }
+  50% { transform: rotate(-35deg); }
+}
+@keyframes armWaveRight {
+  0%, 100% { transform: rotate(20deg); }
+  50% { transform: rotate(35deg); }
+}
+
+/* ===== SCROLL REVEAL ===== */
+.reveal {
+  opacity: 0; transform: translateY(30px);
+  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+.reveal-delay-5 { transition-delay: 0.5s; }
+
+/* ===== DECORATIVE ELEMENTS ===== */
+.deco-star {
+  position: absolute; opacity: 0.5;
+  animation: decoFloat 6s ease-in-out infinite;
+}
+.deco-star svg { width: 20px; height: 20px; }
+.deco-squiggle {
+  position: absolute; opacity: 0.3;
+  animation: decoFloat 8s ease-in-out infinite reverse;
+}
+@keyframes decoFloat {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-10px) rotate(5deg); }
+}
+.squiggle-underline {
+  position: relative; display: inline;
+}
+.squiggle-underline::after {
+  content: ''; position: absolute; bottom: -4px; left: 0; right: 0; height: 6px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10'%3E%3Cpath d='M0 5 Q12.5 0 25 5 T50 5 T75 5 T100 5' fill='none' stroke='%23FF6B6B' stroke-width='2.5'/%3E%3C/svg%3E") repeat-x;
+  background-size: 50px 6px;
+}
+
+/* ===== 1. NAV ===== */
+.nav {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+  width: calc(100% - 32px); max-width: 1100px; z-index: 1000;
+  background: rgba(255,255,255,0.85); backdrop-filter: blur(20px);
+  border-radius: 50px; padding: 10px 12px 10px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 2px 20px rgba(45,42,50,0.08);
+  border: 1px solid rgba(232,228,238,0.6);
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: 1.3rem;
+  color: var(--dark);
+}
+.nav-logo-icon {
+  width: 36px; height: 32px; background: var(--coral); border-radius: 50% 50% 48% 52% / 60% 60% 40% 40%;
+  position: relative; display: flex; align-items: center; justify-content: center;
+}
+.nav-logo-icon::before {
+  content: ''; width: 6px; height: 10px; background: var(--coral);
+  border-radius: 50% 50% 20% 20%; position: absolute; top: -6px;
+}
+.nav-logo-icon::after {
+  content: ''; width: 5px; height: 5px; background: var(--yellow);
+  border-radius: 50%; position: absolute; top: -9px;
+}
+.nav-logo-eyes {
+  display: flex; gap: 6px; margin-top: 2px;
+}
+.nav-logo-eye {
+  width: 6px; height: 7px; background: var(--white); border-radius: 50%;
+  position: relative;
+}
+.nav-logo-eye::after {
+  content: ''; width: 3px; height: 4px; background: var(--dark); border-radius: 50%;
+  position: absolute; bottom: 1px; left: 50%; transform: translateX(-50%);
+}
+.nav-links { display: flex; align-items: center; gap: 28px; }
+.nav-links a {
+  font-size: 0.9rem; font-weight: 600; color: var(--dark-soft);
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--coral); }
+.nav-cta {
+  padding: 10px 24px; background: var(--coral); color: var(--white);
+  border-radius: 50px; font-weight: 700; font-size: 0.9rem;
+  box-shadow: var(--shadow-coral); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.nav-cta:hover { transform: scale(1.05); }
+.nav-mobile-toggle { display: none; background: none; padding: 8px; }
+.nav-mobile-toggle span {
+  display: block; width: 22px; height: 2px; background: var(--dark);
+  margin: 5px 0; border-radius: 2px; transition: all 0.3s;
+}
+
+@media (max-width: 768px) {
+  .nav { padding: 10px 16px; }
+  .nav-links { display: none; }
+  .nav-links.open {
+    display: flex; flex-direction: column; position: absolute;
+    top: 60px; left: 0; right: 0; background: var(--white);
+    border-radius: var(--radius); padding: 20px; gap: 16px;
+    box-shadow: var(--shadow-lg);
+  }
+  .nav-mobile-toggle { display: block; }
+}
+
+/* ===== 2. HERO ===== */
+.hero {
+  padding: 140px 0 80px; position: relative; overflow: hidden;
+  background: linear-gradient(180deg, #FFF8F0 0%, #FFF2E8 100%);
+}
+.hero-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center;
+}
+.hero-content { position: relative; z-index: 2; }
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--white); border: 1px solid #E8E4EE; border-radius: 50px;
+  padding: 6px 16px 6px 8px; font-size: 0.82rem; font-weight: 600;
+  color: var(--dark-soft); margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+}
+.hero-badge-dot {
+  width: 8px; height: 8px; background: #4ADE80; border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+}
+.hero h1 {
+  font-size: clamp(2.4rem, 5vw, 3.4rem); font-weight: 800;
+  line-height: 1.1; margin-bottom: 20px;
+}
+.hero h1 .highlight {
+  background: linear-gradient(135deg, var(--coral), var(--lavender));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-sub {
+  font-size: 1.15rem; color: var(--dark-soft); margin-bottom: 32px;
+  max-width: 480px; line-height: 1.7;
+}
+.hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; }
+
+/* Hero illustration scene */
+.hero-scene {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  min-height: 420px;
+}
+/* Reddit comment card illustration */
+.illust-reddit-card {
+  position: absolute; top: 20px; right: 0; width: 300px;
+  background: var(--white); border-radius: var(--radius-sm); padding: 18px;
+  box-shadow: var(--shadow-lg); border: 1px solid #F0ECF4;
+  animation: floatCard 5s ease-in-out infinite;
+  transform: rotate(2deg);
+}
+.illust-reddit-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+}
+.illust-reddit-avatar {
+  width: 28px; height: 28px; background: linear-gradient(135deg, #FF4500, #FF6B35);
+  border-radius: 50%;
+}
+.illust-reddit-user { font-size: 0.75rem; font-weight: 700; color: var(--gray); }
+.illust-reddit-sub { font-size: 0.7rem; color: #B0ACB8; }
+.illust-reddit-body {
+  font-size: 0.82rem; line-height: 1.5; color: var(--dark-soft); margin-bottom: 12px;
+}
+.illust-reddit-body strong { color: var(--coral); }
+.illust-reddit-votes {
+  display: flex; align-items: center; gap: 6px;
+}
+.illust-reddit-arrow { font-size: 1rem; cursor: default; }
+.illust-reddit-arrow.up { color: #FF4500; animation: arrowBounce 2s ease-in-out infinite; }
+.illust-reddit-arrow.down { color: #B0ACB8; }
+.illust-reddit-score { font-size: 0.85rem; font-weight: 700; color: var(--dark); }
+
+@keyframes arrowBounce {
+  0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); }
+}
+@keyframes floatCard {
+  0%, 100% { transform: rotate(2deg) translateY(0); }
+  50% { transform: rotate(2deg) translateY(-8px); }
+}
+
+/* AI search result illustration */
+.illust-ai-card {
+  position: absolute; bottom: 10px; left: -10px; width: 280px;
+  background: linear-gradient(135deg, #F5F0FF, #FFFFFF);
+  border-radius: var(--radius-sm); padding: 18px;
+  box-shadow: var(--shadow-lg); border: 1px solid #E8E0F5;
+  animation: floatCard2 6s ease-in-out infinite;
+  transform: rotate(-2deg);
+}
+@keyframes floatCard2 {
+  0%, 100% { transform: rotate(-2deg) translateY(0); }
+  50% { transform: rotate(-2deg) translateY(-10px); }
+}
+.illust-ai-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+}
+.illust-ai-icon {
+  width: 24px; height: 24px; background: linear-gradient(135deg, var(--lavender), var(--teal));
+  border-radius: 6px; display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; color: var(--white); font-weight: 700;
+}
+.illust-ai-label { font-size: 0.75rem; font-weight: 700; color: var(--lavender); }
+.illust-ai-query {
+  font-size: 0.8rem; color: var(--gray); margin-bottom: 8px; font-style: italic;
+}
+.illust-ai-answer {
+  font-size: 0.82rem; line-height: 1.5; color: var(--dark-soft);
+}
+.illust-ai-answer .brand-highlight {
+  background: linear-gradient(135deg, rgba(255,107,107,0.15), rgba(255,107,107,0.05));
+  padding: 1px 6px; border-radius: 4px; font-weight: 700; color: var(--coral);
+}
+
+/* Hero mascot */
+.hero-mascot {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 3;
+}
+.hero-mascot .mascot-body { animation-delay: 0.2s; }
+
+/* Hero decorations */
+.hero-deco-1 { top: 60px; right: 15%; }
+.hero-deco-2 { bottom: 40px; left: 10%; }
+.hero-deco-3 { top: 30%; left: 5%; }
+
+@media (max-width: 900px) {
+  .hero-grid { grid-template-columns: 1fr; text-align: center; }
+  .hero-sub { margin-left: auto; margin-right: auto; }
+  .hero-ctas { justify-content: center; }
+  .hero-scene { min-height: 350px; margin-top: 30px; }
+  .illust-reddit-card { right: 10%; width: 260px; }
+  .illust-ai-card { left: 5%; width: 250px; }
+}
+@media (max-width: 500px) {
+  .hero { padding: 120px 0 60px; }
+  .hero-scene { min-height: 300px; }
+  .illust-reddit-card { width: 220px; right: 0; top: 0; }
+  .illust-ai-card { width: 210px; left: 0; bottom: 0; }
+  .hero-mascot { display: none; }
+}
+
+/* ===== 3. SOCIAL PROOF BAR ===== */
+.proof-bar {
+  padding: 40px 0;
+  background: var(--white);
+  border-top: 1px solid #F0ECF4; border-bottom: 1px solid #F0ECF4;
+}
+.proof-bar-inner {
+  display: flex; align-items: center; justify-content: center;
+  gap: 32px; flex-wrap: wrap;
+}
+.proof-bar-text {
+  font-size: 0.95rem; font-weight: 600; color: var(--gray);
+}
+.proof-pill {
+  display: flex; align-items: center; gap: 8px;
+  background: #F9F7FC; border: 1px solid #F0ECF4; border-radius: 50px;
+  padding: 8px 18px;
+}
+.proof-pill-number {
+  font-family: 'Space Grotesk', sans-serif; font-weight: 800;
+  font-size: 1rem; color: var(--dark);
+}
+.proof-pill-label { font-size: 0.8rem; color: var(--gray); font-weight: 500; }
+
+/* ===== 4. HOW IT WORKS ===== */
+.how-it-works {
+  padding: 100px 0; position: relative;
+  background: var(--cream);
+}
+.how-header { text-align: center; margin-bottom: 64px; }
+.how-header .section-label { background: rgba(46,196,182,0.1); color: var(--teal); }
+.how-header .section-sub { margin: 0 auto; }
+
+.how-steps { position: relative; }
+/* Connecting line */
+.how-steps::before {
+  content: ''; position: absolute;
+  left: 50%; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(180deg, var(--teal), var(--lavender));
+  border-radius: 3px;
+  transform: translateX(-50%);
+}
+
+.how-step {
+  display: grid; grid-template-columns: 1fr 80px 1fr; align-items: center;
+  gap: 32px; margin-bottom: 60px; position: relative;
+}
+.how-step:last-child { margin-bottom: 0; }
+
+.how-step-number {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--white); border: 3px solid var(--teal);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: 1.2rem;
+  color: var(--teal); margin: 0 auto; position: relative; z-index: 2;
+  box-shadow: 0 0 0 8px var(--cream);
+}
+.how-step:nth-child(2) .how-step-number { border-color: var(--coral); color: var(--coral); }
+.how-step:nth-child(3) .how-step-number { border-color: var(--lavender); color: var(--lavender); }
+
+.how-step-content { padding: 28px; background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow-md); }
+.how-step-content h3 { font-size: 1.3rem; font-weight: 800; margin-bottom: 8px; }
+.how-step-content p { font-size: 0.95rem; color: var(--dark-soft); line-height: 1.6; }
+
+.how-step-illust {
+  padding: 20px; display: flex; align-items: center; justify-content: center;
+}
+
+/* Odd steps: content left, illustration right */
+.how-step:nth-child(odd) .how-step-content { grid-column: 1; }
+.how-step:nth-child(odd) .how-step-number { grid-column: 2; }
+.how-step:nth-child(odd) .how-step-illust { grid-column: 3; }
+
+/* Even steps: illustration left, content right */
+.how-step:nth-child(even) .how-step-illust { grid-column: 1; grid-row: 1; }
+.how-step:nth-child(even) .how-step-number { grid-column: 2; grid-row: 1; }
+.how-step:nth-child(even) .how-step-content { grid-column: 3; grid-row: 1; }
+
+/* Step illustrations */
+.step-illust-1 { position: relative; }
+.step-illust-1 .mini-comment {
+  background: var(--white); border-radius: 10px; padding: 10px 14px;
+  box-shadow: var(--shadow-sm); border: 1px solid #F0ECF4;
+  font-size: 0.75rem; color: var(--dark-soft); margin-bottom: 6px;
+  transform-origin: left center;
+  animation: commentSlide 3s ease-in-out infinite;
+}
+.step-illust-1 .mini-comment:nth-child(2) { animation-delay: 1s; margin-left: 12px; }
+.step-illust-1 .mini-comment:nth-child(3) { animation-delay: 2s; margin-left: 6px; }
+.step-illust-1 .mini-comment .dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  margin-right: 4px; vertical-align: middle;
+}
+@keyframes commentSlide {
+  0% { opacity: 0.4; transform: translateX(-8px); }
+  50% { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0.4; transform: translateX(-8px); }
+}
+
+.step-illust-2 { position: relative; text-align: center; }
+.step-illust-2 .brain-icon {
+  width: 60px; height: 60px; margin: 0 auto 10px;
+  background: linear-gradient(135deg, var(--lavender-light), var(--teal));
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  animation: brainPulse 3s ease-in-out infinite;
+}
+@keyframes brainPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(177,151,252,0.3); }
+  50% { box-shadow: 0 0 0 16px rgba(177,151,252,0); }
+}
+.step-illust-2 .scan-lines {
+  display: flex; flex-direction: column; gap: 4px; align-items: center;
+}
+.step-illust-2 .scan-line {
+  height: 3px; border-radius: 3px; animation: scanPulse 2s ease-in-out infinite;
+}
+@keyframes scanPulse {
+  0%, 100% { opacity: 0.3; } 50% { opacity: 1; }
+}
+
+.step-illust-3 { text-align: center; }
+.step-illust-3 .trophy {
+  width: 52px; height: 52px; margin: 0 auto 8px;
+  background: var(--yellow); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem;
+  animation: trophyBounce 2s ease-in-out infinite;
+}
+@keyframes trophyBounce {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50% { transform: translateY(-6px) rotate(3deg); }
+}
+.step-illust-3 .rank-badge {
+  display: inline-block; padding: 4px 12px; background: linear-gradient(135deg, var(--coral), var(--lavender));
+  color: var(--white); font-size: 0.75rem; font-weight: 700; border-radius: 50px;
+}
+
+@media (max-width: 768px) {
+  .how-steps::before { left: 28px; }
+  .how-step {
+    grid-template-columns: 56px 1fr; gap: 16px;
+  }
+  .how-step-number { grid-column: 1 !important; grid-row: 1 !important; margin: 0; }
+  .how-step-content { grid-column: 2 !important; grid-row: 1 !important; }
+  .how-step-illust { grid-column: 2 !important; grid-row: 2 !important; padding: 10px 0; }
+}
+
+/* ===== 5. THE PROOF / STATS ===== */
+.stats {
+  padding: 80px 0; position: relative;
+  background: linear-gradient(135deg, var(--dark) 0%, #3D3A45 100%);
+  overflow: hidden;
+}
+.stats::before {
+  content: ''; position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 20% 50%, rgba(255,107,107,0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 50%, rgba(46,196,182,0.1) 0%, transparent 50%);
+}
+.stats-header { text-align: center; margin-bottom: 48px; position: relative; z-index: 1; }
+.stats-header .section-label { background: rgba(255,255,255,0.1); color: var(--yellow); }
+.stats-header .section-title { color: var(--white); }
+.stats-header .section-sub { color: rgba(255,255,255,0.6); margin: 0 auto; }
+
+.stats-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;
+  position: relative; z-index: 1;
+}
+.stat-card {
+  text-align: center; padding: 32px 20px;
+  background: rgba(255,255,255,0.06); backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+}
+.stat-number {
+  font-family: 'Space Grotesk', sans-serif; font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800; margin-bottom: 4px;
+}
+.stat-card:nth-child(1) .stat-number { color: var(--coral); }
+.stat-card:nth-child(2) .stat-number { color: var(--teal); }
+.stat-card:nth-child(3) .stat-number { color: var(--yellow); }
+.stat-card:nth-child(4) .stat-number { color: var(--lavender); }
+.stat-label { font-size: 0.9rem; color: rgba(255,255,255,0.6); font-weight: 500; }
+
+/* Stats mascot floating */
+.stats-mascot {
+  position: absolute; bottom: -10px; left: 5%; z-index: 2; opacity: 0.9;
+}
+
+@media (max-width: 768px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ===== 6. BENEFITS ===== */
+.benefits {
+  padding: 100px 0; position: relative;
+  background: var(--white);
+}
+.benefits-header { text-align: center; margin-bottom: 56px; }
+.benefits-header .section-label { background: rgba(177,151,252,0.12); color: var(--lavender); }
+.benefits-header .section-sub { margin: 0 auto; }
+
+.benefits-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+}
+.benefit-card {
+  padding: 32px 28px; background: var(--cream);
+  border-radius: var(--radius); border: 1px solid #F0ECF4;
+  transition: transform 0.3s, box-shadow 0.3s;
+  position: relative; overflow: hidden;
+}
+.benefit-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+.benefit-card::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  border-radius: 3px 3px 0 0;
+}
+.benefit-card:nth-child(1)::after { background: var(--coral); }
+.benefit-card:nth-child(2)::after { background: var(--teal); }
+.benefit-card:nth-child(3)::after { background: var(--lavender); }
+.benefit-card:nth-child(4)::after { background: var(--yellow); }
+.benefit-card:nth-child(5)::after { background: var(--coral); }
+.benefit-card:nth-child(6)::after { background: var(--teal); }
+
+.benefit-icon {
+  width: 52px; height: 52px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; margin-bottom: 16px;
+}
+.benefit-card:nth-child(1) .benefit-icon { background: rgba(255,107,107,0.12); }
+.benefit-card:nth-child(2) .benefit-icon { background: rgba(46,196,182,0.12); }
+.benefit-card:nth-child(3) .benefit-icon { background: rgba(177,151,252,0.12); }
+.benefit-card:nth-child(4) .benefit-icon { background: rgba(255,217,61,0.15); }
+.benefit-card:nth-child(5) .benefit-icon { background: rgba(255,107,107,0.12); }
+.benefit-card:nth-child(6) .benefit-icon { background: rgba(46,196,182,0.12); }
+
+.benefit-card h3 {
+  font-size: 1.05rem; font-weight: 800; margin-bottom: 6px;
+}
+.benefit-card p {
+  font-size: 0.9rem; color: var(--dark-soft); line-height: 1.5;
+}
+
+/* Benefit icons (CSS-only) */
+.benefit-icon-target { position: relative; }
+.benefit-icon-target::before {
+  content: ''; width: 22px; height: 22px; border: 3px solid var(--coral);
+  border-radius: 50%; position: absolute;
+}
+.benefit-icon-target::after {
+  content: ''; width: 8px; height: 8px; background: var(--coral);
+  border-radius: 50%; position: absolute;
+}
+
+.benefit-icon-shield::before {
+  content: ''; width: 20px; height: 24px; border: 3px solid var(--teal);
+  border-radius: 4px 4px 50% 50%; position: absolute;
+}
+
+.benefit-icon-chart::before {
+  content: '';
+  width: 6px; height: 20px; background: var(--lavender); border-radius: 3px;
+  position: absolute; left: calc(50% - 12px);
+}
+.benefit-icon-chart::after {
+  content: '';
+  width: 6px; height: 14px; background: var(--lavender-light); border-radius: 3px;
+  position: absolute; left: calc(50% + 2px); bottom: calc(50% - 10px);
+}
+
+@media (max-width: 768px) {
+  .benefits-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 500px) {
+  .benefits-grid { grid-template-columns: 1fr; }
+}
+
+/* ===== 7. PRICING ===== */
+.pricing {
+  padding: 100px 0; position: relative;
+  background: linear-gradient(180deg, #F9F5FF 0%, #FFF8F0 100%);
+}
+.pricing-header { text-align: center; margin-bottom: 56px; }
+.pricing-header .section-label { background: rgba(255,107,107,0.1); color: var(--coral); }
+.pricing-header .section-sub { margin: 0 auto; }
+
+.pricing-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+  max-width: 1000px; margin: 0 auto;
+}
+.pricing-card {
+  background: var(--white); border-radius: var(--radius);
+  padding: 36px 28px; border: 2px solid #F0ECF4;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.3s, box-shadow 0.3s;
+  position: relative;
+}
+.pricing-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg);
+}
+.pricing-card.popular {
+  border-color: var(--coral);
+  box-shadow: var(--shadow-coral);
+  transform: scale(1.03);
+}
+.pricing-card.popular:hover {
+  transform: scale(1.03) translateY(-6px);
+}
+.pricing-popular-badge {
+  position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+  background: var(--coral); color: var(--white);
+  padding: 4px 20px; border-radius: 50px; font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.pricing-tier-name {
+  font-family: 'Space Grotesk', sans-serif; font-size: 1.1rem; font-weight: 800;
+  color: var(--dark); margin-bottom: 4px;
+}
+.pricing-tier-desc { font-size: 0.85rem; color: var(--gray); margin-bottom: 20px; }
+.pricing-price {
+  font-family: 'Space Grotesk', sans-serif; font-size: 2.6rem; font-weight: 800;
+  color: var(--dark); margin-bottom: 4px;
+}
+.pricing-price span { font-size: 1rem; font-weight: 500; color: var(--gray); }
+.pricing-period { font-size: 0.82rem; color: var(--gray); margin-bottom: 24px; }
+.pricing-features { margin-bottom: 28px; }
+.pricing-feature {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 0; font-size: 0.9rem; color: var(--dark-soft);
+}
+.pricing-check {
+  width: 20px; height: 20px; min-width: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.65rem; font-weight: 700; margin-top: 1px;
+}
+.pricing-card:nth-child(1) .pricing-check { background: rgba(46,196,182,0.12); color: var(--teal); }
+.pricing-card:nth-child(2) .pricing-check { background: rgba(255,107,107,0.12); color: var(--coral); }
+.pricing-card:nth-child(3) .pricing-check { background: rgba(177,151,252,0.12); color: var(--lavender); }
+
+.pricing-card .btn { width: 100%; justify-content: center; }
+
+@media (max-width: 768px) {
+  .pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
+  .pricing-card.popular { transform: scale(1); }
+  .pricing-card.popular:hover { transform: translateY(-6px); }
+}
+
+/* ===== 8. FAQ ===== */
+.faq {
+  padding: 100px 0; position: relative;
+  background: var(--white);
+}
+.faq-header { text-align: center; margin-bottom: 48px; }
+.faq-header .section-label { background: rgba(46,196,182,0.1); color: var(--teal); }
+.faq-header .section-sub { margin: 0 auto; }
+
+.faq-list { max-width: 700px; margin: 0 auto; }
+.faq-item {
+  border-bottom: 1px solid #F0ECF4;
+}
+.faq-question {
+  width: 100%; display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 0; background: none; text-align: left;
+  font-size: 1.05rem; font-weight: 700; color: var(--dark);
+  font-family: 'Space Grotesk', sans-serif;
+  transition: color 0.2s;
+}
+.faq-question:hover { color: var(--coral); }
+.faq-icon {
+  width: 28px; height: 28px; min-width: 28px; border-radius: 50%;
+  background: var(--cream); display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; color: var(--gray);
+  transition: all 0.3s;
+}
+.faq-item.open .faq-icon {
+  background: var(--coral); color: var(--white);
+  transform: rotate(45deg);
+}
+.faq-answer {
+  max-height: 0; overflow: hidden;
+  transition: max-height 0.4s ease, padding 0.4s ease;
+}
+.faq-item.open .faq-answer { max-height: 200px; }
+.faq-answer p {
+  padding: 0 0 20px; font-size: 0.95rem; color: var(--dark-soft); line-height: 1.7;
+}
+
+/* ===== 9. CTA + FOOTER ===== */
+.cta-section {
+  padding: 100px 0 60px;
+  background: linear-gradient(180deg, var(--cream) 0%, var(--cream-warm) 100%);
+  position: relative; overflow: hidden;
+}
+.cta-inner {
+  text-align: center; max-width: 600px; margin: 0 auto;
+  position: relative; z-index: 2;
+}
+.cta-inner .section-title { margin-bottom: 16px; }
+.cta-inner .section-sub { margin: 0 auto 32px; }
+.cta-mascot-container {
+  margin-bottom: 32px;
+  display: flex; justify-content: center;
+}
+
+.footer {
+  padding: 40px 0; background: var(--cream-warm);
+  border-top: 1px solid #F0ECF4;
+}
+.footer-inner {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;
+}
+.footer-brand {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: 1.1rem;
+}
+.footer-links { display: flex; gap: 24px; }
+.footer-links a { font-size: 0.85rem; color: var(--gray); font-weight: 500; transition: color 0.2s; }
+.footer-links a:hover { color: var(--coral); }
+.footer-copy { font-size: 0.8rem; color: var(--gray); }
+
+@media (max-width: 500px) {
+  .footer-inner { flex-direction: column; text-align: center; }
+}
+
+/* ===== MISC ILLUSTRATIONS ===== */
+/* Generic CSS icons for benefits */
+.css-icon {
+  position: relative; width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Eye icon */
+.css-icon-eye::before {
+  content: ''; width: 22px; height: 14px;
+  border: 3px solid currentColor; border-radius: 50%;
+  position: absolute;
+}
+.css-icon-eye::after {
+  content: ''; width: 8px; height: 8px;
+  background: currentColor; border-radius: 50%;
+  position: absolute;
+}
+
+/* Lightning icon */
+.css-icon-lightning {
+  font-size: 1.4rem;
+}
+
+/* Lock icon */
+.css-icon-lock::before {
+  content: ''; width: 16px; height: 12px;
+  background: currentColor; border-radius: 3px;
+  position: absolute; bottom: 2px;
+}
+.css-icon-lock::after {
+  content: ''; width: 10px; height: 8px;
+  border: 3px solid currentColor; border-bottom: none;
+  border-radius: 8px 8px 0 0; position: absolute; top: 2px;
+}
+
+/* Graph icon */
+.css-icon-graph::before {
+  content: ''; width: 22px; height: 2px;
+  background: currentColor; position: absolute; bottom: 3px;
+}
+.css-icon-graph::after {
+  content: '';
+  width: 16px; height: 12px;
+  border-bottom: 3px solid currentColor;
+  border-left: 3px solid currentColor;
+  position: absolute; bottom: 3px; left: 5px;
+  clip-path: polygon(0 100%, 30% 30%, 60% 60%, 100% 0, 100% 100%);
+  background: currentColor; opacity: 0.3;
+}
+</style>
+</head>
+<body>
+
+<!-- ===== NAV ===== -->
+<nav class="nav" id="nav">
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">
+      <div class="nav-logo-eyes">
+        <div class="nav-logo-eye"></div>
+        <div class="nav-logo-eye"></div>
+      </div>
+    </div>
+    SlopMog
+  </a>
+  <div class="nav-links" id="navLinks">
+    <a href="#how">How It Works</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
+    <a href="#cta" class="nav-cta">Get Started</a>
+  </div>
+  <button class="nav-mobile-toggle" id="navToggle" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- ===== HERO ===== -->
+<section class="hero" id="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div class="hero-content">
+        <div class="hero-badge reveal">
+          <span class="hero-badge-dot"></span>
+          Now serving 200+ brands
+        </div>
+        <h1 class="reveal reveal-delay-1">
+          AI recommends brands it sees people <span class="highlight">talking about</span>
+        </h1>
+        <p class="hero-sub reveal reveal-delay-2">
+          We start those conversations. Strategically placed Reddit comments that make AI search engines recommend your brand. It sounds ridiculous. It works incredibly well.
+        </p>
+        <div class="hero-ctas reveal reveal-delay-3">
+          <a href="#pricing" class="btn btn-primary">See Pricing</a>
+          <a href="#how" class="btn btn-secondary">How It Works</a>
+        </div>
+      </div>
+      <div class="hero-scene reveal reveal-delay-2">
+        <!-- Reddit comment illustration -->
+        <div class="illust-reddit-card">
+          <div class="illust-reddit-header">
+            <div class="illust-reddit-avatar"></div>
+            <div>
+              <div class="illust-reddit-user">u/genuine_redditor</div>
+              <div class="illust-reddit-sub">r/entrepreneur</div>
+            </div>
+          </div>
+          <div class="illust-reddit-body">
+            Honestly, we switched to <strong>YourBrand</strong> last quarter and it's been a game-changer for our workflow.
+          </div>
+          <div class="illust-reddit-votes">
+            <span class="illust-reddit-arrow up">&#9650;</span>
+            <span class="illust-reddit-score">47</span>
+            <span class="illust-reddit-arrow down">&#9660;</span>
+          </div>
+        </div>
+
+        <!-- AI search result illustration -->
+        <div class="illust-ai-card">
+          <div class="illust-ai-header">
+            <div class="illust-ai-icon">AI</div>
+            <div class="illust-ai-label">AI Search Result</div>
+          </div>
+          <div class="illust-ai-query">"What's the best tool for X?"</div>
+          <div class="illust-ai-answer">
+            Based on community discussions, <span class="brand-highlight">YourBrand</span> is widely recommended for its reliability and ease of use.
+          </div>
+        </div>
+
+        <!-- Mascot in the middle -->
+        <div class="hero-mascot">
+          <div class="mascot mascot-lg">
+            <div class="mascot-body">
+              <div class="mascot-arm-left"></div>
+              <div class="mascot-arm-right"></div>
+              <div class="mascot-eyes">
+                <div class="mascot-eye"></div>
+                <div class="mascot-eye"></div>
+              </div>
+              <div class="mascot-mouth"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Decorations -->
+  <div class="deco-star hero-deco-1" style="top:80px;right:12%">
+    <svg viewBox="0 0 20 20" fill="none"><path d="M10 0L12.2 7.8L20 10L12.2 12.2L10 20L7.8 12.2L0 10L7.8 7.8Z" fill="#FFD93D"/></svg>
+  </div>
+  <div class="deco-star hero-deco-2" style="bottom:60px;left:8%">
+    <svg viewBox="0 0 20 20" fill="none"><path d="M10 0L12.2 7.8L20 10L12.2 12.2L10 20L7.8 12.2L0 10L7.8 7.8Z" fill="#B197FC"/></svg>
+  </div>
+  <div class="deco-star" style="top:35%;left:3%">
+    <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="4" fill="#2EC4B6" opacity="0.4"/></svg>
+  </div>
+</section>
+
+<!-- ===== SOCIAL PROOF BAR ===== -->
+<section class="proof-bar">
+  <div class="container">
+    <div class="proof-bar-inner reveal">
+      <span class="proof-bar-text">Trusted by 200+ brands</span>
+      <div class="proof-pill">
+        <span class="proof-pill-number" data-count="3200">0</span>
+        <span class="proof-pill-label">comments placed</span>
+      </div>
+      <div class="proof-pill">
+        <span class="proof-pill-number" data-count="89">0</span>
+        <span class="proof-pill-label">% client retention</span>
+      </div>
+      <div class="proof-pill">
+        <span class="proof-pill-number" data-count="14">0</span>
+        <span class="proof-pill-label">day avg. to results</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== HOW IT WORKS ===== -->
+<section class="how-it-works" id="how">
+  <div class="container">
+    <div class="how-header">
+      <div class="section-label reveal">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        How It Works
+      </div>
+      <h2 class="section-title reveal reveal-delay-1">Three steps. No magic.</h2>
+      <p class="section-sub reveal reveal-delay-2">Well, maybe a little magic. But mostly strategy and really good writing.</p>
+    </div>
+
+    <div class="how-steps">
+      <!-- Step 1 -->
+      <div class="how-step">
+        <div class="how-step-content reveal">
+          <h3>We write Reddit comments</h3>
+          <p>Real, helpful, context-aware comments that naturally mention your brand. Not spam. Not bots. Actual good content that people upvote.</p>
+        </div>
+        <div class="how-step-number reveal">1</div>
+        <div class="how-step-illust reveal reveal-delay-1">
+          <div class="step-illust-1">
+            <div class="mini-comment"><span class="dot" style="background:var(--coral)"></span> "Switched to YourBrand, no regrets"</div>
+            <div class="mini-comment"><span class="dot" style="background:var(--teal)"></span> "YourBrand solved this for us"</div>
+            <div class="mini-comment"><span class="dot" style="background:var(--lavender)"></span> "Highly recommend YourBrand"</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="how-step">
+        <div class="how-step-illust reveal">
+          <div class="step-illust-2">
+            <div class="brain-icon">
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="10" stroke="white" stroke-width="2"/><path d="M10 14h8M14 10v8" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <div class="scan-lines">
+              <div class="scan-line" style="width:60px;background:var(--lavender);animation-delay:0s"></div>
+              <div class="scan-line" style="width:40px;background:var(--teal);animation-delay:0.3s"></div>
+              <div class="scan-line" style="width:50px;background:var(--lavender-light);animation-delay:0.6s"></div>
+            </div>
+          </div>
+        </div>
+        <div class="how-step-number reveal">2</div>
+        <div class="how-step-content reveal reveal-delay-1">
+          <h3>AI crawls and learns</h3>
+          <p>AI models train on Reddit data. When they see your brand mentioned positively across multiple threads, they learn to recommend you.</p>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="how-step">
+        <div class="how-step-content reveal">
+          <h3>You get recommended</h3>
+          <p>Someone asks AI "what's the best X?" and there you are. Top of the list. That's the whole play.</p>
+        </div>
+        <div class="how-step-number reveal">3</div>
+        <div class="how-step-illust reveal reveal-delay-1">
+          <div class="step-illust-3">
+            <div class="trophy">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M8 21h8M12 17v4M6 3h12v4a6 6 0 11-12 0V3z" stroke="#2D2A32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 3H3v3a3 3 0 003 3M18 3h3v3a3 3 0 01-3 3" stroke="#2D2A32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="rank-badge">#1 AI Recommended</div>
+            <div style="margin-top:12px;">
+              <div class="mascot mascot-sm mascot-teal">
+                <div class="mascot-body">
+                  <div class="mascot-arm-left"></div>
+                  <div class="mascot-arm-right"></div>
+                  <div class="mascot-eyes">
+                    <div class="mascot-eye"></div>
+                    <div class="mascot-eye"></div>
+                  </div>
+                  <div class="mascot-mouth"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== STATS ===== -->
+<section class="stats" id="stats">
+  <div class="container">
+    <div class="stats-header">
+      <div class="section-label reveal">The Proof</div>
+      <h2 class="section-title reveal reveal-delay-1">The name is ridiculous. The results aren't.</h2>
+      <p class="section-sub reveal reveal-delay-2">Real numbers from real campaigns. No cherry-picking.</p>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card reveal">
+        <div class="stat-number" data-count="47">0</div>
+        <div class="stat-label">Average upvotes per comment</div>
+      </div>
+      <div class="stat-card reveal reveal-delay-1">
+        <div class="stat-number" data-count="3.2" data-suffix="x">0</div>
+        <div class="stat-label">Increase in AI mentions</div>
+      </div>
+      <div class="stat-card reveal reveal-delay-2">
+        <div class="stat-number" data-count="89" data-suffix="%">0</div>
+        <div class="stat-label">Client retention rate</div>
+      </div>
+      <div class="stat-card reveal reveal-delay-3">
+        <div class="stat-number" data-count="14" data-suffix=" days">0</div>
+        <div class="stat-label">Average time to first result</div>
+      </div>
+    </div>
+  </div>
+  <!-- Stats mascot -->
+  <div class="stats-mascot">
+    <div class="mascot mascot-sm mascot-lavender">
+      <div class="mascot-body" style="animation-delay:1s">
+        <div class="mascot-arm-left"></div>
+        <div class="mascot-arm-right"></div>
+        <div class="mascot-eyes">
+          <div class="mascot-eye"></div>
+          <div class="mascot-eye"></div>
+        </div>
+        <div class="mascot-mouth"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== BENEFITS ===== -->
+<section class="benefits" id="benefits">
+  <div class="container">
+    <div class="benefits-header">
+      <div class="section-label reveal">Why SlopMog</div>
+      <h2 class="section-title reveal reveal-delay-1">Somewhere between guerrilla marketing and genius</h2>
+      <p class="section-sub reveal reveal-delay-2">We'll let you decide. Here's what you actually get.</p>
+    </div>
+    <div class="benefits-grid">
+      <div class="benefit-card reveal">
+        <div class="benefit-icon" style="color:var(--coral)">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="9" stroke="currentColor" stroke-width="2.5"/><circle cx="13" cy="13" r="3" fill="currentColor"/></svg>
+        </div>
+        <h3>Precision targeting</h3>
+        <p>We find the exact subreddits where your potential customers hang out and ask questions.</p>
+      </div>
+      <div class="benefit-card reveal reveal-delay-1">
+        <div class="benefit-icon" style="color:var(--teal)">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </div>
+        <h3>Human-written content</h3>
+        <p>No AI-generated slop. Real writers who understand Reddit culture and voice.</p>
+      </div>
+      <div class="benefit-card reveal reveal-delay-2">
+        <div class="benefit-icon" style="color:var(--lavender)">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect x="4" y="10" width="18" height="12" rx="2" stroke="currentColor" stroke-width="2.5"/><path d="M9 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        </div>
+        <h3>Undetectable approach</h3>
+        <p>Aged accounts, natural posting patterns, genuine engagement. Nothing that flags.</p>
+      </div>
+      <div class="benefit-card reveal reveal-delay-3">
+        <div class="benefit-icon" style="color:var(--yellow)">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M4 20l5-5 4 4 5-7 4 4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h3>Measurable results</h3>
+        <p>Monthly reports showing AI search rankings, comment performance, and brand mention growth.</p>
+      </div>
+      <div class="benefit-card reveal reveal-delay-4">
+        <div class="benefit-icon" style="color:var(--coral)">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 3v10l6 4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><circle cx="13" cy="13" r="10" stroke="currentColor" stroke-width="2.5"/></svg>
+        </div>
+        <h3>Fast time-to-impact</h3>
+        <p>Most clients see AI recommendation improvements within two weeks of launch.</p>
+      </div>
+      <div class="benefit-card reveal reveal-delay-5">
+        <div class="benefit-icon" style="color:var(--teal)">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M4 13h4l3-8 4 16 3-8h4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h3>Always-on presence</h3>
+        <p>Continuous commenting strategy, not a one-off blast. Consistent signals for AI to learn from.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PRICING ===== -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="pricing-header">
+      <div class="section-label reveal">Pricing</div>
+      <h2 class="section-title reveal reveal-delay-1">Pick your intensity</h2>
+      <p class="section-sub reveal reveal-delay-2">All plans include human-written comments, monthly reporting, and a dedicated strategist.</p>
+    </div>
+    <div class="pricing-grid">
+      <!-- Tier 1 -->
+      <div class="pricing-card reveal">
+        <div class="pricing-tier-name">The Drip</div>
+        <div class="pricing-tier-desc">Steady, strategic presence</div>
+        <div class="pricing-price">$499<span>/mo</span></div>
+        <div class="pricing-period">Billed monthly</div>
+        <div class="pricing-features">
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>30 comments per month</span>
+          </div>
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>5 target subreddits</span>
+          </div>
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>Monthly performance report</span>
+          </div>
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>1 brand / product focus</span>
+          </div>
+        </div>
+        <a href="#cta" class="btn btn-secondary">Start Dripping</a>
+      </div>
+
+      <!-- Tier 2 (Popular) -->
+      <div class="pricing-card popular reveal reveal-delay-1">
+        <div class="pricing-popular-badge">Most Popular</div>
+        <div class="pricing-tier-name">The Flood</div>
+        <div class="pricing-tier-desc">Aggressive growth mode</div>
+        <div class="pricing-price">$1,499<span>/mo</span></div>
+        <div class="pricing-period">Billed monthly</div>
+        <div class="pricing-features">
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>100 comments per month</span>
+          </div>
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>15 target subreddits</span>
+          </div>
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>Weekly performance reports</span>
+          </div>
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>3 brand / product focuses</span>
+          </div>
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>AI search rank tracking</span>
+          </div>
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>Dedicated strategist</span>
+          </div>
+        </div>
+        <a href="#cta" class="btn btn-primary">Start Flooding</a>
+        <!-- Mascot peek -->
+        <div class="mascot-peek">
+          <div class="mascot mascot-sm">
+            <div class="mascot-body" style="animation-delay:0.5s">
+              <div class="mascot-eyes" style="top:20%">
+                <div class="mascot-eye"></div>
+                <div class="mascot-eye"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tier 3 -->
+      <div class="pricing-card reveal reveal-delay-2">
+        <div class="pricing-tier-name">The Tsunami</div>
+        <div class="pricing-tier-desc">Full-scale domination</div>
+        <div class="pricing-price">Custom</div>
+        <div class="pricing-period">Let's talk</div>
+        <div class="pricing-features">
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>Unlimited comments</span>
+          </div>
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>Unlimited subreddits</span>
+          </div>
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>Real-time dashboard</span>
+          </div>
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>Unlimited brand focuses</span>
+          </div>
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>Competitor displacement strategy</span>
+          </div>
+          <div class="pricing-feature">
+            <span class="pricing-check">&#10003;</span>
+            <span>Priority support + Slack channel</span>
+          </div>
+        </div>
+        <a href="#cta" class="btn btn-teal">Contact Sales</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section class="faq" id="faq">
+  <div class="container">
+    <div class="faq-header">
+      <div class="section-label reveal">FAQ</div>
+      <h2 class="section-title reveal reveal-delay-1">Questions you're probably thinking</h2>
+      <p class="section-sub reveal reveal-delay-2">The honest answers. No corporate deflection.</p>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item reveal">
+        <button class="faq-question">
+          Is this... ethical?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <p>We write genuine, helpful comments that provide real value to Reddit discussions. We're not making fake reviews or lying about products. Think of it as word-of-mouth marketing with a strategic layer. The comments are honest -- your product just gets mentioned more often.</p>
+        </div>
+      </div>
+      <div class="faq-item reveal reveal-delay-1">
+        <button class="faq-question">
+          Won't Reddit detect this?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <p>We use aged accounts with natural posting histories and human writers who actually understand each subreddit's culture. No automation, no suspicious patterns. That's what you're paying for -- the craft, not just the volume.</p>
+        </div>
+      </div>
+      <div class="faq-item reveal reveal-delay-2">
+        <button class="faq-question">
+          How long until I see results?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <p>Most clients see measurable changes in AI search recommendations within 14 days. Full impact typically builds over 6-8 weeks as AI models update their training data. We provide tracking from day one.</p>
+        </div>
+      </div>
+      <div class="faq-item reveal reveal-delay-3">
+        <button class="faq-question">
+          Do I approve comments before they're posted?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <p>On The Flood and Tsunami plans, yes -- you get a weekly batch to review and approve. On The Drip, we work from your brand guidelines and approved messaging, but individual comments ship without pre-approval to keep things nimble.</p>
+        </div>
+      </div>
+      <div class="faq-item reveal reveal-delay-4">
+        <button class="faq-question">
+          Why "SlopMog"?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <p>Because taking ourselves too seriously would be weird given what we do. The name is memorable, a little absurd, and impossible to forget. Kind of like our service. You'll never confuse us with another B2B SaaS company, and that's the point.</p>
+        </div>
+      </div>
+      <div class="faq-item reveal reveal-delay-5">
+        <button class="faq-question">
+          Can I cancel anytime?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <p>Absolutely. Month-to-month, cancel whenever. No contracts, no guilt trips, no "retention specialists" calling you. Though our 89% retention rate suggests most people stick around.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CTA + FOOTER ===== -->
+<section class="cta-section" id="cta">
+  <div class="container">
+    <div class="cta-inner">
+      <div class="cta-mascot-container reveal">
+        <div class="mascot mascot-lg">
+          <div class="mascot-body">
+            <div class="mascot-arm-left" style="animation: armWaveLeft 1.5s ease-in-out infinite"></div>
+            <div class="mascot-arm-right" style="animation: armWaveRight 1.5s ease-in-out infinite"></div>
+            <div class="mascot-eyes">
+              <div class="mascot-eye"></div>
+              <div class="mascot-eye"></div>
+            </div>
+            <div class="mascot-mouth"></div>
+          </div>
+        </div>
+      </div>
+      <h2 class="section-title reveal reveal-delay-1">Ready to get recommended?</h2>
+      <p class="section-sub reveal reveal-delay-2" style="margin:0 auto 32px">
+        Start showing up when AI answers the questions that matter to your business. Setup takes 24 hours.
+      </p>
+      <div class="reveal reveal-delay-3">
+        <a href="#pricing" class="btn btn-primary" style="font-size:1.1rem;padding:16px 40px;">Get Started Today</a>
+      </div>
+      <p class="reveal reveal-delay-4" style="margin-top:16px;font-size:0.85rem;color:var(--gray);">No contracts. Cancel anytime. Results in 14 days.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="nav-logo-icon" style="width:28px;height:25px;">
+          <div class="nav-logo-eyes">
+            <div class="nav-logo-eye"></div>
+            <div class="nav-logo-eye"></div>
+          </div>
+        </div>
+        SlopMog
+      </div>
+      <div class="footer-links">
+        <a href="#how">How It Works</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+      </div>
+      <div class="footer-copy">&copy; 2025 SlopMog. All rights reserved.</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ===== Mobile Nav Toggle ===== */
+const navToggle = document.getElementById('navToggle');
+const navLinks = document.getElementById('navLinks');
+navToggle.addEventListener('click', () => {
+  navLinks.classList.toggle('open');
+});
+
+/* Close mobile nav on link click */
+navLinks.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => navLinks.classList.remove('open'));
+});
+
+/* ===== Scroll Reveal ===== */
+const revealElements = document.querySelectorAll('.reveal');
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+revealElements.forEach(el => revealObserver.observe(el));
+
+/* ===== Animated Counters ===== */
+function animateCounter(el) {
+  const target = parseFloat(el.dataset.count);
+  const suffix = el.dataset.suffix || '';
+  const isDecimal = String(target).includes('.');
+  const duration = 2000;
+  const start = performance.now();
+
+  function update(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+    const current = target * eased;
+
+    if (isDecimal) {
+      el.textContent = current.toFixed(1) + suffix;
+    } else {
+      el.textContent = Math.round(current).toLocaleString() + suffix;
+    }
+
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+const counterElements = document.querySelectorAll('[data-count]');
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      animateCounter(entry.target);
+      counterObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.5 });
+
+counterElements.forEach(el => counterObserver.observe(el));
+
+/* ===== FAQ Accordion ===== */
+document.querySelectorAll('.faq-question').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item = btn.parentElement;
+    const wasOpen = item.classList.contains('open');
+
+    /* Close all */
+    document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+
+    /* Open clicked if it wasn't already open */
+    if (!wasOpen) item.classList.add('open');
+  });
+});
+
+/* ===== Nav background on scroll ===== */
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  if (window.scrollY > 20) {
+    nav.style.background = 'rgba(255,255,255,0.95)';
+    nav.style.boxShadow = '0 2px 30px rgba(45,42,50,0.12)';
+  } else {
+    nav.style.background = 'rgba(255,255,255,0.85)';
+    nav.style.boxShadow = '0 2px 20px rgba(45,42,50,0.08)';
+  }
+});
+
+/* ===== Smooth scroll for anchor links ===== */
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function(e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+</script>
+</body>
+</html>

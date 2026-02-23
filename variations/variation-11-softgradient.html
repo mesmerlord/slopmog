@@ -1,0 +1,1958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlopMog — Get Recommended by AI</title>
+<meta name="description" content="SlopMog helps brands appear in AI recommendations through strategic Reddit presence. Trusted by 200+ brands.">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --violet: #8B5CF6;
+  --violet-light: #A78BFA;
+  --violet-dark: #7C3AED;
+  --coral: #F97066;
+  --coral-light: #FCA5A1;
+  --sky: #38BDF8;
+  --sky-light: #7DD3FC;
+  --mint: #34D399;
+  --mint-light: #6EE7B7;
+  --cream: #FFF8F3;
+  --lavender-bg: #F5F0FF;
+  --white: #FFFFFF;
+  --text-primary: #1E1B3A;
+  --text-secondary: #4A4568;
+  --text-muted: #8B85A1;
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --radius: 20px;
+  --radius-lg: 28px;
+  --radius-pill: 100px;
+  --shadow-soft: 0 4px 24px rgba(139, 92, 246, 0.08);
+  --shadow-hover: 0 8px 40px rgba(139, 92, 246, 0.15);
+  --shadow-coral: 0 4px 24px rgba(249, 112, 102, 0.15);
+  --shadow-sky: 0 4px 24px rgba(56, 189, 248, 0.15);
+  --shadow-mint: 0 4px 24px rgba(52, 211, 153, 0.15);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text-primary);
+  background: linear-gradient(165deg, var(--lavender-bg) 0%, var(--cream) 40%, #FFF 100%);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== DOT PATTERN OVERLAY ===== */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-image: radial-gradient(circle, rgba(139,92,246,0.04) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ===== SCROLL PROGRESS ===== */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--violet), var(--coral), var(--sky), var(--mint));
+  z-index: 10000;
+  transition: width 0.1s linear;
+  border-radius: 0 2px 2px 0;
+}
+
+/* ===== TYPOGRAPHY ===== */
+h1, h2, h3, h4 { font-family: 'Space Grotesk', 'Inter', sans-serif; }
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--violet) 0%, var(--coral) 50%, var(--sky) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% 200%;
+  animation: gradientShimmer 4s ease infinite;
+}
+
+@keyframes gradientShimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.section-label.violet {
+  background: rgba(139,92,246,0.1);
+  color: var(--violet);
+}
+.section-label.coral {
+  background: rgba(249,112,102,0.1);
+  color: var(--coral);
+}
+.section-label.sky {
+  background: rgba(56,189,248,0.1);
+  color: #0284C7;
+}
+.section-label.mint {
+  background: rgba(52,211,153,0.1);
+  color: #059669;
+}
+
+.section-title {
+  font-size: clamp(28px, 5vw, 44px);
+  font-weight: 800;
+  line-height: 1.15;
+  margin-bottom: 16px;
+}
+
+.section-subtitle {
+  font-size: clamp(16px, 2.2vw, 19px);
+  color: var(--text-secondary);
+  line-height: 1.65;
+  max-width: 600px;
+}
+
+/* ===== CONTAINER ===== */
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+section {
+  position: relative;
+  z-index: 1;
+}
+
+/* ===== GLASS CARD ===== */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+}
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 32px;
+  border-radius: var(--radius-pill);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--violet), var(--violet-dark));
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.35);
+}
+.btn-primary:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 30px rgba(139, 92, 246, 0.45);
+}
+
+.btn-secondary {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1.5px solid var(--glass-border);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-soft);
+}
+.btn-secondary:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-hover);
+  border-color: var(--violet-light);
+}
+
+/* ===== MASCOT SVG ===== */
+.mascot {
+  display: inline-block;
+  animation: mascotFloat 3s ease-in-out infinite;
+}
+
+@keyframes mascotFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes mascotBlink {
+  0%, 90%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+
+.mascot-eye {
+  animation: mascotBlink 3.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.mascot-breathe {
+  animation: mascotFloat 3s ease-in-out infinite;
+}
+
+/* ===== FLOATING ORBS ===== */
+.floating-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes orbFloat1 {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(30px, -20px); }
+  66% { transform: translate(-15px, 15px); }
+}
+@keyframes orbFloat2 {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(-25px, 25px); }
+  66% { transform: translate(20px, -10px); }
+}
+@keyframes orbFloat3 {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(15px, 20px); }
+}
+
+/* ===== REVEAL ANIMATIONS ===== */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+.reveal-delay-5 { transition-delay: 0.5s; }
+
+/* ===== NAV ===== */
+.nav {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: calc(100% - 32px);
+  max-width: 1080px;
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 4px 30px rgba(139, 92, 246, 0.08);
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--text-primary);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  list-style: none;
+}
+
+.nav-links a {
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--violet); }
+
+.nav-cta {
+  padding: 10px 24px !important;
+  font-size: 14px !important;
+}
+
+.nav-mobile-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+}
+
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .nav-cta-desktop { display: none; }
+  .nav-mobile-btn { display: flex; }
+
+  .nav-links.open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: 24px;
+    gap: 20px;
+    box-shadow: var(--shadow-hover);
+  }
+}
+
+/* ===== HERO ===== */
+.hero {
+  padding: 140px 0 80px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-bg {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.hero .floating-orb.orb-1 {
+  width: 400px; height: 400px;
+  background: rgba(139, 92, 246, 0.2);
+  top: -100px; left: -100px;
+  animation: orbFloat1 8s ease-in-out infinite;
+}
+.hero .floating-orb.orb-2 {
+  width: 350px; height: 350px;
+  background: rgba(249, 112, 102, 0.15);
+  top: 50px; right: -80px;
+  animation: orbFloat2 10s ease-in-out infinite;
+}
+.hero .floating-orb.orb-3 {
+  width: 250px; height: 250px;
+  background: rgba(56, 189, 248, 0.15);
+  bottom: -50px; left: 30%;
+  animation: orbFloat3 7s ease-in-out infinite;
+}
+.hero .floating-orb.orb-4 {
+  width: 200px; height: 200px;
+  background: rgba(52, 211, 153, 0.12);
+  bottom: 20px; right: 15%;
+  animation: orbFloat1 9s ease-in-out infinite;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 28px;
+  box-shadow: var(--shadow-soft);
+}
+
+.hero-badge .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--mint);
+  animation: dotPulse 2s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.hero h1 {
+  font-size: clamp(36px, 6.5vw, 72px);
+  font-weight: 900;
+  line-height: 1.08;
+  max-width: 800px;
+  margin: 0 auto 24px;
+  letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+  font-size: clamp(17px, 2.4vw, 21px);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 560px;
+  margin: 0 auto 40px;
+}
+
+.hero-ctas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 48px;
+}
+
+.hero-mascot {
+  margin-bottom: 20px;
+}
+
+.hero-visual {
+  position: relative;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.hero-mockup {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: 0 16px 64px rgba(139, 92, 246, 0.12);
+}
+
+.mockup-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.08);
+}
+
+.mockup-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+}
+.mockup-dot:nth-child(1) { background: #FF6B6B; }
+.mockup-dot:nth-child(2) { background: #FFD93D; }
+.mockup-dot:nth-child(3) { background: #6BCB77; }
+
+.mockup-url {
+  flex: 1;
+  margin-left: 8px;
+  padding: 6px 16px;
+  background: rgba(139, 92, 246, 0.05);
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.mockup-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mockup-ai-q {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(139, 92, 246, 0.04);
+  border-radius: 16px;
+}
+
+.mockup-ai-icon {
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--violet), var(--sky));
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mockup-ai-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.mockup-ai-text strong { color: var(--text-primary); }
+
+.mockup-ai-a {
+  padding: 16px;
+  background: rgba(52, 211, 153, 0.06);
+  border-radius: 16px;
+  border-left: 3px solid var(--mint);
+}
+
+.mockup-highlight {
+  display: inline;
+  background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(249,112,102,0.1));
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  color: var(--violet-dark);
+}
+
+/* ===== SOCIAL PROOF BAR ===== */
+.social-proof {
+  padding: 40px 0 60px;
+  position: relative;
+  z-index: 1;
+}
+
+.proof-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.proof-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.proof-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.proof-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: var(--shadow-soft);
+  white-space: nowrap;
+}
+
+.proof-pill .icon {
+  width: 20px; height: 20px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+}
+
+.proof-pill .icon.violet { background: rgba(139,92,246,0.12); color: var(--violet); }
+.proof-pill .icon.coral { background: rgba(249,112,102,0.12); color: var(--coral); }
+.proof-pill .icon.sky { background: rgba(56,189,248,0.12); color: #0284C7; }
+
+/* ===== HOW IT WORKS ===== */
+.how-it-works {
+  padding: 80px 0 100px;
+  position: relative;
+}
+
+.how-it-works .floating-orb.orb-hw1 {
+  width: 300px; height: 300px;
+  background: rgba(249,112,102,0.1);
+  top: 0; right: -100px;
+  animation: orbFloat2 9s ease-in-out infinite;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 60px;
+  position: relative;
+  z-index: 2;
+}
+
+.section-header .section-subtitle {
+  margin: 0 auto;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  position: relative;
+  z-index: 2;
+}
+
+.step-connector {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  .step-connector {
+    display: block;
+    position: absolute;
+    top: 70px;
+    left: calc(33.33% + 12px);
+    right: calc(33.33% + 12px);
+    height: 2px;
+    background: linear-gradient(90deg, var(--violet-light), var(--coral-light), var(--sky-light));
+    z-index: 1;
+    opacity: 0.4;
+  }
+}
+
+.step-card {
+  padding: 36px 28px;
+  text-align: center;
+  box-shadow: var(--shadow-soft);
+  position: relative;
+}
+
+.step-card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+.step-number {
+  width: 48px; height: 48px;
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: #fff;
+  margin: 0 auto 20px;
+  position: relative;
+  z-index: 2;
+}
+
+.step-card:nth-child(1) .step-number {
+  background: linear-gradient(135deg, var(--violet), var(--violet-dark));
+  box-shadow: 0 4px 16px rgba(139,92,246,0.3);
+}
+.step-card:nth-child(2) .step-number {
+  background: linear-gradient(135deg, var(--coral), #E85D52);
+  box-shadow: 0 4px 16px rgba(249,112,102,0.3);
+}
+.step-card:nth-child(3) .step-number {
+  background: linear-gradient(135deg, var(--sky), #0EA5E9);
+  box-shadow: 0 4px 16px rgba(56,189,248,0.3);
+}
+
+.step-icon {
+  width: 64px; height: 64px;
+  margin: 0 auto 20px;
+  border-radius: 20px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.step-card:nth-child(1) .step-icon { background: rgba(139,92,246,0.08); }
+.step-card:nth-child(2) .step-icon { background: rgba(249,112,102,0.08); }
+.step-card:nth-child(3) .step-icon { background: rgba(56,189,248,0.08); }
+
+.step-card h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.step-card p {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .steps-grid {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+}
+
+/* ===== WHY / BENEFITS ===== */
+.benefits {
+  padding: 80px 0 100px;
+  position: relative;
+}
+
+.benefits .floating-orb.orb-b1 {
+  width: 300px; height: 300px;
+  background: rgba(52,211,153,0.12);
+  bottom: -50px; left: -80px;
+  animation: orbFloat3 8s ease-in-out infinite;
+}
+
+.benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  position: relative;
+  z-index: 2;
+}
+
+.benefit-card {
+  padding: 32px 24px;
+  box-shadow: var(--shadow-soft);
+}
+
+.benefit-card:hover { box-shadow: var(--shadow-hover); }
+
+.benefit-icon {
+  width: 52px; height: 52px;
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 18px;
+}
+
+.benefit-card:nth-child(1) .benefit-icon { background: rgba(139,92,246,0.1); }
+.benefit-card:nth-child(2) .benefit-icon { background: rgba(249,112,102,0.1); }
+.benefit-card:nth-child(3) .benefit-icon { background: rgba(56,189,248,0.1); }
+.benefit-card:nth-child(4) .benefit-icon { background: rgba(52,211,153,0.1); }
+.benefit-card:nth-child(5) .benefit-icon { background: rgba(139,92,246,0.1); }
+.benefit-card:nth-child(6) .benefit-icon { background: rgba(249,112,102,0.1); }
+
+.benefit-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.benefit-card p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+@media (max-width: 900px) {
+  .benefits-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .benefits-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
+}
+
+/* ===== STATS ===== */
+.stats-section {
+  padding: 80px 0;
+  position: relative;
+}
+
+.stats-section .floating-orb.orb-s1 {
+  width: 350px; height: 350px;
+  background: rgba(139,92,246,0.1);
+  top: -80px; right: -60px;
+  animation: orbFloat1 10s ease-in-out infinite;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  position: relative;
+  z-index: 2;
+}
+
+.stat-card {
+  padding: 36px 24px;
+  text-align: center;
+  box-shadow: var(--shadow-soft);
+}
+
+.stat-card:hover { box-shadow: var(--shadow-hover); }
+
+.stat-number {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.stat-card:nth-child(1) .stat-number { color: var(--violet); }
+.stat-card:nth-child(2) .stat-number { color: var(--coral); }
+.stat-card:nth-child(3) .stat-number { color: var(--sky); }
+.stat-card:nth-child(4) .stat-number { color: var(--mint); }
+
+.stat-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.stat-bar {
+  width: 40px; height: 4px;
+  border-radius: 2px;
+  margin: 12px auto 0;
+  opacity: 0.4;
+}
+.stat-card:nth-child(1) .stat-bar { background: var(--violet); }
+.stat-card:nth-child(2) .stat-bar { background: var(--coral); }
+.stat-card:nth-child(3) .stat-bar { background: var(--sky); }
+.stat-card:nth-child(4) .stat-bar { background: var(--mint); }
+
+@media (max-width: 768px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr; max-width: 320px; margin: 0 auto; }
+}
+
+/* ===== PRICING ===== */
+.pricing {
+  padding: 80px 0 100px;
+  position: relative;
+}
+
+.pricing .floating-orb.orb-p1 {
+  width: 400px; height: 400px;
+  background: rgba(249,112,102,0.08);
+  top: -100px; left: -120px;
+  animation: orbFloat2 11s ease-in-out infinite;
+}
+.pricing .floating-orb.orb-p2 {
+  width: 300px; height: 300px;
+  background: rgba(56,189,248,0.08);
+  bottom: -60px; right: -80px;
+  animation: orbFloat3 9s ease-in-out infinite;
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  align-items: start;
+  position: relative;
+  z-index: 2;
+}
+
+.pricing-card {
+  padding: 36px 28px;
+  box-shadow: var(--shadow-soft);
+  position: relative;
+}
+
+.pricing-card:hover { box-shadow: var(--shadow-hover); }
+
+.pricing-card.featured {
+  border: 2px solid var(--violet-light);
+  box-shadow: 0 8px 40px rgba(139, 92, 246, 0.18);
+  transform: scale(1.03);
+}
+.pricing-card.featured:hover {
+  transform: scale(1.06);
+  box-shadow: 0 12px 50px rgba(139, 92, 246, 0.25);
+}
+
+.pricing-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 18px;
+  background: linear-gradient(135deg, var(--violet), var(--coral));
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pricing-tier {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.pricing-price {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 48px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.pricing-card:nth-child(1) .pricing-price { color: var(--violet); }
+.pricing-card:nth-child(2) .pricing-price { color: var(--coral); }
+.pricing-card:nth-child(3) .pricing-price { color: var(--sky); }
+
+.pricing-period {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+.pricing-desc {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(139,92,246,0.08);
+}
+
+.pricing-features {
+  list-style: none;
+  margin-bottom: 28px;
+}
+
+.pricing-features li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  padding: 8px 0;
+}
+
+.pricing-features li svg {
+  flex-shrink: 0;
+}
+
+.pricing-card .btn {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .pricing-grid {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+  .pricing-card.featured {
+    transform: none;
+    order: -1;
+  }
+  .pricing-card.featured:hover {
+    transform: translateY(-4px);
+  }
+}
+
+/* ===== FAQ ===== */
+.faq {
+  padding: 80px 0 100px;
+  position: relative;
+}
+
+.faq-list {
+  max-width: 700px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  z-index: 2;
+}
+
+.faq-item {
+  padding: 0;
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.faq-item:hover { box-shadow: var(--shadow-hover); }
+
+.faq-question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 20px 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: left;
+  gap: 16px;
+}
+
+.faq-icon {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: rgba(139,92,246,0.08);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.faq-item.open .faq-icon {
+  transform: rotate(45deg);
+  background: rgba(139,92,246,0.15);
+}
+
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.34, 1, 0.64, 1), padding 0.3s ease;
+}
+
+.faq-item.open .faq-answer {
+  max-height: 300px;
+}
+
+.faq-answer-inner {
+  padding: 0 24px 20px;
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+/* ===== CTA SECTION ===== */
+.cta-section {
+  padding: 100px 0;
+  position: relative;
+}
+
+.cta-card {
+  position: relative;
+  overflow: hidden;
+  padding: 72px 48px;
+  text-align: center;
+  background: linear-gradient(135deg, #7C3AED, #6D28D9, #4C1D95);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 60px rgba(124, 58, 237, 0.3);
+  z-index: 2;
+}
+
+.cta-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: radial-gradient(circle at 30% 30%, rgba(249,112,102,0.2), transparent 60%),
+              radial-gradient(circle at 70% 70%, rgba(56,189,248,0.15), transparent 50%);
+  z-index: 0;
+}
+
+.cta-card > * { position: relative; z-index: 2; }
+
+.cta-card h2 {
+  font-size: clamp(28px, 5vw, 44px);
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 16px;
+  line-height: 1.15;
+}
+
+.cta-card p {
+  font-size: 18px;
+  color: rgba(255,255,255,0.8);
+  margin-bottom: 36px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+}
+
+.cta-card .btn-primary {
+  background: #fff;
+  color: var(--violet-dark);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+.cta-card .btn-primary:hover {
+  box-shadow: 0 6px 30px rgba(0,0,0,0.25);
+}
+
+.cta-mascot {
+  position: absolute;
+  bottom: 20px;
+  right: 40px;
+  opacity: 0.25;
+  z-index: 1;
+}
+
+@media (max-width: 600px) {
+  .cta-card { padding: 48px 24px; }
+  .cta-mascot { display: none; }
+}
+
+/* ===== FOOTER ===== */
+.footer {
+  padding: 60px 0 30px;
+  position: relative;
+  z-index: 1;
+}
+
+.footer-top {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 40px;
+  padding-bottom: 40px;
+  border-bottom: 1px solid rgba(139,92,246,0.08);
+}
+
+.footer-brand p {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-top: 12px;
+  max-width: 280px;
+}
+
+.footer-col h4 {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+
+.footer-col a {
+  display: block;
+  font-size: 14px;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 4px 0;
+  transition: color 0.2s;
+}
+.footer-col a:hover { color: var(--violet); }
+
+.footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 24px;
+  font-size: 13px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-socials {
+  display: flex; gap: 12px;
+}
+
+.footer-socials a {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: rgba(139,92,246,0.06);
+  display: flex; align-items: center; justify-content: center;
+  text-decoration: none;
+  transition: all 0.3s;
+}
+.footer-socials a:hover {
+  background: rgba(139,92,246,0.12);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+  .footer-top {
+    grid-template-columns: 1fr 1fr;
+  }
+  .footer-brand { grid-column: 1 / -1; }
+}
+@media (max-width: 480px) {
+  .footer-top { grid-template-columns: 1fr; }
+}
+
+/* ===== UTILITY ===== */
+.text-center { text-align: center; }
+
+@media (max-width: 480px) {
+  .btn { padding: 12px 24px; font-size: 14px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Scroll Progress -->
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<!-- Navigation -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <!-- Inline mascot logo -->
+      <svg width="32" height="32" viewBox="0 0 64 64" fill="none">
+        <rect width="64" height="64" rx="16" fill="url(#logoGrad)"/>
+        <circle cx="24" cy="28" r="4" fill="#fff"/>
+        <circle cx="40" cy="28" r="4" fill="#fff"/>
+        <circle cx="24" cy="27" r="2" fill="#4C1D95"/>
+        <circle cx="40" cy="27" r="2" fill="#4C1D95"/>
+        <path d="M24 40 Q32 47 40 40" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none"/>
+        <defs>
+          <linearGradient id="logoGrad" x1="0" y1="0" x2="64" y2="64">
+            <stop offset="0%" stop-color="#8B5CF6"/>
+            <stop offset="100%" stop-color="#F97066"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      SlopMog
+    </a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#how-it-works">How It Works</a></li>
+      <li><a href="#benefits">Benefits</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ul>
+    <a href="#pricing" class="btn btn-primary nav-cta nav-cta-desktop">Get Started</a>
+    <button class="nav-mobile-btn" id="navMobileBtn" aria-label="Toggle menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero" id="hero">
+  <div class="hero-bg">
+    <div class="floating-orb orb-1"></div>
+    <div class="floating-orb orb-2"></div>
+    <div class="floating-orb orb-3"></div>
+    <div class="floating-orb orb-4"></div>
+  </div>
+  <div class="container hero-content">
+    <div class="reveal">
+      <div class="hero-mascot mascot">
+        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+          <ellipse cx="40" cy="44" rx="30" ry="28" fill="url(#mascotBody)"/>
+          <ellipse cx="40" cy="72" rx="20" ry="4" fill="rgba(139,92,246,0.08)"/>
+          <!-- Eyes -->
+          <g class="mascot-eye">
+            <circle cx="30" cy="38" r="5.5" fill="#fff"/>
+            <circle cx="50" cy="38" r="5.5" fill="#fff"/>
+            <circle cx="31" cy="37" r="3" fill="#4C1D95"/>
+            <circle cx="51" cy="37" r="3" fill="#4C1D95"/>
+            <circle cx="32" cy="36" r="1" fill="#fff"/>
+            <circle cx="52" cy="36" r="1" fill="#fff"/>
+          </g>
+          <!-- Smile -->
+          <path d="M33 50 Q40 56 47 50" stroke="#4C1D95" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <!-- Blush -->
+          <ellipse cx="23" cy="47" rx="5" ry="3" fill="rgba(249,112,102,0.2)"/>
+          <ellipse cx="57" cy="47" rx="5" ry="3" fill="rgba(249,112,102,0.2)"/>
+          <!-- Antenna -->
+          <line x1="40" y1="16" x2="40" y2="22" stroke="url(#mascotBody)" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="40" cy="14" r="4" fill="var(--mint)"/>
+          <defs>
+            <linearGradient id="mascotBody" x1="10" y1="16" x2="70" y2="72">
+              <stop offset="0%" stop-color="#A78BFA"/>
+              <stop offset="100%" stop-color="#8B5CF6"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+    </div>
+    <div class="hero-badge reveal reveal-delay-1">
+      <span class="dot"></span>
+      AI search is the new SEO
+    </div>
+    <h1 class="reveal reveal-delay-2">
+      The brands AI recommends<br><span class="gradient-text">didn't get there by accident</span>
+    </h1>
+    <p class="hero-subtitle reveal reveal-delay-3">
+      We create strategic Reddit presence so that when AI answers "what's the best X?" — your brand is the answer.
+    </p>
+    <div class="hero-ctas reveal reveal-delay-4">
+      <a href="#pricing" class="btn btn-primary">Start Getting Recommended</a>
+      <a href="#how-it-works" class="btn btn-secondary">See How It Works</a>
+    </div>
+
+    <!-- Hero Mockup -->
+    <div class="hero-visual reveal reveal-delay-5">
+      <div class="hero-mockup">
+        <div class="mockup-bar">
+          <div class="mockup-dot"></div>
+          <div class="mockup-dot"></div>
+          <div class="mockup-dot"></div>
+          <div class="mockup-url">chat.openai.com</div>
+        </div>
+        <div class="mockup-content">
+          <div class="mockup-ai-q">
+            <div class="mockup-ai-icon">U</div>
+            <div class="mockup-ai-text">
+              <strong>What's the best project management tool for remote teams?</strong>
+            </div>
+          </div>
+          <div class="mockup-ai-q mockup-ai-a">
+            <div class="mockup-ai-icon" style="background:linear-gradient(135deg, var(--mint), #059669);">AI</div>
+            <div class="mockup-ai-text">
+              Based on recent discussions, <span class="mockup-highlight">YourBrand</span> is highly recommended for remote teams. Users on Reddit consistently praise its async collaboration features, intuitive interface, and excellent support. It's particularly popular among teams of 10-50 people.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Social Proof -->
+<section class="social-proof">
+  <div class="container">
+    <div class="proof-inner reveal">
+      <span class="proof-text">Trusted by 200+ brands</span>
+      <div class="proof-stats">
+        <div class="proof-pill">
+          <span class="icon violet">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          </span>
+          3.2M+ comments seeded
+        </div>
+        <div class="proof-pill">
+          <span class="icon coral">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </span>
+          94% client retention
+        </div>
+        <div class="proof-pill">
+          <span class="icon sky">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </span>
+          Results in 30 days
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section class="how-it-works" id="how-it-works">
+  <div class="floating-orb orb-hw1"></div>
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label violet reveal">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        How It Works
+      </span>
+      <h2 class="section-title reveal reveal-delay-1">Three steps to AI visibility</h2>
+      <p class="section-subtitle reveal reveal-delay-2">Every AI recommendation started as a conversation somewhere. We make sure that conversation includes you.</p>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-connector"></div>
+      <div class="step-card glass-card reveal reveal-delay-1">
+        <div class="step-number">1</div>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+        </div>
+        <h3>We Research Your Niche</h3>
+        <p>We identify the Reddit threads, keywords, and conversations that AI models pull from when recommending products like yours.</p>
+      </div>
+      <div class="step-card glass-card reveal reveal-delay-2">
+        <div class="step-number">2</div>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F97066" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </div>
+        <h3>We Seed Authentic Content</h3>
+        <p>Our team creates genuine, helpful Reddit comments that naturally mention your brand in context. No spam, no bots — real engagement.</p>
+      </div>
+      <div class="step-card glass-card reveal reveal-delay-3">
+        <div class="step-number">3</div>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        </div>
+        <h3>AI Recommends You</h3>
+        <p>As AI models train on this data, your brand becomes part of their recommendation set. More visibility, more customers.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Benefits -->
+<section class="benefits" id="benefits">
+  <div class="floating-orb orb-b1"></div>
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label coral reveal">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Why SlopMog
+      </span>
+      <h2 class="section-title reveal reveal-delay-1">Your competitors are already doing this</h2>
+      <p class="section-subtitle reveal reveal-delay-2">We just do it better. Here's what sets us apart.</p>
+    </div>
+
+    <div class="benefits-grid">
+      <div class="benefit-card glass-card reveal reveal-delay-1">
+        <div class="benefit-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3>Undetectable Placement</h3>
+        <p>Our comments read like genuine recommendations from real users. No red flags, no patterns that get flagged.</p>
+      </div>
+      <div class="benefit-card glass-card reveal reveal-delay-2">
+        <div class="benefit-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F97066" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        </div>
+        <h3>Data-Driven Targeting</h3>
+        <p>We analyze which threads and subreddits AI models weight most heavily, then focus our efforts there for maximum impact.</p>
+      </div>
+      <div class="benefit-card glass-card reveal reveal-delay-3">
+        <div class="benefit-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+        <h3>Aged Account Network</h3>
+        <p>We use established Reddit accounts with real history and karma. No fresh throwaway accounts that raise suspicion.</p>
+      </div>
+      <div class="benefit-card glass-card reveal reveal-delay-1">
+        <div class="benefit-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <h3>Results in 30 Days</h3>
+        <p>Most clients see their brand appearing in AI responses within the first month. No six-month SEO waiting game.</p>
+      </div>
+      <div class="benefit-card glass-card reveal reveal-delay-2">
+        <div class="benefit-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <h3>Monthly Reporting</h3>
+        <p>Clear dashboards showing comment placements, engagement metrics, and AI mention tracking. Full transparency.</p>
+      </div>
+      <div class="benefit-card glass-card reveal reveal-delay-3">
+        <div class="benefit-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F97066" stroke-width="2" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        </div>
+        <h3>No Long Contracts</h3>
+        <p>Month-to-month billing. Stay because it works, not because you're locked in. Most clients stay for 12+ months.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<section class="stats-section" id="stats">
+  <div class="floating-orb orb-s1"></div>
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label sky reveal">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        The Numbers
+      </span>
+      <h2 class="section-title reveal reveal-delay-1">Results that speak for themselves</h2>
+      <p class="section-subtitle reveal reveal-delay-2">Trusted by 200+ brands who'd rather not explain their marketing strategy at dinner parties.</p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card glass-card reveal reveal-delay-1">
+        <div class="stat-number" data-target="3200000" data-suffix="+" data-format="compact">0</div>
+        <div class="stat-label">Comments Seeded</div>
+        <div class="stat-bar"></div>
+      </div>
+      <div class="stat-card glass-card reveal reveal-delay-2">
+        <div class="stat-number" data-target="94" data-suffix="%">0</div>
+        <div class="stat-label">Client Retention Rate</div>
+        <div class="stat-bar"></div>
+      </div>
+      <div class="stat-card glass-card reveal reveal-delay-3">
+        <div class="stat-number" data-target="200" data-suffix="+">0</div>
+        <div class="stat-label">Brands Trust Us</div>
+        <div class="stat-bar"></div>
+      </div>
+      <div class="stat-card glass-card reveal reveal-delay-4">
+        <div class="stat-number" data-target="30" data-suffix=" days">0</div>
+        <div class="stat-label">Average Time to Results</div>
+        <div class="stat-bar"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section class="pricing" id="pricing">
+  <div class="floating-orb orb-p1"></div>
+  <div class="floating-orb orb-p2"></div>
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label mint reveal">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        Pricing
+      </span>
+      <h2 class="section-title reveal reveal-delay-1">Simple, transparent pricing</h2>
+      <p class="section-subtitle reveal reveal-delay-2">Strategic Reddit presence that compounds over time. No hidden fees, no long-term contracts.</p>
+    </div>
+
+    <div class="pricing-grid">
+      <!-- Starter -->
+      <div class="pricing-card glass-card reveal reveal-delay-1">
+        <div class="pricing-tier">Starter</div>
+        <div class="pricing-price">$499</div>
+        <div class="pricing-period">per month</div>
+        <p class="pricing-desc">Perfect for startups and smaller brands looking to establish initial AI visibility.</p>
+        <ul class="pricing-features">
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            50 strategic comments / month
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            5 target keywords
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Monthly performance report
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            AI mention tracking
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Email support
+          </li>
+        </ul>
+        <a href="#" class="btn btn-secondary">Get Started</a>
+      </div>
+
+      <!-- Growth (Featured) -->
+      <div class="pricing-card glass-card featured reveal reveal-delay-2">
+        <div class="pricing-badge">Most Popular</div>
+        <div class="pricing-tier">Growth</div>
+        <div class="pricing-price">$1,499</div>
+        <div class="pricing-period">per month</div>
+        <p class="pricing-desc">For brands serious about dominating AI recommendations in their category.</p>
+        <ul class="pricing-features">
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F97066" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            200 strategic comments / month
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F97066" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            20 target keywords
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F97066" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Weekly performance reports
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F97066" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Competitor monitoring
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F97066" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Dedicated account manager
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F97066" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Priority Slack support
+          </li>
+        </ul>
+        <a href="#" class="btn btn-primary">Get Started</a>
+      </div>
+
+      <!-- Scale -->
+      <div class="pricing-card glass-card reveal reveal-delay-3">
+        <div class="pricing-tier">Scale</div>
+        <div class="pricing-price">Custom</div>
+        <div class="pricing-period">tailored to your needs</div>
+        <p class="pricing-desc">Enterprise-grade AI visibility for brands that want to own their category entirely.</p>
+        <ul class="pricing-features">
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Unlimited comments
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Unlimited keywords
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Real-time dashboard
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Multi-platform coverage
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Custom strategy sessions
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Dedicated team
+          </li>
+        </ul>
+        <a href="#" class="btn btn-secondary">Contact Sales</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq" id="faq">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-label violet reveal">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        FAQ
+      </span>
+      <h2 class="section-title reveal reveal-delay-1">Questions you're probably asking</h2>
+      <p class="section-subtitle reveal reveal-delay-2">And a few you haven't thought of yet.</p>
+    </div>
+
+    <div class="faq-list">
+      <div class="faq-item glass-card reveal reveal-delay-1">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          How does this actually work?
+          <span class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            AI models like ChatGPT, Perplexity, and Claude pull heavily from Reddit discussions to form recommendations. We create authentic, helpful comments in relevant threads that naturally mention your brand. Over time, these become part of the training data and knowledge base that AI uses to answer questions about your category.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item glass-card reveal reveal-delay-2">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          How is this different from traditional SEO?
+          <span class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            Traditional SEO optimizes for Google's search algorithm. We optimize for the next generation: AI-powered search. More and more people are asking AI directly for recommendations instead of scrolling through Google results. We make sure your brand shows up in those conversations.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item glass-card reveal reveal-delay-3">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Will the comments look natural?
+          <span class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            Absolutely. Our team writes every comment by hand — no AI-generated spam. Comments are contextually relevant, genuinely helpful, and mention your brand naturally. We use aged Reddit accounts with real posting history. The goal is to provide actual value while including your brand in the conversation.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item glass-card reveal reveal-delay-4">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          How quickly will I see results?
+          <span class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            Most clients start seeing their brand appear in AI responses within 30 days. The effect compounds over time — the more presence you build, the more consistently AI recommends you. Unlike traditional SEO that can take 6-12 months, AI search optimization works on a much faster timeline.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item glass-card reveal reveal-delay-5">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          What if I want to cancel?
+          <span class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            No problem. All plans are month-to-month with no long-term commitments. Cancel anytime, no questions asked. That said, our 94% retention rate exists because this works. The comments we've already placed continue to influence AI recommendations even after you stop — though ongoing investment compounds your advantage.
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item glass-card reveal reveal-delay-5">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          Do you work with competitors in the same space?
+          <span class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            We limit the number of clients per category to protect your competitive advantage. Growth and Scale plan clients get category exclusivity in their primary niche, ensuring we're not working both sides of the same market.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section">
+  <div class="container">
+    <div class="cta-card reveal">
+      <!-- Decorative mascot -->
+      <div class="cta-mascot">
+        <svg width="100" height="100" viewBox="0 0 80 80" fill="none" opacity="0.5">
+          <ellipse cx="40" cy="44" rx="30" ry="28" fill="rgba(255,255,255,0.15)"/>
+          <circle cx="30" cy="38" r="4" fill="rgba(255,255,255,0.2)"/>
+          <circle cx="50" cy="38" r="4" fill="rgba(255,255,255,0.2)"/>
+          <path d="M33 50 Q40 56 47 50" stroke="rgba(255,255,255,0.2)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        </svg>
+      </div>
+
+      <!-- Floating mascot accent -->
+      <div class="mascot" style="margin-bottom: 16px;">
+        <svg width="56" height="56" viewBox="0 0 80 80" fill="none">
+          <ellipse cx="40" cy="44" rx="30" ry="28" fill="rgba(255,255,255,0.2)"/>
+          <g class="mascot-eye">
+            <circle cx="30" cy="38" r="4.5" fill="#fff"/>
+            <circle cx="50" cy="38" r="4.5" fill="#fff"/>
+            <circle cx="31" cy="37" r="2.5" fill="#4C1D95"/>
+            <circle cx="51" cy="37" r="2.5" fill="#4C1D95"/>
+          </g>
+          <path d="M33 50 Q40 56 47 50" stroke="#fff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <circle cx="40" cy="14" r="3.5" fill="var(--mint)"/>
+          <line x1="40" y1="17" x2="40" y2="22" stroke="rgba(255,255,255,0.3)" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <h2>Ready to become AI's top recommendation?</h2>
+      <p>Join 200+ brands that are already winning the AI search game. Set up takes less than a day.</p>
+      <a href="#pricing" class="btn btn-primary">Start Getting Recommended</a>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="#" class="nav-logo" style="margin-bottom: 4px;">
+          <svg width="28" height="28" viewBox="0 0 64 64" fill="none">
+            <rect width="64" height="64" rx="16" fill="url(#logoGrad2)"/>
+            <circle cx="24" cy="28" r="3.5" fill="#fff"/>
+            <circle cx="40" cy="28" r="3.5" fill="#fff"/>
+            <circle cx="24" cy="27" r="1.8" fill="#4C1D95"/>
+            <circle cx="40" cy="27" r="1.8" fill="#4C1D95"/>
+            <path d="M24 40 Q32 46 40 40" stroke="#fff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <defs>
+              <linearGradient id="logoGrad2" x1="0" y1="0" x2="64" y2="64">
+                <stop offset="0%" stop-color="#8B5CF6"/>
+                <stop offset="100%" stop-color="#F97066"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          SlopMog
+        </a>
+        <p>Strategic Reddit presence for AI search visibility. We write the comments. AI reads them. You get the customers.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+        <a href="#">Case Studies</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="#">About</a>
+        <a href="#">Blog</a>
+        <a href="#">Careers</a>
+        <a href="#">Contact</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Cookie Policy</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2026 SlopMog. All rights reserved.</span>
+      <div class="footer-socials">
+        <a href="#" aria-label="Twitter">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+        </a>
+        <a href="#" aria-label="LinkedIn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+        </a>
+        <a href="#" aria-label="GitHub">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ===== SCROLL PROGRESS =====
+function updateScrollProgress() {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const scrollPercent = (scrollTop / docHeight) * 100;
+  document.getElementById('scrollProgress').style.width = scrollPercent + '%';
+}
+window.addEventListener('scroll', updateScrollProgress, { passive: true });
+
+// ===== MOBILE NAV =====
+document.getElementById('navMobileBtn').addEventListener('click', function() {
+  document.getElementById('navLinks').classList.toggle('open');
+});
+
+// Close mobile nav on link click
+document.querySelectorAll('.nav-links a').forEach(function(link) {
+  link.addEventListener('click', function() {
+    document.getElementById('navLinks').classList.remove('open');
+  });
+});
+
+// ===== INTERSECTION OBSERVER FOR REVEALS =====
+const revealObserver = new IntersectionObserver(function(entries) {
+  entries.forEach(function(entry) {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, {
+  threshold: 0.1,
+  rootMargin: '0px 0px -40px 0px'
+});
+
+document.querySelectorAll('.reveal').forEach(function(el) {
+  revealObserver.observe(el);
+});
+
+// ===== ANIMATED COUNTERS =====
+function animateCounter(el) {
+  const target = parseInt(el.getAttribute('data-target'));
+  const suffix = el.getAttribute('data-suffix') || '';
+  const format = el.getAttribute('data-format');
+  const duration = 2000;
+  const start = performance.now();
+
+  function update(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    // Ease out cubic
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.floor(eased * target);
+
+    if (format === 'compact') {
+      if (current >= 1000000) {
+        el.textContent = (current / 1000000).toFixed(1) + 'M' + suffix;
+      } else if (current >= 1000) {
+        el.textContent = (current / 1000).toFixed(0) + 'K' + suffix;
+      } else {
+        el.textContent = current + suffix;
+      }
+    } else {
+      el.textContent = current + suffix;
+    }
+
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    }
+  }
+
+  requestAnimationFrame(update);
+}
+
+const counterObserver = new IntersectionObserver(function(entries) {
+  entries.forEach(function(entry) {
+    if (entry.isIntersecting) {
+      animateCounter(entry.target);
+      counterObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.5 });
+
+document.querySelectorAll('.stat-number[data-target]').forEach(function(el) {
+  counterObserver.observe(el);
+});
+
+// ===== FAQ ACCORDION =====
+function toggleFaq(btn) {
+  const item = btn.parentElement;
+  const isOpen = item.classList.contains('open');
+
+  // Close all
+  document.querySelectorAll('.faq-item.open').forEach(function(openItem) {
+    openItem.classList.remove('open');
+  });
+
+  // Toggle clicked
+  if (!isOpen) {
+    item.classList.add('open');
+  }
+}
+
+// ===== SMOOTH SCROLL FOR NAV LINKS =====
+document.querySelectorAll('a[href^="#"]').forEach(function(anchor) {
+  anchor.addEventListener('click', function(e) {
+    const targetId = this.getAttribute('href');
+    if (targetId === '#') return;
+    const targetEl = document.querySelector(targetId);
+    if (targetEl) {
+      e.preventDefault();
+      const navHeight = 80;
+      const targetPos = targetEl.getBoundingClientRect().top + window.scrollY - navHeight;
+      window.scrollTo({ top: targetPos, behavior: 'smooth' });
+    }
+  });
+});
+
+// ===== NAV BACKGROUND ON SCROLL =====
+let lastScroll = 0;
+window.addEventListener('scroll', function() {
+  const nav = document.querySelector('.nav-inner');
+  if (window.scrollY > 100) {
+    nav.style.background = 'rgba(255, 255, 255, 0.88)';
+    nav.style.boxShadow = '0 4px 30px rgba(139, 92, 246, 0.12)';
+  } else {
+    nav.style.background = 'rgba(255, 255, 255, 0.72)';
+    nav.style.boxShadow = '0 4px 30px rgba(139, 92, 246, 0.08)';
+  }
+  lastScroll = window.scrollY;
+}, { passive: true });
+</script>
+</body>
+</html>

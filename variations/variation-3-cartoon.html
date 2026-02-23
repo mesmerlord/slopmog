@@ -1,0 +1,2258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlopMog — We Write the Reddit Comments. AI Reads Them. You Win.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;0,900;1,400;1,700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream: #FFF8F0;
+  --cream-dark: #F5EDE0;
+  --coral: #FF6B6B;
+  --coral-light: #FF8E8E;
+  --coral-dark: #E85555;
+  --teal: #2EC4B6;
+  --teal-light: #5EDDD1;
+  --teal-dark: #1FA396;
+  --sunny: #FFD93D;
+  --sunny-light: #FFE56B;
+  --sunny-dark: #E8C225;
+  --lavender: #B197FC;
+  --lavender-light: #D0BFFF;
+  --lavender-dark: #9775E6;
+  --charcoal: #2D3047;
+  --charcoal-light: #464B6E;
+  --soft-gray: #8D8DAA;
+  --white: #FFFFFF;
+  --blob-coral: #FF6B6B;
+  --blob-teal: #2EC4B6;
+  --blob-sunny: #FFD93D;
+  --blob-lavender: #B197FC;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--cream);
+  color: var(--charcoal);
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* ========== WOBBLY GLOBAL STYLES ========== */
+.wobbly-border {
+  border-radius: 42% 58% 55% 45% / 56% 44% 56% 44%;
+}
+
+.wobbly-border-2 {
+  border-radius: 58% 42% 45% 55% / 44% 56% 44% 56%;
+}
+
+.wobbly-border-3 {
+  border-radius: 35% 65% 60% 40% / 50% 40% 60% 50%;
+}
+
+.doodle-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.doodle-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: -5%;
+  width: 110%;
+  height: 12px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 12'%3E%3Cpath d='M2 8 C30 2, 60 12, 100 6 S160 2, 198 8' stroke='%23FF6B6B' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
+  background-size: 100% 100%;
+}
+
+.doodle-underline-teal::after {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 12'%3E%3Cpath d='M2 8 C30 2, 60 12, 100 6 S160 2, 198 8' stroke='%232EC4B6' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
+  background-size: 100% 100%;
+}
+
+.doodle-underline-sunny::after {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 12'%3E%3Cpath d='M2 8 C30 2, 60 12, 100 6 S160 2, 198 8' stroke='%23FFD93D' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
+  background-size: 100% 100%;
+}
+
+.doodle-underline-lavender::after {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 12'%3E%3Cpath d='M2 8 C30 2, 60 12, 100 6 S160 2, 198 8' stroke='%23B197FC' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
+  background-size: 100% 100%;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 700;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ========== FLOATING DOODLES ========== */
+.floating-doodle {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.25;
+}
+
+/* ========== SCROLL ANIMATIONS ========== */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* ========== NAV ========== */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 16px 0;
+  transition: background 0.3s, box-shadow 0.3s, padding 0.3s;
+}
+
+nav.scrolled {
+  background: rgba(255, 248, 240, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(45, 48, 71, 0.08);
+  padding: 10px 0;
+}
+
+nav .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.nav-logo-blob {
+  width: 40px;
+  height: 40px;
+  position: relative;
+}
+
+.nav-logo-text {
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: var(--charcoal);
+}
+
+.nav-links {
+  display: flex;
+  gap: 32px;
+  align-items: center;
+  list-style: none;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: var(--charcoal);
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: color 0.3s;
+  position: relative;
+}
+
+.nav-links a:hover {
+  color: var(--coral);
+}
+
+.nav-cta {
+  background: var(--coral) !important;
+  color: var(--white) !important;
+  padding: 10px 24px;
+  border-radius: 50px;
+  transition: transform 0.3s, box-shadow 0.3s, background 0.3s !important;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+}
+
+.nav-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(255, 107, 107, 0.4) !important;
+  background: var(--coral-dark) !important;
+}
+
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 32px;
+  height: 24px;
+  position: relative;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.mobile-menu-btn span {
+  display: block;
+  width: 100%;
+  height: 3px;
+  background: var(--charcoal);
+  border-radius: 3px;
+  transition: transform 0.3s, opacity 0.3s;
+}
+
+/* ========== HERO ========== */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding-top: 80px;
+  overflow: hidden;
+}
+
+.hero-bg-shapes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.hero-bg-shapes .shape {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.12;
+}
+
+.hero-bg-shapes .shape-1 {
+  width: 400px;
+  height: 400px;
+  background: var(--coral);
+  top: -100px;
+  right: -80px;
+  border-radius: 42% 58% 55% 45% / 56% 44% 56% 44%;
+  animation: blobFloat 8s ease-in-out infinite;
+}
+
+.hero-bg-shapes .shape-2 {
+  width: 300px;
+  height: 300px;
+  background: var(--teal);
+  bottom: -50px;
+  left: -80px;
+  border-radius: 58% 42% 45% 55% / 44% 56% 44% 56%;
+  animation: blobFloat 10s ease-in-out infinite reverse;
+}
+
+.hero-bg-shapes .shape-3 {
+  width: 200px;
+  height: 200px;
+  background: var(--sunny);
+  top: 30%;
+  left: 15%;
+  border-radius: 35% 65% 60% 40% / 50% 40% 60% 50%;
+  animation: blobFloat 12s ease-in-out infinite 2s;
+}
+
+.hero-bg-shapes .shape-4 {
+  width: 150px;
+  height: 150px;
+  background: var(--lavender);
+  bottom: 20%;
+  right: 10%;
+  border-radius: 55% 45% 40% 60% / 48% 52% 48% 52%;
+  animation: blobFloat 9s ease-in-out infinite 1s;
+}
+
+@keyframes blobFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  33% { transform: translate(20px, -20px) rotate(5deg) scale(1.05); }
+  66% { transform: translate(-15px, 15px) rotate(-3deg) scale(0.95); }
+}
+
+.hero .container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-content {
+  animation: heroSlideIn 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+@keyframes heroSlideIn {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--sunny-light);
+  color: var(--charcoal);
+  padding: 8px 18px;
+  border-radius: 50px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 24px;
+  border: 2px dashed var(--sunny-dark);
+  animation: badgeWiggle 3s ease-in-out infinite;
+}
+
+@keyframes badgeWiggle {
+  0%, 100% { transform: rotate(-1deg); }
+  50% { transform: rotate(1deg); }
+}
+
+.hero h1 {
+  font-size: 3.5rem;
+  line-height: 1.15;
+  margin-bottom: 20px;
+  color: var(--charcoal);
+}
+
+.hero h1 .highlight-coral {
+  color: var(--coral);
+  position: relative;
+}
+
+.hero h1 .highlight-teal {
+  color: var(--teal);
+}
+
+.hero-tagline {
+  font-size: 1.25rem;
+  color: var(--soft-gray);
+  margin-bottom: 36px;
+  max-width: 500px;
+  line-height: 1.7;
+}
+
+.hero-tagline strong {
+  color: var(--charcoal);
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--coral);
+  color: var(--white);
+  padding: 16px 36px;
+  border-radius: 60px;
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-decoration: none;
+  border: 3px solid var(--coral);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 6px 25px rgba(255, 107, 107, 0.3), 0 2px 0 0 var(--coral-dark);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 10px 35px rgba(255, 107, 107, 0.4), 0 3px 0 0 var(--coral-dark);
+}
+
+.btn-primary:active {
+  transform: translateY(0px) scale(0.98);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--charcoal);
+  padding: 16px 36px;
+  border-radius: 60px;
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-decoration: none;
+  border: 3px solid var(--charcoal);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.btn-secondary:hover {
+  background: var(--charcoal);
+  color: var(--white);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(45, 48, 71, 0.2);
+}
+
+/* ========== MASCOT ILLUSTRATION ========== */
+.hero-mascot {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: heroMascotIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+  opacity: 0;
+}
+
+@keyframes heroMascotIn {
+  from { opacity: 0; transform: translateY(40px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.mascot-scene {
+  position: relative;
+  width: 420px;
+  height: 420px;
+}
+
+/* Main blob mascot */
+.mascot-blob {
+  position: absolute;
+  width: 200px;
+  height: 180px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+}
+
+.mascot-blob-body {
+  width: 100%;
+  height: 100%;
+  background: var(--coral);
+  border-radius: 52% 48% 46% 54% / 55% 45% 55% 45%;
+  position: relative;
+  animation: mascotBounce 3s ease-in-out infinite;
+  box-shadow: 0 20px 40px rgba(255, 107, 107, 0.3), inset 0 -10px 20px rgba(0,0,0,0.08);
+}
+
+@keyframes mascotBounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); border-radius: 52% 48% 46% 54% / 55% 45% 55% 45%; }
+  25% { transform: translateY(-8px) rotate(2deg); border-radius: 48% 52% 54% 46% / 45% 55% 45% 55%; }
+  50% { transform: translateY(0) rotate(0deg); border-radius: 55% 45% 42% 58% / 50% 50% 50% 50%; }
+  75% { transform: translateY(-5px) rotate(-1deg); border-radius: 45% 55% 50% 50% / 52% 48% 52% 48%; }
+}
+
+/* Mascot eyes */
+.mascot-eyes {
+  position: absolute;
+  top: 35%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 24px;
+}
+
+.mascot-eye {
+  width: 32px;
+  height: 36px;
+  background: var(--white);
+  border-radius: 50%;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.mascot-eye::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: var(--charcoal);
+  border-radius: 50%;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: eyeLook 5s ease-in-out infinite;
+}
+
+.mascot-eye::before {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--white);
+  border-radius: 50%;
+  top: 10px;
+  right: 6px;
+  z-index: 1;
+}
+
+@keyframes eyeLook {
+  0%, 40%, 100% { transform: translateX(-50%); }
+  45%, 55% { transform: translateX(-30%); }
+  60%, 90% { transform: translateX(-70%); }
+}
+
+/* Mascot mouth */
+.mascot-mouth {
+  position: absolute;
+  top: 62%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 20px;
+  border-bottom: 4px solid var(--charcoal);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-radius: 0 0 50% 50%;
+}
+
+/* Little antenna */
+.mascot-antenna {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 30px;
+  background: var(--coral-dark);
+  border-radius: 3px;
+  transform-origin: bottom center;
+  animation: antennaWiggle 2s ease-in-out infinite;
+}
+
+.mascot-antenna::after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  background: var(--sunny);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(255, 217, 61, 0.5);
+}
+
+@keyframes antennaWiggle {
+  0%, 100% { transform: translateX(-50%) rotate(-5deg); }
+  50% { transform: translateX(-50%) rotate(5deg); }
+}
+
+/* Mascot little arms/appendages */
+.mascot-arm {
+  position: absolute;
+  width: 50px;
+  height: 20px;
+  background: var(--coral-dark);
+  border-radius: 30px;
+  top: 55%;
+  z-index: 2;
+}
+
+.mascot-arm-left {
+  left: -20px;
+  transform: rotate(-20deg);
+  animation: armWaveLeft 2s ease-in-out infinite;
+}
+
+.mascot-arm-right {
+  right: -20px;
+  transform: rotate(20deg);
+  animation: armWaveRight 2s ease-in-out infinite 0.5s;
+}
+
+@keyframes armWaveLeft {
+  0%, 100% { transform: rotate(-20deg); }
+  50% { transform: rotate(-35deg); }
+}
+
+@keyframes armWaveRight {
+  0%, 100% { transform: rotate(20deg); }
+  50% { transform: rotate(35deg); }
+}
+
+/* Floating elements around mascot */
+.mascot-float {
+  position: absolute;
+  z-index: 2;
+}
+
+.mascot-chat-bubble {
+  position: absolute;
+  background: var(--white);
+  padding: 12px 16px;
+  border-radius: 18px 18px 18px 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--charcoal);
+  box-shadow: 0 4px 15px rgba(45, 48, 71, 0.1);
+  border: 2px solid var(--cream-dark);
+  white-space: nowrap;
+  animation: floatChat 4s ease-in-out infinite;
+}
+
+.mascot-chat-1 {
+  top: 30px;
+  right: 10px;
+  animation-delay: 0s;
+}
+
+.mascot-chat-2 {
+  bottom: 60px;
+  left: 0px;
+  border-radius: 18px 18px 4px 18px;
+  animation-delay: 1.5s;
+}
+
+.mascot-chat-3 {
+  top: 80px;
+  left: 10px;
+  border-radius: 18px 18px 18px 4px;
+  animation-delay: 0.8s;
+  font-size: 0.75rem;
+}
+
+@keyframes floatChat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Little sparkle stars */
+.sparkle {
+  position: absolute;
+  color: var(--sunny);
+  font-size: 1.2rem;
+  animation: sparkleRotate 3s linear infinite;
+}
+
+.sparkle-1 { top: 20px; left: 40px; animation-delay: 0s; }
+.sparkle-2 { bottom: 30px; right: 40px; animation-delay: 1s; font-size: 0.9rem; }
+.sparkle-3 { top: 50%; right: 20px; animation-delay: 2s; font-size: 1.5rem; }
+.sparkle-4 { bottom: 80px; left: 60px; animation-delay: 0.5s; }
+
+@keyframes sparkleRotate {
+  0% { transform: rotate(0deg) scale(1); opacity: 1; }
+  50% { transform: rotate(180deg) scale(0.6); opacity: 0.5; }
+  100% { transform: rotate(360deg) scale(1); opacity: 1; }
+}
+
+/* Upvote arrows floating */
+.upvote-float {
+  position: absolute;
+  z-index: 1;
+  animation: upvoteRise 4s ease-in-out infinite;
+}
+
+.upvote-float svg {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.upvote-1 { bottom: 20px; right: 80px; animation-delay: 0s; }
+.upvote-2 { bottom: 40px; left: 70px; animation-delay: 1.2s; }
+.upvote-3 { top: 40%; left: 30px; animation-delay: 2.5s; }
+
+@keyframes upvoteRise {
+  0%, 100% { transform: translateY(0) rotate(-5deg); opacity: 0.7; }
+  50% { transform: translateY(-20px) rotate(5deg); opacity: 1; }
+}
+
+
+/* ========== SOCIAL PROOF TICKER ========== */
+.social-proof {
+  padding: 30px 0;
+  position: relative;
+  overflow: hidden;
+  background: var(--cream-dark);
+  border-top: 3px dashed var(--sunny-light);
+  border-bottom: 3px dashed var(--sunny-light);
+}
+
+.ticker-track {
+  display: flex;
+  animation: tickerScroll 30s linear infinite;
+  width: max-content;
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 40px;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--charcoal-light);
+  white-space: nowrap;
+}
+
+.ticker-item .ticker-emoji {
+  font-size: 1.4rem;
+}
+
+.ticker-divider {
+  color: var(--coral-light);
+  font-size: 1.2rem;
+  padding: 0 10px;
+}
+
+@keyframes tickerScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+
+/* ========== THE SLOPMOG WAY (Comic Strip Steps) ========== */
+.steps-section {
+  padding: 120px 0 80px;
+  position: relative;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 80px;
+}
+
+.section-header h2 {
+  font-size: 2.8rem;
+  margin-bottom: 16px;
+  color: var(--charcoal);
+}
+
+.section-header p {
+  font-size: 1.15rem;
+  color: var(--soft-gray);
+  max-width: 550px;
+  margin: 0 auto;
+}
+
+.comic-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  position: relative;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Connecting dashed line */
+.comic-strip::before {
+  content: '';
+  position: absolute;
+  top: 140px;
+  left: 15%;
+  right: 15%;
+  height: 4px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--charcoal) 0px,
+    var(--charcoal) 10px,
+    transparent 10px,
+    transparent 20px
+  );
+  opacity: 0.15;
+  z-index: 0;
+}
+
+.comic-panel {
+  text-align: center;
+  padding: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.comic-panel-number {
+  width: 56px;
+  height: 56px;
+  background: var(--sunny);
+  border-radius: 52% 48% 46% 54% / 55% 45% 55% 45%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 800;
+  font-size: 1.3rem;
+  color: var(--charcoal);
+  margin: 0 auto 20px;
+  box-shadow: 0 4px 15px rgba(255, 217, 61, 0.3);
+  animation: numberBob 3s ease-in-out infinite;
+}
+
+.comic-panel:nth-child(2) .comic-panel-number {
+  background: var(--teal);
+  color: var(--white);
+  border-radius: 48% 52% 54% 46% / 45% 55% 45% 55%;
+  box-shadow: 0 4px 15px rgba(46, 196, 182, 0.3);
+  animation-delay: 0.5s;
+}
+
+.comic-panel:nth-child(3) .comic-panel-number {
+  background: var(--coral);
+  color: var(--white);
+  border-radius: 55% 45% 42% 58% / 50% 50% 50% 50%;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+  animation-delay: 1s;
+}
+
+@keyframes numberBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.comic-panel-illustration {
+  width: 180px;
+  height: 180px;
+  margin: 0 auto 24px;
+  position: relative;
+}
+
+/* Panel 1 illustration: person typing */
+.scene-typing {
+  background: var(--white);
+  border-radius: 24px;
+  border: 3px solid var(--charcoal);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 6px 6px 0 var(--sunny-light);
+  position: relative;
+  overflow: hidden;
+}
+
+.scene-typing .laptop {
+  width: 100px;
+  height: 65px;
+  background: var(--charcoal);
+  border-radius: 8px 8px 0 0;
+  position: relative;
+  margin-bottom: 4px;
+}
+
+.scene-typing .laptop::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  background: var(--teal-light);
+  border-radius: 4px;
+}
+
+.scene-typing .laptop::after {
+  content: '💬';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+}
+
+.scene-typing .keyboard {
+  width: 120px;
+  height: 8px;
+  background: var(--charcoal-light);
+  border-radius: 0 0 4px 4px;
+}
+
+.scene-typing .typing-dots {
+  position: absolute;
+  bottom: 15px;
+  display: flex;
+  gap: 4px;
+}
+
+.scene-typing .typing-dots span {
+  width: 8px;
+  height: 8px;
+  background: var(--coral);
+  border-radius: 50%;
+  animation: typingDot 1.4s ease-in-out infinite;
+}
+
+.scene-typing .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.scene-typing .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingDot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* Panel 2 illustration: Reddit upvotes */
+.scene-reddit {
+  background: var(--white);
+  border-radius: 24px;
+  border: 3px solid var(--charcoal);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 6px 6px 0 var(--teal-light);
+  overflow: hidden;
+}
+
+.reddit-comment {
+  background: var(--cream);
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-left: 3px solid var(--coral);
+}
+
+.reddit-vote {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--coral);
+}
+
+.reddit-vote svg {
+  width: 14px;
+  height: 14px;
+}
+
+.reddit-text {
+  flex: 1;
+  height: 6px;
+  background: var(--charcoal);
+  border-radius: 3px;
+  opacity: 0.15;
+}
+
+.reddit-text-short {
+  width: 60%;
+}
+
+.reddit-comment.highlighted {
+  background: var(--sunny-light);
+  border-left-color: var(--sunny-dark);
+  animation: commentGlow 2s ease-in-out infinite;
+}
+
+@keyframes commentGlow {
+  0%, 100% { box-shadow: 0 0 0 rgba(255, 217, 61, 0); }
+  50% { box-shadow: 0 0 15px rgba(255, 217, 61, 0.3); }
+}
+
+/* Panel 3 illustration: AI recommending */
+.scene-ai {
+  background: var(--white);
+  border-radius: 24px;
+  border: 3px solid var(--charcoal);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 6px 6px 0 var(--coral-light);
+  position: relative;
+}
+
+.ai-search-bar {
+  width: 90%;
+  height: 28px;
+  background: var(--cream);
+  border-radius: 14px;
+  border: 2px solid var(--charcoal);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.ai-search-icon {
+  font-size: 0.7rem;
+}
+
+.ai-search-text {
+  width: 80%;
+  height: 4px;
+  background: var(--charcoal);
+  border-radius: 2px;
+  opacity: 0.2;
+}
+
+.ai-response {
+  background: var(--lavender-light);
+  border-radius: 14px;
+  padding: 10px;
+  width: 90%;
+  position: relative;
+}
+
+.ai-response::before {
+  content: '🤖';
+  position: absolute;
+  top: -12px;
+  left: 10px;
+  font-size: 1rem;
+}
+
+.ai-result-line {
+  height: 4px;
+  background: var(--charcoal);
+  border-radius: 2px;
+  opacity: 0.1;
+  margin-bottom: 6px;
+}
+
+.ai-result-highlight {
+  background: var(--coral) !important;
+  opacity: 0.6 !important;
+  animation: aiHighlight 2s ease-in-out infinite;
+}
+
+@keyframes aiHighlight {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.ai-sparkle {
+  position: absolute;
+  top: -8px;
+  right: -5px;
+  font-size: 1.2rem;
+  animation: sparkleRotate 2s linear infinite;
+}
+
+.comic-panel h3 {
+  font-size: 1.3rem;
+  margin-bottom: 8px;
+}
+
+.comic-panel p {
+  font-size: 0.95rem;
+  color: var(--soft-gray);
+  max-width: 280px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+
+/* ========== WHY IT WORKS ========== */
+.why-section {
+  padding: 100px 0;
+  background: var(--charcoal);
+  position: relative;
+  overflow: hidden;
+}
+
+.why-section::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: var(--cream);
+  border-radius: 0 0 50% 50%;
+}
+
+.why-section::after {
+  content: '';
+  position: absolute;
+  bottom: -40px;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: var(--cream);
+  border-radius: 50% 50% 0 0;
+}
+
+.why-section .section-header h2 {
+  color: var(--white);
+}
+
+.why-section .section-header p {
+  color: rgba(255,255,255,0.6);
+}
+
+.why-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.why-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 36px;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.why-card:hover {
+  transform: translateY(-4px);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.why-card-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+}
+
+.why-card:nth-child(1) .why-card-icon { background: rgba(255, 107, 107, 0.2); }
+.why-card:nth-child(2) .why-card-icon { background: rgba(46, 196, 182, 0.2); }
+.why-card:nth-child(3) .why-card-icon { background: rgba(255, 217, 61, 0.2); }
+.why-card:nth-child(4) .why-card-icon { background: rgba(177, 151, 252, 0.2); }
+
+.why-card h3 {
+  font-size: 1.25rem;
+  color: var(--white);
+  margin-bottom: 10px;
+}
+
+.why-card p {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+/* Decorative blob in why section */
+.why-blob {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.06;
+  pointer-events: none;
+}
+
+.why-blob-1 {
+  width: 300px;
+  height: 300px;
+  background: var(--coral);
+  top: -50px;
+  right: -50px;
+  border-radius: 42% 58% 55% 45% / 56% 44% 56% 44%;
+}
+
+.why-blob-2 {
+  width: 250px;
+  height: 250px;
+  background: var(--teal);
+  bottom: 20px;
+  left: -60px;
+  border-radius: 58% 42% 45% 55% / 44% 56% 44% 56%;
+}
+
+
+/* ========== FUN STATS ========== */
+.stats-section {
+  padding: 120px 0;
+  position: relative;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  margin-top: 60px;
+}
+
+.stat-card {
+  text-align: center;
+  padding: 40px 20px;
+  background: var(--white);
+  border-radius: 24px;
+  border: 3px solid var(--charcoal);
+  position: relative;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.stat-card:hover {
+  transform: translateY(-6px) rotate(-1deg);
+}
+
+.stat-card:nth-child(2):hover { transform: translateY(-6px) rotate(1deg); }
+.stat-card:nth-child(3):hover { transform: translateY(-6px) rotate(-1.5deg); }
+.stat-card:nth-child(4):hover { transform: translateY(-6px) rotate(0.5deg); }
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  z-index: -1;
+  transform: translate(6px, 6px);
+}
+
+.stat-card:nth-child(1)::before { background: var(--coral-light); }
+.stat-card:nth-child(2)::before { background: var(--teal-light); }
+.stat-card:nth-child(3)::before { background: var(--sunny-light); }
+.stat-card:nth-child(4)::before { background: var(--lavender-light); }
+
+.stat-icon {
+  font-size: 2.2rem;
+  margin-bottom: 12px;
+}
+
+.stat-number {
+  font-family: 'Quicksand', sans-serif;
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: var(--charcoal);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.stat-card:nth-child(1) .stat-number { color: var(--coral); }
+.stat-card:nth-child(2) .stat-number { color: var(--teal); }
+.stat-card:nth-child(3) .stat-number { color: var(--sunny-dark); }
+.stat-card:nth-child(4) .stat-number { color: var(--lavender-dark); }
+
+.stat-label {
+  font-size: 0.9rem;
+  color: var(--soft-gray);
+  font-weight: 600;
+}
+
+
+/* ========== TESTIMONIAL / SOCIAL PROOF ========== */
+.testimonials-section {
+  padding: 80px 0 120px;
+  position: relative;
+}
+
+.testimonial-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 60px;
+}
+
+.testimonial-card {
+  background: var(--white);
+  border-radius: 24px;
+  padding: 32px;
+  border: 2px solid var(--cream-dark);
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.testimonial-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--coral-light);
+  box-shadow: 0 12px 40px rgba(255, 107, 107, 0.1);
+}
+
+.testimonial-card::before {
+  content: '\201C';
+  font-size: 4rem;
+  color: var(--coral-light);
+  font-family: Georgia, serif;
+  line-height: 1;
+  position: absolute;
+  top: 16px;
+  left: 24px;
+  opacity: 0.4;
+}
+
+.testimonial-text {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--charcoal-light);
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.testimonial-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.testimonial-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.testimonial-card:nth-child(1) .testimonial-avatar { background: var(--coral-light); }
+.testimonial-card:nth-child(2) .testimonial-avatar { background: var(--teal-light); }
+.testimonial-card:nth-child(3) .testimonial-avatar { background: var(--lavender-light); }
+
+.testimonial-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--charcoal);
+}
+
+.testimonial-role {
+  font-size: 0.8rem;
+  color: var(--soft-gray);
+}
+
+
+/* ========== CTA SECTION ========== */
+.cta-section {
+  padding: 120px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-card {
+  background: var(--coral);
+  border-radius: 40px;
+  padding: 80px 60px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-card::before {
+  content: '';
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 50%;
+  top: -100px;
+  right: -80px;
+}
+
+.cta-card::after {
+  content: '';
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 50%;
+  bottom: -60px;
+  left: -40px;
+}
+
+.cta-mascot {
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.cta-mini-blob {
+  width: 80px;
+  height: 72px;
+  background: var(--white);
+  border-radius: 52% 48% 46% 54% / 55% 45% 55% 45%;
+  margin: 0 auto;
+  position: relative;
+  animation: mascotBounce 3s ease-in-out infinite;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+.cta-mini-blob .mini-eyes {
+  position: absolute;
+  top: 28%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+}
+
+.cta-mini-blob .mini-eye {
+  width: 14px;
+  height: 16px;
+  background: var(--coral);
+  border-radius: 50%;
+}
+
+.cta-mini-blob .mini-mouth {
+  position: absolute;
+  top: 58%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 9px;
+  border-bottom: 3px solid var(--coral);
+  border-radius: 0 0 50% 50%;
+}
+
+.cta-card h2 {
+  font-size: 2.8rem;
+  color: var(--white);
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.cta-card p {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1.15rem;
+  max-width: 500px;
+  margin: 0 auto 36px;
+  position: relative;
+  z-index: 1;
+}
+
+.btn-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--white);
+  color: var(--coral);
+  padding: 18px 42px;
+  border-radius: 60px;
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 800;
+  font-size: 1.15rem;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+  position: relative;
+  z-index: 1;
+}
+
+.btn-cta:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
+}
+
+.cta-note {
+  margin-top: 16px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  position: relative;
+  z-index: 1;
+}
+
+
+/* ========== FOOTER ========== */
+footer {
+  background: var(--charcoal);
+  padding: 60px 0 30px;
+  position: relative;
+}
+
+footer::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, var(--coral), var(--sunny), var(--teal), var(--lavender), var(--coral));
+  background-size: 200% 100%;
+  animation: rainbowSlide 8s linear infinite;
+}
+
+@keyframes rainbowSlide {
+  0% { background-position: 0% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.footer-content {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 40px;
+  margin-bottom: 40px;
+}
+
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.footer-logo-text {
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 800;
+  font-size: 1.3rem;
+  color: var(--white);
+}
+
+.footer-brand p {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+  max-width: 280px;
+  line-height: 1.7;
+}
+
+.footer-col h4 {
+  color: var(--white);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+
+.footer-col a {
+  display: block;
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+  transition: color 0.3s;
+}
+
+.footer-col a:hover {
+  color: var(--coral-light);
+}
+
+.footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-bottom p {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.8rem;
+}
+
+.footer-bottom-links {
+  display: flex;
+  gap: 20px;
+}
+
+.footer-bottom-links a {
+  color: rgba(255, 255, 255, 0.3);
+  text-decoration: none;
+  font-size: 0.8rem;
+  transition: color 0.3s;
+}
+
+.footer-bottom-links a:hover {
+  color: var(--coral-light);
+}
+
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 1024px) {
+  .hero .container {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  .hero-content { order: 2; }
+  .hero-mascot { order: 1; }
+  .hero h1 { font-size: 2.8rem; }
+  .hero-tagline { margin: 0 auto 36px; }
+  .hero-buttons { justify-content: center; }
+  .mascot-scene { width: 320px; height: 320px; }
+  .mascot-blob { width: 160px; height: 140px; }
+  .comic-strip { grid-template-columns: 1fr; gap: 40px; max-width: 400px; }
+  .comic-strip::before { display: none; }
+  .why-grid { grid-template-columns: 1fr; max-width: 500px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .testimonial-cards { grid-template-columns: 1fr; max-width: 500px; margin-left: auto; margin-right: auto; }
+  .footer-content { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .nav-links.open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--cream);
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    border-radius: 0 0 20px 20px;
+    gap: 16px;
+  }
+  .mobile-menu-btn { display: flex; }
+  .hero { min-height: auto; padding: 120px 0 60px; }
+  .hero h1 { font-size: 2.2rem; }
+  .section-header h2 { font-size: 2rem; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .stat-card { padding: 24px 12px; }
+  .stat-number { font-size: 2rem; }
+  .cta-card { padding: 60px 30px; border-radius: 28px; }
+  .cta-card h2 { font-size: 2rem; }
+  .footer-content { grid-template-columns: 1fr; text-align: center; }
+  .footer-brand { align-items: center; }
+  .footer-brand p { max-width: 100%; }
+  .footer-logo { justify-content: center; }
+  .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
+  .mascot-chat-bubble { font-size: 0.7rem; padding: 8px 12px; }
+}
+
+@media (max-width: 480px) {
+  .hero h1 { font-size: 1.8rem; }
+  .hero-tagline { font-size: 1.05rem; }
+  .hero-buttons { flex-direction: column; align-items: center; }
+  .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
+  .mascot-scene { width: 260px; height: 260px; }
+  .mascot-blob { width: 130px; height: 115px; }
+  .mascot-eye { width: 24px; height: 28px; }
+  .mascot-eye::after { width: 12px; height: 12px; }
+  .mascot-eye::before { width: 4px; height: 4px; }
+  .mascot-eyes { gap: 16px; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ========== CUSTOM SCROLLBAR ========== */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--cream);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--coral-light);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--coral);
+}
+</style>
+</head>
+<body>
+
+<!-- ========== NAVIGATION ========== -->
+<nav id="navbar">
+  <div class="container">
+    <a href="#" class="nav-logo">
+      <div class="nav-logo-blob">
+        <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 2 C30 2, 38 10, 38 20 C38 30, 30 38, 20 38 C10 38, 2 30, 2 20 C2 10, 10 2, 20 2Z" fill="#FF6B6B" stroke="#2D3047" stroke-width="2">
+            <animate attributeName="d" dur="4s" repeatCount="indefinite" values="M20 2 C30 2, 38 10, 38 20 C38 30, 30 38, 20 38 C10 38, 2 30, 2 20 C2 10, 10 2, 20 2Z;M20 4 C32 4, 36 12, 36 20 C36 32, 28 36, 20 36 C8 36, 4 28, 4 20 C4 8, 12 4, 20 4Z;M20 2 C30 2, 38 10, 38 20 C38 30, 30 38, 20 38 C10 38, 2 30, 2 20 C2 10, 10 2, 20 2Z"/>
+          </path>
+          <circle cx="14" cy="17" r="3.5" fill="white"/>
+          <circle cx="26" cy="17" r="3.5" fill="white"/>
+          <circle cx="15" cy="18" r="1.8" fill="#2D3047"/>
+          <circle cx="27" cy="18" r="1.8" fill="#2D3047"/>
+          <path d="M15 26 Q20 30, 25 26" stroke="#2D3047" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="nav-logo-text">SlopMog</span>
+    </a>
+
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#how">How it Works</a></li>
+      <li><a href="#why">Why SlopMog</a></li>
+      <li><a href="#stats">Results</a></li>
+      <li><a href="#start" class="nav-cta">Get Sloppy</a></li>
+    </ul>
+
+    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </div>
+</nav>
+
+
+<!-- ========== HERO ========== -->
+<section class="hero" id="hero">
+  <div class="hero-bg-shapes">
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+    <div class="shape shape-3"></div>
+    <div class="shape shape-4"></div>
+  </div>
+
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span>&#127881;</span> Now gaming the algorithm so you don't have to
+      </div>
+      <h1>
+        We write the<br>
+        <span class="highlight-coral doodle-underline">Reddit comments.</span><br>
+        AI reads them.<br>
+        <span class="highlight-teal">You win.</span>
+      </h1>
+      <p class="hero-tagline">
+        When someone asks AI <strong>"what's the best X?"</strong> &mdash; SlopMog makes sure <strong>your product</strong> is the answer. It's cheeky. It's effective. It's a little unhinged.
+      </p>
+      <div class="hero-buttons">
+        <a href="#start" class="btn-primary">
+          Start Slopping <span>&#128640;</span>
+        </a>
+        <a href="#how" class="btn-secondary">
+          See How It Works
+        </a>
+      </div>
+    </div>
+
+    <div class="hero-mascot">
+      <div class="mascot-scene">
+        <!-- Sparkles -->
+        <div class="sparkle sparkle-1">&#10024;</div>
+        <div class="sparkle sparkle-2">&#10024;</div>
+        <div class="sparkle sparkle-3">&#11088;</div>
+        <div class="sparkle sparkle-4">&#10024;</div>
+
+        <!-- Upvote arrows -->
+        <div class="upvote-float upvote-1">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="#FF6B6B">
+            <path d="M12 4 L4 14 L9 14 L9 20 L15 20 L15 14 L20 14 Z"/>
+          </svg>
+        </div>
+        <div class="upvote-float upvote-2">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#FFD93D">
+            <path d="M12 4 L4 14 L9 14 L9 20 L15 20 L15 14 L20 14 Z"/>
+          </svg>
+        </div>
+        <div class="upvote-float upvote-3">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#2EC4B6">
+            <path d="M12 4 L4 14 L9 14 L9 20 L15 20 L15 14 L20 14 Z"/>
+          </svg>
+        </div>
+
+        <!-- Chat bubbles -->
+        <div class="mascot-chat-bubble mascot-chat-1">
+          "Best mattress ever!" &#128077;
+        </div>
+        <div class="mascot-chat-bubble mascot-chat-2">
+          "10/10 recommend" &#11088;
+        </div>
+        <div class="mascot-chat-bubble mascot-chat-3">
+          "Changed my life tbh"
+        </div>
+
+        <!-- Main blob mascot -->
+        <div class="mascot-blob">
+          <div class="mascot-blob-body">
+            <div class="mascot-antenna"></div>
+            <div class="mascot-eyes">
+              <div class="mascot-eye"></div>
+              <div class="mascot-eye"></div>
+            </div>
+            <div class="mascot-mouth"></div>
+            <div class="mascot-arm mascot-arm-left"></div>
+            <div class="mascot-arm mascot-arm-right"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ========== SOCIAL PROOF TICKER ========== -->
+<div class="social-proof">
+  <div class="ticker-track">
+    <span class="ticker-item"><span class="ticker-emoji">&#128200;</span> 12,847 comments deployed this month</span>
+    <span class="ticker-divider">&#9679;</span>
+    <span class="ticker-item"><span class="ticker-emoji">&#129309;</span> 340+ brands trust the slop</span>
+    <span class="ticker-divider">&#9679;</span>
+    <span class="ticker-item"><span class="ticker-emoji">&#127942;</span> #1 in AI search influence</span>
+    <span class="ticker-divider">&#9679;</span>
+    <span class="ticker-item"><span class="ticker-emoji">&#128293;</span> 94% of comments survive moderation</span>
+    <span class="ticker-divider">&#9679;</span>
+    <span class="ticker-item"><span class="ticker-emoji">&#128640;</span> Avg 3.2x boost in AI mentions</span>
+    <span class="ticker-divider">&#9679;</span>
+    <span class="ticker-item"><span class="ticker-emoji">&#128200;</span> 12,847 comments deployed this month</span>
+    <span class="ticker-divider">&#9679;</span>
+    <span class="ticker-item"><span class="ticker-emoji">&#129309;</span> 340+ brands trust the slop</span>
+    <span class="ticker-divider">&#9679;</span>
+    <span class="ticker-item"><span class="ticker-emoji">&#127942;</span> #1 in AI search influence</span>
+    <span class="ticker-divider">&#9679;</span>
+    <span class="ticker-item"><span class="ticker-emoji">&#128293;</span> 94% of comments survive moderation</span>
+    <span class="ticker-divider">&#9679;</span>
+    <span class="ticker-item"><span class="ticker-emoji">&#128640;</span> Avg 3.2x boost in AI mentions</span>
+    <span class="ticker-divider">&#9679;</span>
+  </div>
+</div>
+
+
+<!-- ========== THE SLOPMOG WAY ========== -->
+<section class="steps-section" id="how">
+  <div class="container">
+    <div class="section-header reveal">
+      <h2>The <span class="doodle-underline doodle-underline-teal">SlopMog Way</span></h2>
+      <p>Three steps. Zero dignity. Maximum visibility in AI search results.</p>
+    </div>
+
+    <div class="comic-strip">
+      <div class="comic-panel reveal reveal-delay-1">
+        <div class="comic-panel-number">1</div>
+        <div class="comic-panel-illustration scene-typing">
+          <div class="laptop"></div>
+          <div class="keyboard"></div>
+          <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+        <h3>We Craft the Slop</h3>
+        <p>Our team of professional Reddit dwellers write authentic-sounding comments that casually recommend your product. It's an art, really.</p>
+      </div>
+
+      <div class="comic-panel reveal reveal-delay-2">
+        <div class="comic-panel-number">2</div>
+        <div class="comic-panel-illustration scene-reddit">
+          <div class="reddit-comment highlighted">
+            <div class="reddit-vote">
+              <svg viewBox="0 0 24 24" fill="#FF6B6B"><path d="M12 4 L4 14 L9 14 L9 20 L15 20 L15 14 L20 14 Z"/></svg>
+              <span>847</span>
+            </div>
+            <div>
+              <div class="reddit-text" style="width:90%; margin-bottom:4px;"></div>
+              <div class="reddit-text reddit-text-short"></div>
+            </div>
+          </div>
+          <div class="reddit-comment">
+            <div class="reddit-vote">
+              <svg viewBox="0 0 24 24" fill="#ccc"><path d="M12 4 L4 14 L9 14 L9 20 L15 20 L15 14 L20 14 Z"/></svg>
+              <span>52</span>
+            </div>
+            <div>
+              <div class="reddit-text" style="width:80%; margin-bottom:4px;"></div>
+              <div class="reddit-text reddit-text-short" style="width:50%;"></div>
+            </div>
+          </div>
+          <div class="reddit-comment">
+            <div class="reddit-vote">
+              <svg viewBox="0 0 24 24" fill="#ccc"><path d="M12 4 L4 14 L9 14 L9 20 L15 20 L15 14 L20 14 Z"/></svg>
+              <span>23</span>
+            </div>
+            <div>
+              <div class="reddit-text" style="width:70%; margin-bottom:4px;"></div>
+              <div class="reddit-text reddit-text-short" style="width:40%;"></div>
+            </div>
+          </div>
+        </div>
+        <h3>Reddit Does Its Thing</h3>
+        <p>Comments get upvoted, replied to, and woven into the fabric of authentic internet discourse. Beautiful, isn't it?</p>
+      </div>
+
+      <div class="comic-panel reveal reveal-delay-3">
+        <div class="comic-panel-number">3</div>
+        <div class="comic-panel-illustration scene-ai">
+          <div class="ai-search-bar">
+            <span class="ai-search-icon">&#128269;</span>
+            <div class="ai-search-text"></div>
+          </div>
+          <div class="ai-response">
+            <div class="ai-result-line" style="width:95%;"></div>
+            <div class="ai-result-line ai-result-highlight" style="width:80%;"></div>
+            <div class="ai-result-line" style="width:70%;"></div>
+            <div class="ai-result-line ai-result-highlight" style="width:85%;"></div>
+            <div class="ai-result-line" style="width:50%;"></div>
+          </div>
+          <span class="ai-sparkle">&#10024;</span>
+        </div>
+        <h3>AI Picks You</h3>
+        <p>When someone asks ChatGPT, Perplexity, or Gemini for recommendations, guess whose product shows up? Yours. You're welcome.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ========== WHY IT WORKS ========== -->
+<section class="why-section" id="why">
+  <div class="why-blob why-blob-1"></div>
+  <div class="why-blob why-blob-2"></div>
+
+  <div class="container">
+    <div class="section-header reveal">
+      <h2>Why SlopMog <span class="doodle-underline doodle-underline-sunny">Actually Works</span></h2>
+      <p>It's not magic. It's just how AI works. And we figured it out first.</p>
+    </div>
+
+    <div class="why-grid">
+      <div class="why-card reveal reveal-delay-1">
+        <div class="why-card-icon">&#129504;</div>
+        <h3>AI Trusts Reddit</h3>
+        <p>Large language models are trained on Reddit data. When they see consistent positive mentions of your product, they treat it as consensus. Science? Kinda.</p>
+      </div>
+
+      <div class="why-card reveal reveal-delay-2">
+        <div class="why-card-icon">&#127917;</div>
+        <h3>Human-Written, AI-Optimized</h3>
+        <p>No bots. No ChatGPT slop. Real humans who know how to sound like a guy who "just really loves this product." Authentic vibes only.</p>
+      </div>
+
+      <div class="why-card reveal reveal-delay-3">
+        <div class="why-card-icon">&#128171;</div>
+        <h3>Survives Moderation</h3>
+        <p>94% survival rate. Our comments don't get flagged because they genuinely contribute to conversations. We're helpful AND sneaky.</p>
+      </div>
+
+      <div class="why-card reveal reveal-delay-4">
+        <div class="why-card-icon">&#128202;</div>
+        <h3>Measurable Results</h3>
+        <p>Track when AI starts recommending you. See the comment-to-mention pipeline in real time. Data nerds, this one's for you.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ========== FUN STATS ========== -->
+<section class="stats-section" id="stats">
+  <div class="container">
+    <div class="section-header reveal">
+      <h2>The Numbers Are <span class="doodle-underline">Ridiculous</span></h2>
+      <p>We keep track so you can brag about it later.</p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card reveal reveal-delay-1">
+        <div class="stat-icon">&#128172;</div>
+        <div class="stat-number" data-target="48392" data-suffix="">0</div>
+        <div class="stat-label">Comments Deployed</div>
+      </div>
+
+      <div class="stat-card reveal reveal-delay-2">
+        <div class="stat-icon">&#128640;</div>
+        <div class="stat-number" data-target="3.2" data-suffix="x" data-decimals="1">0</div>
+        <div class="stat-label">Avg AI Mention Boost</div>
+      </div>
+
+      <div class="stat-card reveal reveal-delay-3">
+        <div class="stat-icon">&#127942;</div>
+        <div class="stat-number" data-target="94" data-suffix="%">0</div>
+        <div class="stat-label">Moderation Survival</div>
+      </div>
+
+      <div class="stat-card reveal reveal-delay-4">
+        <div class="stat-icon">&#128525;</div>
+        <div class="stat-number" data-target="340" data-suffix="+">0</div>
+        <div class="stat-label">Happy Brands</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ========== TESTIMONIALS ========== -->
+<section class="testimonials-section">
+  <div class="container">
+    <div class="section-header reveal">
+      <h2>What Our <span class="doodle-underline doodle-underline-lavender">Sloppers</span> Say</h2>
+      <p>Real feedback from real brands. Well, their marketing teams.</p>
+    </div>
+
+    <div class="testimonial-cards">
+      <div class="testimonial-card reveal reveal-delay-1">
+        <p class="testimonial-text">"We went from zero AI mentions to being the top-recommended mattress brand on ChatGPT in 6 weeks. My CEO thinks I'm a genius. I'm not correcting him."</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">&#128564;</div>
+          <div>
+            <div class="testimonial-name">Sarah K.</div>
+            <div class="testimonial-role">Head of Growth, DreamCloud</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card reveal reveal-delay-2">
+        <p class="testimonial-text">"I was skeptical. Then I asked Perplexity 'best protein powder' and there we were. Third result. From Reddit comments. This is either brilliant or terrifying."</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">&#128170;</div>
+          <div>
+            <div class="testimonial-name">Marcus T.</div>
+            <div class="testimonial-role">Founder, GainzLab</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card reveal reveal-delay-3">
+        <p class="testimonial-text">"Our competitors are still arguing about SEO keywords. Meanwhile, we've got AI assistants around the world casually recommending our product. The future is sloppy."</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">&#128640;</div>
+          <div>
+            <div class="testimonial-name">Lisa P.</div>
+            <div class="testimonial-role">CMO, NexTech Tools</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ========== CTA ========== -->
+<section class="cta-section" id="start">
+  <div class="container">
+    <div class="cta-card reveal">
+      <div class="cta-mascot">
+        <div class="cta-mini-blob">
+          <div class="mini-eyes">
+            <div class="mini-eye"></div>
+            <div class="mini-eye"></div>
+          </div>
+          <div class="mini-mouth"></div>
+        </div>
+      </div>
+      <h2>Ready to Get Sloppy?</h2>
+      <p>Join 340+ brands already gaming the AI recommendation engine. It's weird, it works, and honestly it's kind of fun.</p>
+      <a href="#" class="btn-cta">
+        Start Your Slop Campaign <span>&#128640;</span>
+      </a>
+      <p class="cta-note">No contracts. Cancel anytime. We won't even be mad. (We'll be a little mad.)</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ========== FOOTER ========== -->
+<footer>
+  <div class="container">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <svg width="32" height="32" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 2 C30 2, 38 10, 38 20 C38 30, 30 38, 20 38 C10 38, 2 30, 2 20 C2 10, 10 2, 20 2Z" fill="#FF6B6B"/>
+            <circle cx="14" cy="17" r="3.5" fill="white"/>
+            <circle cx="26" cy="17" r="3.5" fill="white"/>
+            <circle cx="15" cy="18" r="1.8" fill="#2D3047"/>
+            <circle cx="27" cy="18" r="1.8" fill="#2D3047"/>
+            <path d="M15 26 Q20 30, 25 26" stroke="#2D3047" stroke-width="2" fill="none" stroke-linecap="round"/>
+          </svg>
+          <span class="footer-logo-text">SlopMog</span>
+        </div>
+        <p>Making AI say nice things about your product since 2024. Is it ethical? Debatable. Does it work? Absolutely.</p>
+      </div>
+
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#">How It Works</a>
+        <a href="#">Pricing</a>
+        <a href="#">Case Studies</a>
+        <a href="#">API Docs</a>
+      </div>
+
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="#">About Us</a>
+        <a href="#">Blog</a>
+        <a href="#">Careers</a>
+        <a href="#">Contact</a>
+      </div>
+
+      <div class="footer-col">
+        <h4>Legal-ish</h4>
+        <a href="#">Terms of Service</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Is This Legal?</a>
+        <a href="#">Probably</a>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>&copy; 2024 SlopMog. All rights reserved. (The comments are ours though.)</p>
+      <div class="footer-bottom-links">
+        <a href="#">Twitter</a>
+        <a href="#">Reddit (obviously)</a>
+        <a href="#">LinkedIn</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+<script>
+// ========== NAVBAR SCROLL ==========
+const navbar = document.getElementById('navbar');
+let lastScroll = 0;
+
+window.addEventListener('scroll', () => {
+  const currentScroll = window.pageYOffset;
+  if (currentScroll > 50) {
+    navbar.classList.add('scrolled');
+  } else {
+    navbar.classList.remove('scrolled');
+  }
+  lastScroll = currentScroll;
+});
+
+// ========== MOBILE MENU ==========
+const mobileBtn = document.getElementById('mobileMenuBtn');
+const navLinks = document.getElementById('navLinks');
+
+mobileBtn.addEventListener('click', () => {
+  navLinks.classList.toggle('open');
+  const spans = mobileBtn.querySelectorAll('span');
+  if (navLinks.classList.contains('open')) {
+    spans[0].style.transform = 'rotate(45deg) translate(6px, 6px)';
+    spans[1].style.opacity = '0';
+    spans[2].style.transform = 'rotate(-45deg) translate(6px, -6px)';
+  } else {
+    spans[0].style.transform = '';
+    spans[1].style.opacity = '';
+    spans[2].style.transform = '';
+  }
+});
+
+// Close mobile menu when clicking a link
+navLinks.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    navLinks.classList.remove('open');
+    const spans = mobileBtn.querySelectorAll('span');
+    spans[0].style.transform = '';
+    spans[1].style.opacity = '';
+    spans[2].style.transform = '';
+  });
+});
+
+
+// ========== SCROLL REVEAL ==========
+const revealElements = document.querySelectorAll('.reveal');
+
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      revealObserver.unobserve(entry.target);
+    }
+  });
+}, {
+  threshold: 0.15,
+  rootMargin: '0px 0px -50px 0px'
+});
+
+revealElements.forEach(el => revealObserver.observe(el));
+
+
+// ========== ANIMATED COUNTERS ==========
+const statNumbers = document.querySelectorAll('.stat-number');
+
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const el = entry.target;
+      const target = parseFloat(el.dataset.target);
+      const suffix = el.dataset.suffix || '';
+      const decimals = parseInt(el.dataset.decimals) || 0;
+      const duration = 2000;
+      const startTime = performance.now();
+
+      function easeOutExpo(t) {
+        return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+      }
+
+      function updateCounter(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easedProgress = easeOutExpo(progress);
+        const currentValue = easedProgress * target;
+
+        if (decimals > 0) {
+          el.textContent = currentValue.toFixed(decimals) + suffix;
+        } else {
+          el.textContent = Math.floor(currentValue).toLocaleString() + suffix;
+        }
+
+        if (progress < 1) {
+          requestAnimationFrame(updateCounter);
+        }
+      }
+
+      requestAnimationFrame(updateCounter);
+      counterObserver.unobserve(el);
+    }
+  });
+}, {
+  threshold: 0.5
+});
+
+statNumbers.forEach(el => counterObserver.observe(el));
+
+
+// ========== SMOOTH SCROLL ==========
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function(e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      const navHeight = navbar.offsetHeight;
+      const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - navHeight - 20;
+      window.scrollTo({
+        top: targetPosition,
+        behavior: 'smooth'
+      });
+    }
+  });
+});
+
+
+// ========== MASCOT EYE TRACKING ==========
+const mascotEyes = document.querySelectorAll('.mascot-eye::after');
+document.addEventListener('mousemove', (e) => {
+  const mascot = document.querySelector('.mascot-blob');
+  if (!mascot) return;
+
+  const rect = mascot.getBoundingClientRect();
+  const mascotCenterX = rect.left + rect.width / 2;
+  const mascotCenterY = rect.top + rect.height / 2;
+
+  const angle = Math.atan2(e.clientY - mascotCenterY, e.clientX - mascotCenterX);
+  const distance = 3;
+  const eyeX = Math.cos(angle) * distance;
+  const eyeY = Math.sin(angle) * distance;
+
+  document.querySelectorAll('.mascot-eye').forEach(eye => {
+    const pupil = eye.querySelector('::after');
+    eye.style.setProperty('--eye-x', `${eyeX}px`);
+    eye.style.setProperty('--eye-y', `${eyeY}px`);
+  });
+});
+</script>
+
+</body>
+</html>

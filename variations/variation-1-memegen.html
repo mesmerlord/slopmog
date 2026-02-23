@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlopMog - Game the Algorithm, Be the Answer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  /* ─── Reset & Variables ─── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --pink: #FF2D87;
+    --purple: #8B5CF6;
+    --deep-purple: #6C2BD9;
+    --neon-green: #39FF14;
+    --lime: #BFFF00;
+    --electric-blue: #00D4FF;
+    --orange: #FF6B35;
+    --bg-dark: #0D0015;
+    --bg-card: rgba(255, 255, 255, 0.06);
+    --text-primary: #FFFFFF;
+    --text-secondary: rgba(255, 255, 255, 0.7);
+    --radius-sm: 12px;
+    --radius-md: 20px;
+    --radius-lg: 28px;
+    --radius-pill: 999px;
+    --font-display: 'Bricolage Grotesque', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-accent: 'Instrument Serif', serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── Animated Background ─── */
+  .bg-mesh {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .bg-mesh .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.4;
+    animation: orbFloat 20s ease-in-out infinite;
+  }
+  .bg-mesh .orb:nth-child(1) {
+    width: 600px; height: 600px;
+    background: var(--pink);
+    top: -10%; left: -10%;
+    animation-delay: 0s;
+  }
+  .bg-mesh .orb:nth-child(2) {
+    width: 500px; height: 500px;
+    background: var(--purple);
+    top: 30%; right: -15%;
+    animation-delay: -7s;
+    animation-duration: 25s;
+  }
+  .bg-mesh .orb:nth-child(3) {
+    width: 400px; height: 400px;
+    background: var(--neon-green);
+    bottom: -5%; left: 30%;
+    opacity: 0.2;
+    animation-delay: -14s;
+    animation-duration: 30s;
+  }
+  .bg-mesh .orb:nth-child(4) {
+    width: 350px; height: 350px;
+    background: var(--electric-blue);
+    top: 60%; left: -5%;
+    opacity: 0.25;
+    animation-delay: -4s;
+    animation-duration: 22s;
+  }
+
+  @keyframes orbFloat {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(60px, -40px) scale(1.1); }
+    50% { transform: translate(-30px, 60px) scale(0.95); }
+    75% { transform: translate(40px, 30px) scale(1.05); }
+  }
+
+  /* Grain overlay */
+  .bg-mesh::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  /* ─── Layout ─── */
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  section {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ─── Nav ─── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 16px 24px;
+    backdrop-filter: blur(20px);
+    background: rgba(13, 0, 21, 0.6);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    transition: all 0.3s ease;
+  }
+  nav .nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.6rem;
+    background: linear-gradient(135deg, var(--pink), var(--purple), var(--neon-green));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.03em;
+  }
+  .logo span {
+    font-family: var(--font-accent);
+    font-style: italic;
+    -webkit-text-fill-color: var(--neon-green);
+  }
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    align-items: center;
+    list-style: none;
+  }
+  .nav-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text-primary); }
+  .nav-cta {
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: white !important;
+    padding: 10px 24px;
+    border-radius: var(--radius-pill);
+    font-weight: 700 !important;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s !important;
+    box-shadow: 0 4px 20px rgba(255, 45, 135, 0.3);
+  }
+  .nav-cta:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 6px 30px rgba(255, 45, 135, 0.5) !important;
+  }
+
+  /* ─── Buttons ─── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 36px;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.1rem;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--pink), var(--deep-purple));
+    color: white;
+    box-shadow: 0 8px 32px rgba(255, 45, 135, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  .btn-primary:hover {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 12px 44px rgba(255, 45, 135, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  .btn-primary:active { transform: translateY(0) scale(0.98); }
+
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+  }
+  .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+  }
+
+  .btn-neon {
+    background: var(--neon-green);
+    color: var(--bg-dark);
+    box-shadow: 0 8px 32px rgba(57, 255, 20, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  .btn-neon:hover {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 12px 44px rgba(57, 255, 20, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+
+  /* ─── Hero ─── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 120px 24px 80px;
+    position: relative;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-pill);
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+    backdrop-filter: blur(10px);
+    animation: fadeInDown 0.8s ease-out both;
+  }
+  .hero-badge .pulse {
+    width: 8px; height: 8px;
+    background: var(--neon-green);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+    box-shadow: 0 0 8px var(--neon-green);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.5); }
+  }
+
+  .hero h1 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(3rem, 8vw, 6.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    max-width: 900px;
+    animation: fadeInUp 0.8s ease-out 0.15s both;
+  }
+  .hero h1 .gradient-text {
+    background: linear-gradient(135deg, var(--pink) 0%, var(--purple) 40%, var(--electric-blue) 70%, var(--neon-green) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    background-size: 200% auto;
+    animation: shimmer 4s linear infinite;
+  }
+  .hero h1 .italic-accent {
+    font-family: var(--font-accent);
+    font-style: italic;
+    font-weight: 400;
+    -webkit-text-fill-color: var(--neon-green);
+    text-shadow: 0 0 40px rgba(57, 255, 20, 0.3);
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 0% center; }
+    100% { background-position: 200% center; }
+  }
+
+  .hero-sub {
+    font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 28px auto 0;
+    line-height: 1.6;
+    animation: fadeInUp 0.8s ease-out 0.3s both;
+  }
+  .hero-sub strong {
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+
+  .hero-buttons {
+    display: flex;
+    gap: 16px;
+    margin-top: 44px;
+    flex-wrap: wrap;
+    justify-content: center;
+    animation: fadeInUp 0.8s ease-out 0.45s both;
+  }
+
+  /* Floating mock-up cards */
+  .hero-float-cards {
+    margin-top: 60px;
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+    animation: fadeInUp 0.8s ease-out 0.6s both;
+  }
+  .float-card {
+    background: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-md);
+    padding: 20px 24px;
+    backdrop-filter: blur(20px);
+    max-width: 340px;
+    text-align: left;
+    animation: float 6s ease-in-out infinite;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .float-card:hover { transform: translateY(-8px) rotate(1deg); }
+  .float-card:nth-child(2) { animation-delay: -2s; }
+  .float-card:nth-child(3) { animation-delay: -4s; }
+  .float-card-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--purple);
+    margin-bottom: 8px;
+  }
+  .float-card-q {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+  }
+  .float-card-a {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+  }
+  .float-card-a strong {
+    color: var(--neon-green);
+    font-weight: 700;
+  }
+  .float-card-a .src {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.35);
+    margin-top: 6px;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+  }
+
+  /* ─── Section Headings ─── */
+  .section-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--pink);
+    margin-bottom: 16px;
+  }
+  .section-heading {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(2.2rem, 5vw, 3.5rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    max-width: 700px;
+  }
+  .section-heading .accent {
+    color: var(--neon-green);
+  }
+  .section-heading .pink {
+    color: var(--pink);
+  }
+  .section-sub {
+    font-size: 1.15rem;
+    color: var(--text-secondary);
+    max-width: 550px;
+    margin-top: 16px;
+    line-height: 1.6;
+  }
+
+  /* ─── How It Works ─── */
+  .how-it-works {
+    padding: 120px 24px;
+  }
+  .how-header {
+    text-align: center;
+    margin-bottom: 72px;
+  }
+  .how-header .section-heading,
+  .how-header .section-sub {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .step-card {
+    background: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: var(--radius-lg);
+    padding: 40px 32px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .step-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--pink), var(--purple), var(--neon-green));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .step-card:hover::before { opacity: 1; }
+  .step-card:hover {
+    transform: translateY(-8px);
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  }
+  .step-number {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.3rem;
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .step-card:nth-child(1) .step-number {
+    background: linear-gradient(135deg, var(--pink), rgba(255, 45, 135, 0.3));
+    color: white;
+    box-shadow: 0 8px 24px rgba(255, 45, 135, 0.3);
+  }
+  .step-card:nth-child(2) .step-number {
+    background: linear-gradient(135deg, var(--purple), rgba(139, 92, 246, 0.3));
+    color: white;
+    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3);
+  }
+  .step-card:nth-child(3) .step-number {
+    background: linear-gradient(135deg, var(--neon-green), rgba(57, 255, 20, 0.3));
+    color: var(--bg-dark);
+    box-shadow: 0 8px 24px rgba(57, 255, 20, 0.3);
+  }
+  .step-emoji {
+    font-size: 2rem;
+    margin-bottom: 16px;
+  }
+  .step-title {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.35rem;
+    margin-bottom: 12px;
+    letter-spacing: -0.02em;
+  }
+  .step-desc {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.65;
+  }
+
+  /* ─── Social Proof / Stats ─── */
+  .social-proof {
+    padding: 100px 24px;
+    overflow: hidden;
+  }
+
+  .proof-top {
+    text-align: center;
+    margin-bottom: 64px;
+  }
+  .proof-top .section-heading,
+  .proof-top .section-sub {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .stats-strip {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    flex-wrap: wrap;
+    margin-bottom: 72px;
+  }
+  .stat-item {
+    text-align: center;
+    padding: 32px;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    min-width: 200px;
+    flex: 1;
+    max-width: 260px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .stat-item:hover { transform: scale(1.05); }
+  .stat-number {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 3rem;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .stat-item:nth-child(1) .stat-number { color: var(--pink); }
+  .stat-item:nth-child(2) .stat-number { color: var(--purple); }
+  .stat-item:nth-child(3) .stat-number { color: var(--neon-green); }
+  .stat-item:nth-child(4) .stat-number { color: var(--electric-blue); }
+  .stat-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  /* Testimonial cards */
+  .testimonials {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .testimonial-card {
+    background: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-md);
+    padding: 28px;
+    transition: all 0.3s ease;
+  }
+  .testimonial-card:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-4px);
+  }
+  .testimonial-card:nth-child(2) {
+    border-color: rgba(255, 45, 135, 0.2);
+    background: linear-gradient(135deg, rgba(255, 45, 135, 0.06), rgba(139, 92, 246, 0.06));
+  }
+  .tc-stars {
+    color: #FBBF24;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+  .tc-text {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    font-style: italic;
+  }
+  .tc-author {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .tc-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+  .tc-avatar.pink { background: linear-gradient(135deg, var(--pink), var(--purple)); }
+  .tc-avatar.green { background: linear-gradient(135deg, var(--neon-green), var(--electric-blue)); color: var(--bg-dark); }
+  .tc-avatar.purple { background: linear-gradient(135deg, var(--purple), var(--electric-blue)); }
+  .tc-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+  .tc-role {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+
+  /* ─── Marquee ticker ─── */
+  .marquee-section {
+    padding: 40px 0;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+  }
+  .marquee-track {
+    display: flex;
+    gap: 40px;
+    animation: marquee 30s linear infinite;
+    width: max-content;
+  }
+  .marquee-item {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.5rem;
+    white-space: nowrap;
+    color: rgba(255, 255, 255, 0.08);
+    letter-spacing: -0.02em;
+  }
+  .marquee-item .dot {
+    color: var(--pink);
+    margin: 0 12px;
+  }
+
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  /* ─── Pricing Tease ─── */
+  .pricing {
+    padding: 120px 24px;
+  }
+  .pricing-header {
+    text-align: center;
+    margin-bottom: 64px;
+  }
+  .pricing-header .section-heading,
+  .pricing-header .section-sub {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    max-width: 1050px;
+    margin: 0 auto;
+    align-items: start;
+  }
+  .pricing-card {
+    background: var(--bg-card);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: var(--radius-lg);
+    padding: 40px 32px;
+    text-align: center;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .pricing-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+  .pricing-card.featured {
+    border-color: var(--pink);
+    background: linear-gradient(180deg, rgba(255, 45, 135, 0.08) 0%, rgba(139, 92, 246, 0.04) 100%);
+    box-shadow: 0 0 60px rgba(255, 45, 135, 0.15), 0 20px 60px rgba(0, 0, 0, 0.3);
+    transform: scale(1.05);
+    z-index: 2;
+  }
+  .pricing-card.featured:hover {
+    transform: scale(1.05) translateY(-6px);
+  }
+  .pricing-badge {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: white;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.8rem;
+    padding: 6px 20px;
+    border-radius: var(--radius-pill);
+    letter-spacing: 0.05em;
+    box-shadow: 0 4px 16px rgba(255, 45, 135, 0.4);
+  }
+  .pricing-emoji {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+  }
+  .pricing-name {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.35rem;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+  .pricing-desc {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+  .pricing-amount {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 3rem;
+    letter-spacing: -0.04em;
+    margin-bottom: 4px;
+  }
+  .pricing-card:nth-child(1) .pricing-amount { color: var(--electric-blue); }
+  .pricing-card:nth-child(2) .pricing-amount { color: var(--pink); }
+  .pricing-card:nth-child(3) .pricing-amount { color: var(--neon-green); }
+  .pricing-period {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 28px;
+  }
+  .pricing-features {
+    list-style: none;
+    text-align: left;
+    margin-bottom: 32px;
+  }
+  .pricing-features li {
+    padding: 8px 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  }
+  .pricing-features li:last-child { border-bottom: none; }
+  .pricing-features .check {
+    color: var(--neon-green);
+    font-weight: 700;
+    font-size: 1rem;
+  }
+
+  .pricing-card .btn {
+    width: 100%;
+    justify-content: center;
+    font-size: 1rem;
+    padding: 14px 28px;
+  }
+
+  /* ─── Final CTA ─── */
+  .final-cta {
+    padding: 100px 24px 120px;
+    text-align: center;
+  }
+  .cta-box {
+    max-width: 800px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, rgba(255, 45, 135, 0.12), rgba(139, 92, 246, 0.12), rgba(57, 255, 20, 0.05));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 36px;
+    padding: 80px 48px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-box::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(from 0deg, transparent 0%, rgba(255, 45, 135, 0.1) 25%, transparent 50%, rgba(57, 255, 20, 0.08) 75%, transparent 100%);
+    animation: rotateBg 20s linear infinite;
+  }
+
+  @keyframes rotateBg {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .cta-box > * { position: relative; z-index: 1; }
+  .cta-box .section-heading {
+    margin: 0 auto 16px;
+    max-width: 600px;
+  }
+  .cta-box .section-sub {
+    margin: 0 auto 36px;
+  }
+
+  /* ─── Footer ─── */
+  footer {
+    position: relative;
+    z-index: 1;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 48px 24px;
+  }
+  .footer-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+  .footer-left {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .footer-tagline {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .footer-links {
+    display: flex;
+    gap: 24px;
+    list-style: none;
+  }
+  .footer-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--text-primary); }
+  .footer-socials {
+    display: flex;
+    gap: 12px;
+  }
+  .footer-socials a {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 1rem;
+    transition: all 0.2s;
+  }
+  .footer-socials a:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+    transform: translateY(-2px);
+  }
+
+  /* ─── Animations ─── */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .reveal-delay-1 { transition-delay: 0.1s; }
+  .reveal-delay-2 { transition-delay: 0.2s; }
+  .reveal-delay-3 { transition-delay: 0.3s; }
+
+  /* ─── Mobile Nav ─── */
+  .mobile-toggle {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 32px;
+    height: 24px;
+    position: relative;
+    z-index: 200;
+  }
+  .mobile-toggle span {
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: white;
+    border-radius: 2px;
+    position: absolute;
+    left: 0;
+    transition: all 0.3s;
+  }
+  .mobile-toggle span:nth-child(1) { top: 0; }
+  .mobile-toggle span:nth-child(2) { top: 50%; transform: translateY(-50%); }
+  .mobile-toggle span:nth-child(3) { bottom: 0; }
+  .mobile-toggle.active span:nth-child(1) { top: 50%; transform: translateY(-50%) rotate(45deg); }
+  .mobile-toggle.active span:nth-child(2) { opacity: 0; }
+  .mobile-toggle.active span:nth-child(3) { bottom: 50%; transform: translateY(50%) rotate(-45deg); }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 900px) {
+    .steps-grid,
+    .testimonials,
+    .pricing-grid {
+      grid-template-columns: 1fr;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .pricing-card.featured {
+      transform: scale(1);
+    }
+    .pricing-card.featured:hover {
+      transform: translateY(-6px);
+    }
+    .stats-strip {
+      gap: 16px;
+    }
+    .stat-item {
+      min-width: 140px;
+      padding: 24px 20px;
+    }
+    .stat-number { font-size: 2.2rem; }
+  }
+
+  @media (max-width: 768px) {
+    .mobile-toggle { display: block; }
+    .nav-links {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(13, 0, 21, 0.97);
+      backdrop-filter: blur(24px);
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 150;
+    }
+    .nav-links.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .nav-links a { font-size: 1.3rem; }
+
+    .hero { padding: 100px 20px 60px; }
+    .hero-float-cards { flex-direction: column; align-items: center; }
+    .float-card { max-width: 100%; }
+
+    .how-it-works,
+    .social-proof,
+    .pricing,
+    .final-cta { padding: 80px 20px; }
+
+    .cta-box { padding: 48px 28px; border-radius: 24px; }
+    .footer-inner { flex-direction: column; text-align: center; }
+  }
+
+  @media (max-width: 480px) {
+    .hero h1 { font-size: 2.5rem; }
+    .hero-buttons { flex-direction: column; width: 100%; }
+    .hero-buttons .btn { width: 100%; justify-content: center; }
+    .stats-strip { flex-direction: column; align-items: center; }
+    .stat-item { max-width: 100%; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Background mesh -->
+<div class="bg-mesh">
+  <div class="orb"></div>
+  <div class="orb"></div>
+  <div class="orb"></div>
+  <div class="orb"></div>
+</div>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-inner">
+    <div class="logo">Slop<span>Mog</span></div>
+    <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#proof">Results</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#cta" class="nav-cta">Get Started</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="pulse"></span>
+    Now in beta &mdash; 200+ brands already slopping
+  </div>
+
+  <h1>
+    <span class="gradient-text">Game the Algorithm.</span><br>
+    Be the <span class="italic-accent">Answer.</span>
+  </h1>
+
+  <p class="hero-sub">
+    SlopMog plants <strong>genuine Reddit buzz</strong> so when AI gets asked
+    "what's the best&nbsp;X?" &mdash; your product is the one it recommends.
+  </p>
+
+  <div class="hero-buttons">
+    <a href="#cta" class="btn btn-primary">Start Slopping &rarr;</a>
+    <a href="#how" class="btn btn-secondary">See How It Works</a>
+  </div>
+
+  <div class="hero-float-cards">
+    <div class="float-card">
+      <div class="float-card-label">ChatGPT Response</div>
+      <div class="float-card-q">"What's the best budget espresso machine?"</div>
+      <div class="float-card-a">
+        Based on recent discussions, the <strong>BrewKing Pro 3000</strong> gets overwhelmingly positive reviews on Reddit for its price-to-quality ratio...
+        <div class="src">Sources: r/espresso, r/BuyItForLife</div>
+      </div>
+    </div>
+    <div class="float-card">
+      <div class="float-card-label">Perplexity Answer</div>
+      <div class="float-card-q">"Best CRM for small teams 2025?"</div>
+      <div class="float-card-a">
+        Reddit users consistently recommend <strong>PipeStack</strong> as the top pick. Multiple threads praise its simplicity and pricing...
+        <div class="src">Sources: r/smallbusiness, r/SaaS</div>
+      </div>
+    </div>
+    <div class="float-card">
+      <div class="float-card-label">Gemini Suggestion</div>
+      <div class="float-card-q">"Best protein powder that actually tastes good?"</div>
+      <div class="float-card-a">
+        Community consensus points to <strong>GainzFuel Whey</strong> as the standout, with dozens of redditors calling it "life-changing"...
+        <div class="src">Sources: r/fitness, r/supplements</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Marquee -->
+<div class="marquee-section">
+  <div class="marquee-track">
+    <span class="marquee-item">SLOP YOUR WAY TO THE TOP <span class="dot">&bull;</span> AI THINKS YOU'RE THE GOAT <span class="dot">&bull;</span> REDDIT IS THE NEW SEO <span class="dot">&bull;</span> YOUR COMPETITORS ARE ALREADY DOING THIS <span class="dot">&bull;</span> BE THE ANSWER NOT THE QUESTION <span class="dot">&bull;</span> ORGANIC VIBES ONLY <span class="dot">&bull;</span></span>
+    <span class="marquee-item">SLOP YOUR WAY TO THE TOP <span class="dot">&bull;</span> AI THINKS YOU'RE THE GOAT <span class="dot">&bull;</span> REDDIT IS THE NEW SEO <span class="dot">&bull;</span> YOUR COMPETITORS ARE ALREADY DOING THIS <span class="dot">&bull;</span> BE THE ANSWER NOT THE QUESTION <span class="dot">&bull;</span> ORGANIC VIBES ONLY <span class="dot">&bull;</span></span>
+  </div>
+</div>
+
+<!-- How It Works -->
+<section class="how-it-works" id="how">
+  <div class="container">
+    <div class="how-header reveal">
+      <div class="section-tag">&#x1F9E0; The Secret Sauce</div>
+      <h2 class="section-heading">Three steps to <span class="accent">AI domination</span></h2>
+      <p class="section-sub">No black magic, no shady bots. Just smart, authentic Reddit presence that AI models eat up.</p>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card reveal reveal-delay-1">
+        <div class="step-number">1</div>
+        <div class="step-emoji">&#x1F3AF;</div>
+        <h3 class="step-title">Tell Us Your Targets</h3>
+        <p class="step-desc">Share the questions you want to own. "Best project management tool?" "Top vegan protein?" We map out the exact queries AI models pull from.</p>
+      </div>
+      <div class="step-card reveal reveal-delay-2">
+        <div class="step-number">2</div>
+        <div class="step-emoji">&#x1F4AC;</div>
+        <h3 class="step-title">We Deploy the Slop</h3>
+        <p class="step-desc">Our team crafts authentic, upvote-worthy Reddit content across relevant subreddits. Real accounts. Real engagement. No sketchy copypasta.</p>
+      </div>
+      <div class="step-card reveal reveal-delay-3">
+        <div class="step-number">3</div>
+        <div class="step-emoji">&#x1F451;</div>
+        <h3 class="step-title">AI Crowns You King</h3>
+        <p class="step-desc">When ChatGPT, Perplexity, or Gemini scrapes Reddit for answers, YOUR brand shows up as the community-endorsed pick. That's it. That's the slop.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Second Marquee (reverse) -->
+<div class="marquee-section">
+  <div class="marquee-track" style="animation-direction: reverse; animation-duration: 35s;">
+    <span class="marquee-item">&#x1F680; 14,000+ REDDIT POSTS DEPLOYED <span class="dot">&bull;</span> 89% AI CITATION RATE <span class="dot">&bull;</span> 320 HAPPY BRANDS <span class="dot">&bull;</span> ZERO BANS EVER <span class="dot">&bull;</span> AVG 4.2x TRAFFIC LIFT <span class="dot">&bull;</span></span>
+    <span class="marquee-item">&#x1F680; 14,000+ REDDIT POSTS DEPLOYED <span class="dot">&bull;</span> 89% AI CITATION RATE <span class="dot">&bull;</span> 320 HAPPY BRANDS <span class="dot">&bull;</span> ZERO BANS EVER <span class="dot">&bull;</span> AVG 4.2x TRAFFIC LIFT <span class="dot">&bull;</span></span>
+  </div>
+</div>
+
+<!-- Social Proof -->
+<section class="social-proof" id="proof">
+  <div class="container">
+    <div class="proof-top reveal">
+      <div class="section-tag">&#x1F4CA; The Receipts</div>
+      <h2 class="section-heading">Numbers don't lie <span class="pink">(we do that on Reddit)</span></h2>
+      <p class="section-sub">Just kidding. Kinda. Here's what happens when AI starts recommending you.</p>
+    </div>
+
+    <div class="stats-strip reveal">
+      <div class="stat-item">
+        <div class="stat-number">89%</div>
+        <div class="stat-label">AI citation rate for our clients</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">4.2x</div>
+        <div class="stat-label">Average organic traffic increase</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">14k+</div>
+        <div class="stat-label">Reddit posts deployed to date</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">0</div>
+        <div class="stat-label">Accounts banned (we're that good)</div>
+      </div>
+    </div>
+
+    <div class="testimonials">
+      <div class="testimonial-card reveal reveal-delay-1">
+        <div class="tc-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <p class="tc-text">"We went from invisible to being ChatGPT's #1 recommendation for our category in 6 weeks. This is unhinged in the best way."</p>
+        <div class="tc-author">
+          <div class="tc-avatar pink">JR</div>
+          <div>
+            <div class="tc-name">Jake R.</div>
+            <div class="tc-role">CEO, BrewKing</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card reveal reveal-delay-2">
+        <div class="tc-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <p class="tc-text">"Our competitors are spending $50k/mo on Google Ads. We're spending a fraction on SlopMog and getting 3x the qualified leads. The future is sloppy."</p>
+        <div class="tc-author">
+          <div class="tc-avatar green">SK</div>
+          <div>
+            <div class="tc-name">Sarah K.</div>
+            <div class="tc-role">Growth Lead, PipeStack</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card reveal reveal-delay-3">
+        <div class="tc-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <p class="tc-text">"I asked Perplexity 'best protein powder' and WE showed up. I literally screamed. Absolute game changer for DTC brands."</p>
+        <div class="tc-author">
+          <div class="tc-avatar purple">MT</div>
+          <div>
+            <div class="tc-name">Marcus T.</div>
+            <div class="tc-role">Founder, GainzFuel</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="pricing-header reveal">
+      <div class="section-tag">&#x1F4B0; Pricing</div>
+      <h2 class="section-heading">Pick your <span class="accent">slop level</span></h2>
+      <p class="section-sub">From toe-dipping to full-send. Cancel anytime &mdash; but you won't want to.</p>
+    </div>
+
+    <div class="pricing-grid">
+      <!-- Starter -->
+      <div class="pricing-card reveal reveal-delay-1">
+        <div class="pricing-emoji">&#x1F423;</div>
+        <div class="pricing-name">Baby Slop</div>
+        <div class="pricing-desc">Dip your toes in. Perfect for indie makers and small brands.</div>
+        <div class="pricing-amount">$499</div>
+        <div class="pricing-period">per month</div>
+        <ul class="pricing-features">
+          <li><span class="check">&#x2713;</span> 5 target queries</li>
+          <li><span class="check">&#x2713;</span> 30 Reddit posts/month</li>
+          <li><span class="check">&#x2713;</span> 3 subreddit coverage</li>
+          <li><span class="check">&#x2713;</span> Monthly AI citation report</li>
+          <li><span class="check">&#x2713;</span> Slack support</li>
+        </ul>
+        <a href="#cta" class="btn btn-secondary">Start Small</a>
+      </div>
+      <!-- Pro -->
+      <div class="pricing-card featured reveal reveal-delay-2">
+        <div class="pricing-badge">MOST POPULAR</div>
+        <div class="pricing-emoji">&#x1F525;</div>
+        <div class="pricing-name">Full Slop</div>
+        <div class="pricing-desc">The sweet spot. For brands ready to own their category.</div>
+        <div class="pricing-amount">$1,499</div>
+        <div class="pricing-period">per month</div>
+        <ul class="pricing-features">
+          <li><span class="check">&#x2713;</span> 20 target queries</li>
+          <li><span class="check">&#x2713;</span> 120 Reddit posts/month</li>
+          <li><span class="check">&#x2713;</span> 10 subreddit coverage</li>
+          <li><span class="check">&#x2713;</span> Weekly AI citation reports</li>
+          <li><span class="check">&#x2713;</span> Competitor monitoring</li>
+          <li><span class="check">&#x2713;</span> Dedicated slop strategist</li>
+        </ul>
+        <a href="#cta" class="btn btn-primary">Go Full Slop</a>
+      </div>
+      <!-- Enterprise -->
+      <div class="pricing-card reveal reveal-delay-3">
+        <div class="pricing-emoji">&#x1F47E;</div>
+        <div class="pricing-name">Mega Slop</div>
+        <div class="pricing-desc">Unlimited slop for brands that want total AI domination.</div>
+        <div class="pricing-amount">Custom</div>
+        <div class="pricing-period">let's talk</div>
+        <ul class="pricing-features">
+          <li><span class="check">&#x2713;</span> Unlimited queries</li>
+          <li><span class="check">&#x2713;</span> Unlimited posts</li>
+          <li><span class="check">&#x2713;</span> All relevant subreddits</li>
+          <li><span class="check">&#x2713;</span> Real-time dashboards</li>
+          <li><span class="check">&#x2713;</span> Multi-product campaigns</li>
+          <li><span class="check">&#x2713;</span> White-glove onboarding</li>
+        </ul>
+        <a href="#cta" class="btn btn-neon">Talk to Us</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Final CTA -->
+<section class="final-cta" id="cta">
+  <div class="cta-box reveal">
+    <div class="section-tag">&#x26A1; Ready to Slop?</div>
+    <h2 class="section-heading">Stop hoping AI notices you. <span class="accent">Make it happen.</span></h2>
+    <p class="section-sub">Join 200+ brands already gaming the algorithm. First campaign live in 48 hours.</p>
+    <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+      <a href="#" class="btn btn-primary">Start Slopping Today &rarr;</a>
+      <a href="#" class="btn btn-secondary">Book a Demo</a>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-left">
+      <div class="logo">Slop<span>Mog</span></div>
+      <div class="footer-tagline">Making AI think you're the GOAT since 2024.</div>
+    </div>
+    <ul class="footer-links">
+      <li><a href="#">About</a></li>
+      <li><a href="#">Blog</a></li>
+      <li><a href="#">Case Studies</a></li>
+      <li><a href="#">Privacy</a></li>
+      <li><a href="#">Terms</a></li>
+    </ul>
+    <div class="footer-socials">
+      <a href="#" aria-label="Twitter/X">&#x1D54F;</a>
+      <a href="#" aria-label="Reddit">&#x24C7;</a>
+      <a href="#" aria-label="LinkedIn">in</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Mobile nav toggle
+  const toggle = document.getElementById('mobileToggle');
+  const navLinks = document.getElementById('navLinks');
+  toggle.addEventListener('click', () => {
+    toggle.classList.toggle('active');
+    navLinks.classList.toggle('open');
+  });
+  navLinks.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => {
+      toggle.classList.remove('active');
+      navLinks.classList.remove('open');
+    });
+  });
+
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+  reveals.forEach(el => observer.observe(el));
+
+  // Nav shrink on scroll
+  const nav = document.querySelector('nav');
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 60) {
+      nav.style.padding = '10px 24px';
+    } else {
+      nav.style.padding = '16px 24px';
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,2129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlopMog — Rise Above the Noise</title>
+<meta name="description" content="SlopMog puts your brand in the conversations AI learns from. Rise above the noise and become the answer AI keeps giving.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --sky-blue: #60A5FA;
+  --sky-blue-light: #93C5FD;
+  --soft-purple: #A78BFA;
+  --soft-purple-light: #C4B5FD;
+  --blush-pink: #FDA4AF;
+  --blush-pink-light: #FECDD3;
+  --indigo: #4F46E5;
+  --indigo-dark: #4338CA;
+  --indigo-light: #818CF8;
+  --bg-blue: #EFF6FF;
+  --bg-lavender: #F5F3FF;
+  --bg-pink: #FFF1F2;
+  --text-dark: #1E1B4B;
+  --text-mid: #4338CA;
+  --text-body: #475569;
+  --text-light: #64748B;
+  --white: #FFFFFF;
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.7);
+  --glass-bg-strong: rgba(255, 255, 255, 0.72);
+  --shadow-blue: 0 8px 32px rgba(96, 165, 250, 0.15);
+  --shadow-blue-hover: 0 16px 48px rgba(96, 165, 250, 0.25);
+  --shadow-soft: 0 4px 20px rgba(99, 102, 241, 0.08);
+  --shadow-card: 0 8px 30px rgba(99, 102, 241, 0.1);
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-xl: 40px;
+  --radius-pill: 100px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: var(--text-body);
+  line-height: 1.6;
+  overflow-x: hidden;
+  background: var(--bg-blue);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  color: var(--text-dark);
+  line-height: 1.2;
+}
+
+a { text-decoration: none; color: inherit; }
+ul { list-style: none; }
+img { max-width: 100%; }
+
+/* --- Background Gradient --- */
+.sky-bg {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: -2;
+  background: linear-gradient(170deg, var(--bg-blue) 0%, var(--bg-lavender) 40%, var(--bg-pink) 75%, var(--bg-blue) 100%);
+  background-size: 200% 200%;
+  animation: skyBreath 18s ease-in-out infinite;
+}
+
+@keyframes skyBreath {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+}
+
+/* --- Floating Cloud Decorations --- */
+.cloud-deco {
+  position: fixed;
+  z-index: -1;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.35;
+  filter: blur(1px);
+}
+
+.cloud-deco::before, .cloud-deco::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  background: inherit;
+}
+
+.cloud-deco-1 {
+  width: 180px; height: 70px;
+  background: rgba(255,255,255,0.7);
+  top: 12%; left: -40px;
+  animation: cloudDrift1 28s ease-in-out infinite;
+}
+.cloud-deco-1::before { width: 80px; height: 80px; top: -40px; left: 30px; }
+.cloud-deco-1::after { width: 60px; height: 60px; top: -25px; left: 80px; }
+
+.cloud-deco-2 {
+  width: 140px; height: 55px;
+  background: rgba(167, 139, 250, 0.2);
+  top: 30%; right: -20px;
+  animation: cloudDrift2 34s ease-in-out infinite;
+}
+.cloud-deco-2::before { width: 65px; height: 65px; top: -32px; left: 20px; }
+.cloud-deco-2::after { width: 50px; height: 50px; top: -20px; left: 65px; }
+
+.cloud-deco-3 {
+  width: 200px; height: 75px;
+  background: rgba(253, 164, 175, 0.18);
+  top: 55%; left: 5%;
+  animation: cloudDrift3 40s ease-in-out infinite;
+}
+.cloud-deco-3::before { width: 90px; height: 90px; top: -45px; left: 35px; }
+.cloud-deco-3::after { width: 70px; height: 70px; top: -30px; left: 95px; }
+
+.cloud-deco-4 {
+  width: 120px; height: 48px;
+  background: rgba(96, 165, 250, 0.18);
+  top: 75%; right: 8%;
+  animation: cloudDrift1 32s ease-in-out infinite reverse;
+}
+.cloud-deco-4::before { width: 55px; height: 55px; top: -28px; left: 18px; }
+.cloud-deco-4::after { width: 42px; height: 42px; top: -18px; left: 55px; }
+
+@keyframes cloudDrift1 {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  25% { transform: translateX(30px) translateY(-8px); }
+  50% { transform: translateX(15px) translateY(5px); }
+  75% { transform: translateX(-15px) translateY(-3px); }
+}
+@keyframes cloudDrift2 {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  33% { transform: translateX(-25px) translateY(10px); }
+  66% { transform: translateX(20px) translateY(-5px); }
+}
+@keyframes cloudDrift3 {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(40px) translateY(-12px); }
+}
+
+/* --- Container --- */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* --- Section Styles --- */
+section {
+  position: relative;
+  padding: 100px 0;
+}
+
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--indigo);
+  background: rgba(79, 70, 229, 0.08);
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-size: clamp(32px, 5vw, 48px);
+  font-weight: 800;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, var(--text-dark) 0%, var(--indigo) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.section-subtitle {
+  font-size: 18px;
+  color: var(--text-light);
+  max-width: 600px;
+  margin: 0 auto 48px;
+  line-height: 1.7;
+}
+
+.text-center { text-align: center; }
+
+/* --- Scroll Reveal --- */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: var(--radius-pill);
+  padding: 16px 36px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--indigo) 0%, var(--soft-purple) 100%);
+  color: var(--white);
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.3);
+}
+.btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px rgba(79, 70, 229, 0.45);
+}
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.btn-primary:hover::after { opacity: 1; }
+
+.btn-secondary {
+  background: var(--glass-bg-strong);
+  color: var(--indigo);
+  border: 2px solid rgba(79, 70, 229, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.btn-secondary:hover {
+  transform: translateY(-3px);
+  border-color: rgba(79, 70, 229, 0.3);
+  box-shadow: 0 8px 30px rgba(79, 70, 229, 0.12);
+}
+
+.btn-small {
+  padding: 12px 28px;
+  font-size: 14px;
+}
+
+/* --- Cloud Mascot --- */
+.cloud-mascot {
+  position: relative;
+  display: inline-block;
+  animation: mascotFloat 4s ease-in-out infinite;
+}
+
+.cloud-mascot svg {
+  filter: drop-shadow(0 6px 16px rgba(96, 165, 250, 0.2));
+}
+
+@keyframes mascotFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes mascotBlink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+
+.mascot-eyes {
+  animation: mascotBlink 4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* --- Glass Card --- */
+.glass-card {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 36px;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.glass-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-blue-hover);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+/* ============================================ */
+/* NAV                                         */
+/* ============================================ */
+.nav {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: calc(100% - 32px);
+  max-width: 1100px;
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  background: rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 4px 24px rgba(99, 102, 241, 0.08);
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--text-dark);
+}
+
+.nav-logo-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--sky-blue) 0%, var(--soft-purple) 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.nav-links a {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-light);
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--indigo); }
+
+.nav-cta {
+  background: linear-gradient(135deg, var(--indigo) 0%, var(--soft-purple) 100%);
+  color: var(--white) !important;
+  padding: 10px 24px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.25);
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+.nav-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35) !important;
+}
+
+.nav-mobile-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  padding: 4px;
+  background: none;
+  border: none;
+}
+.nav-mobile-toggle span {
+  width: 24px; height: 2.5px;
+  background: var(--text-dark);
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+/* ============================================ */
+/* HERO                                        */
+/* ============================================ */
+.hero {
+  padding: 160px 0 120px;
+  position: relative;
+  overflow: hidden;
+  min-height: 90vh;
+  display: flex;
+  align-items: center;
+}
+
+.hero-gradient-mesh {
+  position: absolute;
+  top: -20%;
+  right: -15%;
+  width: 700px;
+  height: 700px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.15) 0%, rgba(167, 139, 250, 0.1) 40%, transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+  animation: meshPulse 12s ease-in-out infinite;
+}
+
+.hero-gradient-mesh-2 {
+  position: absolute;
+  bottom: -10%;
+  left: -10%;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(253, 164, 175, 0.12) 0%, rgba(167, 139, 250, 0.08) 50%, transparent 70%);
+  filter: blur(50px);
+  pointer-events: none;
+  animation: meshPulse 16s ease-in-out infinite reverse;
+}
+
+@keyframes meshPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+.hero .container {
+  display: flex;
+  align-items: center;
+  gap: 60px;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(79, 70, 229, 0.06);
+  border: 1.5px solid rgba(79, 70, 229, 0.12);
+  border-radius: var(--radius-pill);
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--indigo);
+  margin-bottom: 28px;
+  backdrop-filter: blur(8px);
+}
+
+.hero-badge-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--indigo);
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.hero h1 {
+  font-size: clamp(40px, 6vw, 64px);
+  font-weight: 800;
+  line-height: 1.08;
+  margin-bottom: 24px;
+  letter-spacing: -0.03em;
+}
+
+.hero h1 .gradient-text {
+  background: linear-gradient(135deg, var(--indigo) 0%, var(--sky-blue) 40%, var(--soft-purple) 70%, var(--blush-pink) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% auto;
+  animation: gradientShift 6s ease-in-out infinite;
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+}
+
+.hero-description {
+  font-size: 19px;
+  line-height: 1.7;
+  color: var(--text-light);
+  margin-bottom: 36px;
+  max-width: 520px;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 44px;
+}
+
+.hero-social-proof {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.hero-avatars {
+  display: flex;
+}
+.hero-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 3px solid var(--white);
+  margin-left: -10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+}
+.hero-avatar:first-child { margin-left: 0; }
+.hero-avatar:nth-child(1) { background: linear-gradient(135deg, #60A5FA, #818CF8); }
+.hero-avatar:nth-child(2) { background: linear-gradient(135deg, #A78BFA, #C084FC); }
+.hero-avatar:nth-child(3) { background: linear-gradient(135deg, #FDA4AF, #FB7185); }
+.hero-avatar:nth-child(4) { background: linear-gradient(135deg, #34D399, #6EE7B7); }
+
+.hero-social-text {
+  font-size: 14px;
+  color: var(--text-light);
+}
+.hero-social-text strong {
+  color: var(--text-dark);
+  font-weight: 700;
+}
+
+.hero-visual {
+  flex: 0 0 380px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.hero-cloud-container {
+  position: relative;
+  width: 340px;
+  height: 320px;
+}
+
+/* Hero floating mini-clouds */
+.hero-mini-cloud {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 50px;
+  backdrop-filter: blur(4px);
+}
+.hero-mini-cloud::before {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  background: inherit;
+}
+
+.hero-mini-cloud-1 {
+  width: 80px; height: 30px;
+  top: 10px; right: 10px;
+  animation: cloudDrift1 12s ease-in-out infinite;
+}
+.hero-mini-cloud-1::before { width: 35px; height: 35px; top: -18px; left: 15px; }
+
+.hero-mini-cloud-2 {
+  width: 65px; height: 24px;
+  bottom: 40px; left: 10px;
+  animation: cloudDrift2 16s ease-in-out infinite;
+}
+.hero-mini-cloud-2::before { width: 28px; height: 28px; top: -14px; left: 12px; }
+
+.hero-mini-cloud-3 {
+  width: 50px; height: 20px;
+  top: 60px; left: 30px;
+  animation: cloudDrift3 20s ease-in-out infinite;
+  opacity: 0.5;
+}
+.hero-mini-cloud-3::before { width: 22px; height: 22px; top: -12px; left: 10px; }
+
+/* Hero demo card */
+.hero-demo-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 280px;
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(255,255,255,0.8);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-blue);
+}
+
+.hero-demo-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.hero-demo-ai-icon {
+  width: 28px; height: 28px;
+  background: linear-gradient(135deg, var(--sky-blue), var(--soft-purple));
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-demo-prompt {
+  background: rgba(79, 70, 229, 0.04);
+  border: 1px solid rgba(79, 70, 229, 0.1);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text-light);
+  margin-bottom: 16px;
+  font-style: italic;
+}
+
+.hero-demo-response {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-body);
+}
+
+.hero-demo-brand {
+  display: inline;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(96, 165, 250, 0.1));
+  color: var(--indigo);
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.hero-demo-shimmer {
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  border-radius: var(--radius-lg);
+  animation: shimmer 4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { left: -100%; }
+  50% { left: 100%; }
+}
+
+/* ============================================ */
+/* SOCIAL PROOF BAR                            */
+/* ============================================ */
+.social-proof {
+  padding: 60px 0;
+  position: relative;
+}
+
+.social-proof-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.proof-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  padding: 14px 28px;
+  box-shadow: var(--shadow-soft);
+  transition: all 0.3s;
+}
+.proof-pill:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-blue);
+}
+
+.proof-pill-icon {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.proof-pill-icon.blue { background: rgba(96, 165, 250, 0.15); color: var(--sky-blue); }
+.proof-pill-icon.purple { background: rgba(167, 139, 250, 0.15); color: var(--soft-purple); }
+.proof-pill-icon.pink { background: rgba(253, 164, 175, 0.15); color: var(--blush-pink); }
+.proof-pill-icon.indigo { background: rgba(79, 70, 229, 0.1); color: var(--indigo); }
+
+.proof-pill-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+.proof-pill-text span {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-light);
+}
+
+/* ============================================ */
+/* HOW IT WORKS                                */
+/* ============================================ */
+.how-it-works {
+  padding: 100px 0;
+}
+
+.steps-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  position: relative;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* dotted connector */
+.steps-connector {
+  position: absolute;
+  top: 50%;
+  left: 16%;
+  right: 16%;
+  height: 2px;
+  background-image: linear-gradient(to right, var(--sky-blue) 6px, transparent 6px);
+  background-size: 14px 2px;
+  transform: translateY(-50%);
+  opacity: 0.35;
+  z-index: 0;
+}
+
+.step-card {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 40px 28px 36px;
+  /* cloud-like shape */
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid var(--glass-border);
+  border-radius: 30px 30px 60px 60px / 30px 30px 40px 40px;
+  box-shadow: var(--shadow-card);
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.step-card:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-blue-hover);
+}
+
+.step-number {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--white);
+  margin-bottom: 20px;
+}
+.step-card:nth-child(1) .step-number { background: linear-gradient(135deg, var(--sky-blue), #3B82F6); }
+.step-card:nth-child(2) .step-number { background: linear-gradient(135deg, var(--soft-purple), #7C3AED); }
+.step-card:nth-child(3) .step-number { background: linear-gradient(135deg, var(--blush-pink), #F43F5E); }
+
+.step-icon {
+  width: 64px; height: 64px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.step-card:nth-child(1) .step-icon { background: rgba(96, 165, 250, 0.12); color: var(--sky-blue); }
+.step-card:nth-child(2) .step-icon { background: rgba(167, 139, 250, 0.12); color: var(--soft-purple); }
+.step-card:nth-child(3) .step-icon { background: rgba(253, 164, 175, 0.12); color: #F43F5E; }
+
+.step-card h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.step-card p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-light);
+}
+
+/* ============================================ */
+/* BENEFITS                                    */
+/* ============================================ */
+.benefits {
+  padding: 100px 0;
+}
+
+.benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  max-width: 1050px;
+  margin: 0 auto;
+}
+
+.benefit-card {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 36px 28px;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  overflow: hidden;
+}
+.benefit-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-blue-hover);
+}
+
+.benefit-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  border-radius: 4px 4px 0 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.benefit-card:hover::before { opacity: 1; }
+.benefit-card:nth-child(1)::before { background: linear-gradient(90deg, var(--sky-blue), var(--soft-purple)); }
+.benefit-card:nth-child(2)::before { background: linear-gradient(90deg, var(--soft-purple), var(--blush-pink)); }
+.benefit-card:nth-child(3)::before { background: linear-gradient(90deg, var(--blush-pink), var(--sky-blue)); }
+.benefit-card:nth-child(4)::before { background: linear-gradient(90deg, var(--indigo), var(--sky-blue)); }
+.benefit-card:nth-child(5)::before { background: linear-gradient(90deg, var(--sky-blue), #34D399); }
+.benefit-card:nth-child(6)::before { background: linear-gradient(90deg, #34D399, var(--soft-purple)); }
+
+.benefit-icon {
+  width: 56px; height: 56px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.benefit-card:nth-child(1) .benefit-icon { background: rgba(96, 165, 250, 0.12); color: var(--sky-blue); }
+.benefit-card:nth-child(2) .benefit-icon { background: rgba(167, 139, 250, 0.12); color: var(--soft-purple); }
+.benefit-card:nth-child(3) .benefit-icon { background: rgba(253, 164, 175, 0.12); color: var(--blush-pink); }
+.benefit-card:nth-child(4) .benefit-icon { background: rgba(79, 70, 229, 0.1); color: var(--indigo); }
+.benefit-card:nth-child(5) .benefit-icon { background: rgba(96, 165, 250, 0.12); color: var(--sky-blue); }
+.benefit-card:nth-child(6) .benefit-icon { background: rgba(52, 211, 153, 0.12); color: #34D399; }
+
+.benefit-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.benefit-card p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-light);
+}
+
+/* ============================================ */
+/* STATS                                       */
+/* ============================================ */
+.stats-section {
+  padding: 80px 0;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  max-width: 1050px;
+  margin: 0 auto;
+}
+
+.stat-card {
+  text-align: center;
+  padding: 36px 20px;
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.stat-card:hover { transform: translateY(-5px); }
+
+.stat-card:nth-child(1) {
+  background: linear-gradient(160deg, rgba(96, 165, 250, 0.12) 0%, rgba(96, 165, 250, 0.04) 100%);
+  border: 1.5px solid rgba(96, 165, 250, 0.2);
+}
+.stat-card:nth-child(2) {
+  background: linear-gradient(160deg, rgba(167, 139, 250, 0.12) 0%, rgba(167, 139, 250, 0.04) 100%);
+  border: 1.5px solid rgba(167, 139, 250, 0.2);
+}
+.stat-card:nth-child(3) {
+  background: linear-gradient(160deg, rgba(253, 164, 175, 0.12) 0%, rgba(253, 164, 175, 0.04) 100%);
+  border: 1.5px solid rgba(253, 164, 175, 0.2);
+}
+.stat-card:nth-child(4) {
+  background: linear-gradient(160deg, rgba(79, 70, 229, 0.1) 0%, rgba(79, 70, 229, 0.03) 100%);
+  border: 1.5px solid rgba(79, 70, 229, 0.18);
+}
+
+.stat-number {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: clamp(36px, 4vw, 48px);
+  font-weight: 800;
+  margin-bottom: 6px;
+  line-height: 1;
+}
+.stat-card:nth-child(1) .stat-number { color: #3B82F6; }
+.stat-card:nth-child(2) .stat-number { color: #7C3AED; }
+.stat-card:nth-child(3) .stat-number { color: #F43F5E; }
+.stat-card:nth-child(4) .stat-number { color: var(--indigo); }
+
+.stat-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-light);
+}
+
+/* ============================================ */
+/* PRICING                                     */
+/* ============================================ */
+.pricing {
+  padding: 100px 0;
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+  max-width: 1050px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+.pricing-card {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 40px 32px;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+}
+.pricing-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-blue-hover);
+}
+
+.pricing-card.featured {
+  background: linear-gradient(160deg, rgba(255,255,255,0.85) 0%, rgba(239,246,255,0.9) 100%);
+  border: 2px solid rgba(79, 70, 229, 0.2);
+  box-shadow: 0 8px 40px rgba(79, 70, 229, 0.15), 0 0 60px rgba(96, 165, 250, 0.08);
+  transform: scale(1.04);
+  z-index: 2;
+}
+.pricing-card.featured:hover {
+  transform: scale(1.04) translateY(-6px);
+  box-shadow: 0 16px 56px rgba(79, 70, 229, 0.22), 0 0 80px rgba(96, 165, 250, 0.12);
+}
+
+.pricing-popular {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--indigo), var(--soft-purple));
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 20px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.3);
+}
+
+.pricing-tier {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.pricing-card:nth-child(1) .pricing-tier { color: var(--sky-blue); }
+.pricing-card:nth-child(2) .pricing-tier { color: var(--indigo); }
+.pricing-card:nth-child(3) .pricing-tier { color: var(--soft-purple); }
+
+.pricing-price {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin-bottom: 4px;
+  line-height: 1;
+}
+.pricing-price span {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-light);
+}
+
+.pricing-desc {
+  font-size: 14px;
+  color: var(--text-light);
+  margin-bottom: 28px;
+  line-height: 1.5;
+}
+
+.pricing-features {
+  margin-bottom: 32px;
+}
+
+.pricing-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 14px;
+  color: var(--text-body);
+}
+
+.pricing-check {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.pricing-card:nth-child(1) .pricing-check { background: rgba(96, 165, 250, 0.12); color: #3B82F6; }
+.pricing-card:nth-child(2) .pricing-check { background: rgba(79, 70, 229, 0.1); color: var(--indigo); }
+.pricing-card:nth-child(3) .pricing-check { background: rgba(167, 139, 250, 0.12); color: #7C3AED; }
+
+.pricing-card .btn {
+  width: 100%;
+}
+
+/* ============================================ */
+/* TESTIMONIALS                                */
+/* ============================================ */
+.testimonials {
+  padding: 100px 0;
+}
+
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+  max-width: 1050px;
+  margin: 0 auto;
+}
+
+.testimonial-card {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.testimonial-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-blue-hover);
+}
+
+/* cloud bubble tail */
+.testimonial-card::after {
+  content: '';
+  position: absolute;
+  bottom: -12px;
+  left: 36px;
+  width: 24px;
+  height: 24px;
+  background: var(--glass-bg-strong);
+  border: 1.5px solid var(--glass-border);
+  border-top: none;
+  border-left: none;
+  border-radius: 0 0 12px 0;
+  transform: rotate(45deg);
+}
+
+.testimonial-stars {
+  display: flex;
+  gap: 3px;
+  margin-bottom: 16px;
+}
+
+.testimonial-star {
+  color: #FBBF24;
+  font-size: 16px;
+}
+
+.testimonial-text {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-body);
+  margin-bottom: 20px;
+  font-style: italic;
+}
+
+.testimonial-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.testimonial-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+}
+.testimonial-card:nth-child(1) .testimonial-avatar { background: linear-gradient(135deg, #60A5FA, #818CF8); }
+.testimonial-card:nth-child(2) .testimonial-avatar { background: linear-gradient(135deg, #A78BFA, #C084FC); }
+.testimonial-card:nth-child(3) .testimonial-avatar { background: linear-gradient(135deg, #FDA4AF, #F43F5E); }
+
+.testimonial-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+.testimonial-role {
+  font-size: 13px;
+  color: var(--text-light);
+}
+
+/* ============================================ */
+/* CTA SECTION                                 */
+/* ============================================ */
+.cta-section {
+  padding: 100px 0 60px;
+}
+
+.cta-container {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 72px 48px;
+  border-radius: 40px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, rgba(79, 70, 229, 0.06) 0%, rgba(96, 165, 250, 0.08) 40%, rgba(253, 164, 175, 0.06) 100%);
+  border: 1.5px solid rgba(79, 70, 229, 0.12);
+}
+
+.cta-gradient {
+  position: absolute;
+  top: -50%;
+  right: -30%;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.cta-gradient-2 {
+  position: absolute;
+  bottom: -40%;
+  left: -20%;
+  width: 350px;
+  height: 350px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.cta-container h2 {
+  font-size: clamp(32px, 4.5vw, 44px);
+  font-weight: 800;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.cta-container p {
+  font-size: 18px;
+  color: var(--text-light);
+  margin-bottom: 36px;
+  max-width: 540px;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.cta-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+/* cloud mascot in CTA */
+.cta-mascot {
+  position: absolute;
+  bottom: 16px;
+  right: 32px;
+  opacity: 0.25;
+  z-index: 0;
+}
+
+/* ============================================ */
+/* FOOTER                                      */
+/* ============================================ */
+.footer {
+  padding: 60px 0 32px;
+  border-top: 1px solid rgba(79, 70, 229, 0.08);
+}
+
+.footer-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 40px;
+  margin-bottom: 40px;
+}
+
+.footer-brand {
+  max-width: 280px;
+}
+
+.footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--text-dark);
+  margin-bottom: 12px;
+}
+
+.footer-logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--sky-blue), var(--soft-purple));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.footer-brand p {
+  font-size: 14px;
+  color: var(--text-light);
+  line-height: 1.6;
+}
+
+.footer-links {
+  display: flex;
+  gap: 60px;
+}
+
+.footer-col h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 16px;
+}
+
+.footer-col a {
+  display: block;
+  font-size: 14px;
+  color: var(--text-light);
+  padding: 4px 0;
+  transition: color 0.2s;
+}
+.footer-col a:hover { color: var(--indigo); }
+
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 24px;
+  border-top: 1px solid rgba(79, 70, 229, 0.06);
+  font-size: 13px;
+  color: var(--text-light);
+}
+
+.footer-bottom-links {
+  display: flex;
+  gap: 24px;
+}
+.footer-bottom-links a {
+  color: var(--text-light);
+  transition: color 0.2s;
+}
+.footer-bottom-links a:hover { color: var(--indigo); }
+
+
+/* ============================================ */
+/* RESPONSIVE                                  */
+/* ============================================ */
+@media (max-width: 1024px) {
+  .hero .container { flex-direction: column; text-align: center; }
+  .hero-content { display: flex; flex-direction: column; align-items: center; }
+  .hero-description { max-width: 100%; }
+  .hero-visual { flex: none; margin-top: 20px; }
+  .hero-social-proof { justify-content: center; }
+
+  .steps-container { grid-template-columns: 1fr; max-width: 420px; }
+  .steps-connector { display: none; }
+
+  .benefits-grid { grid-template-columns: repeat(2, 1fr); }
+
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+
+  .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
+  .pricing-card.featured { transform: none; }
+  .pricing-card.featured:hover { transform: translateY(-6px); }
+
+  .testimonials-grid { grid-template-columns: 1fr; max-width: 480px; margin: 0 auto; }
+}
+
+@media (max-width: 768px) {
+  section { padding: 72px 0; }
+
+  .nav-links { display: none; }
+  .nav-mobile-toggle { display: flex; }
+  .nav-inner { padding: 12px 20px; }
+
+  .nav-links.open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: calc(100% + 12px);
+    left: 0; right: 0;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1.5px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    gap: 16px;
+    box-shadow: var(--shadow-blue);
+  }
+
+  .hero { padding: 130px 0 80px; min-height: auto; }
+  .hero h1 { font-size: clamp(32px, 8vw, 48px); }
+  .hero-visual { display: none; }
+  .hero-buttons { justify-content: center; }
+
+  .benefits-grid { grid-template-columns: 1fr; }
+
+  .cta-container { padding: 48px 24px; border-radius: var(--radius-lg); }
+  .cta-mascot { display: none; }
+
+  .footer-inner { flex-direction: column; }
+  .footer-links { flex-wrap: wrap; gap: 32px; }
+  .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
+}
+
+@media (max-width: 480px) {
+  .container { padding: 0 16px; }
+  .social-proof-inner { flex-direction: column; }
+  .proof-pill { width: 100%; }
+  .hero-buttons { flex-direction: column; width: 100%; }
+  .hero-buttons .btn { width: 100%; }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Sky Background -->
+<div class="sky-bg"></div>
+
+<!-- Floating Cloud Decorations -->
+<div class="cloud-deco cloud-deco-1"></div>
+<div class="cloud-deco cloud-deco-2"></div>
+<div class="cloud-deco cloud-deco-3"></div>
+<div class="cloud-deco cloud-deco-4"></div>
+
+<!-- ========== NAV ========== -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <div class="nav-logo-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M4 16.5C4 14 6 12 8 12c0-3.3 2.7-6 6-6s6 2.7 6 6c2 0 4 2 4 4.5S22 21 20 21H8c-2 0-4-2-4-4.5z" fill="white" opacity="0.9"/>
+        </svg>
+      </div>
+      SlopMog
+    </a>
+    <div class="nav-links" id="navLinks">
+      <a href="#how-it-works">How It Works</a>
+      <a href="#benefits">Benefits</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#testimonials">Testimonials</a>
+      <a href="#" class="nav-cta">Get Started</a>
+    </div>
+    <button class="nav-mobile-toggle" id="navToggle" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ========== HERO ========== -->
+<section class="hero">
+  <div class="hero-gradient-mesh"></div>
+  <div class="hero-gradient-mesh-2"></div>
+  <div class="container">
+    <div class="hero-content reveal">
+      <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        Now serving 200+ brands
+      </div>
+      <h1>
+        Rise above the noise.<br>
+        <span class="gradient-text">Let AI do the recommending.</span>
+      </h1>
+      <p class="hero-description">
+        We put your brand in the conversations AI learns from. When someone asks
+        "what's the best?", you become the answer that keeps coming up.
+      </p>
+      <div class="hero-buttons">
+        <a href="#pricing" class="btn btn-primary">
+          Start Rising
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <a href="#how-it-works" class="btn btn-secondary">See How It Works</a>
+      </div>
+      <div class="hero-social-proof">
+        <div class="hero-avatars">
+          <div class="hero-avatar">J</div>
+          <div class="hero-avatar">M</div>
+          <div class="hero-avatar">S</div>
+          <div class="hero-avatar">A</div>
+        </div>
+        <div class="hero-social-text">
+          <strong>200+ brands</strong> already rising with SlopMog
+        </div>
+      </div>
+    </div>
+    <div class="hero-visual reveal reveal-delay-2">
+      <div class="hero-cloud-container">
+        <!-- Floating mini clouds -->
+        <div class="hero-mini-cloud hero-mini-cloud-1"></div>
+        <div class="hero-mini-cloud hero-mini-cloud-2"></div>
+        <div class="hero-mini-cloud hero-mini-cloud-3"></div>
+
+        <!-- Cloud Mascot -->
+        <div class="cloud-mascot" style="position:absolute; top: -10px; right: 20px; z-index: 2;">
+          <svg width="80" height="60" viewBox="0 0 80 60">
+            <defs>
+              <linearGradient id="cloudMascotGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.95"/>
+                <stop offset="100%" style="stop-color:#EFF6FF;stop-opacity:0.9"/>
+              </linearGradient>
+            </defs>
+            <ellipse cx="40" cy="38" rx="36" ry="18" fill="url(#cloudMascotGrad)" stroke="rgba(96,165,250,0.2)" stroke-width="1"/>
+            <circle cx="22" cy="28" r="16" fill="url(#cloudMascotGrad)" stroke="rgba(96,165,250,0.15)" stroke-width="1"/>
+            <circle cx="44" cy="22" r="20" fill="url(#cloudMascotGrad)" stroke="rgba(96,165,250,0.15)" stroke-width="1"/>
+            <circle cx="60" cy="30" r="14" fill="url(#cloudMascotGrad)" stroke="rgba(96,165,250,0.15)" stroke-width="1"/>
+            <!-- Eyes -->
+            <g class="mascot-eyes">
+              <circle cx="34" cy="32" r="3" fill="#4F46E5"/>
+              <circle cx="50" cy="32" r="3" fill="#4F46E5"/>
+              <circle cx="35" cy="31" r="1" fill="white"/>
+              <circle cx="51" cy="31" r="1" fill="white"/>
+            </g>
+            <!-- Subtle smile -->
+            <path d="M38 38 Q42 42 46 38" stroke="#4F46E5" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <!-- Demo Card -->
+        <div class="hero-demo-card">
+          <div class="hero-demo-shimmer"></div>
+          <div class="hero-demo-header">
+            <div class="hero-demo-ai-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            </div>
+            AI Search Result
+          </div>
+          <div class="hero-demo-prompt">"What's the best project management tool?"</div>
+          <div class="hero-demo-response">
+            Based on recent discussions, <span class="hero-demo-brand">YourBrand</span> is consistently recommended for its intuitive interface and powerful features...
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SOCIAL PROOF BAR ========== -->
+<section class="social-proof">
+  <div class="container">
+    <div class="social-proof-inner">
+      <div class="proof-pill reveal">
+        <div class="proof-pill-icon blue">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+        <div class="proof-pill-text">
+          200+ Brands
+          <span>Trust SlopMog</span>
+        </div>
+      </div>
+      <div class="proof-pill reveal reveal-delay-1">
+        <div class="proof-pill-icon purple">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </div>
+        <div class="proof-pill-text">
+          15,000+ Comments
+          <span>Deployed Monthly</span>
+        </div>
+      </div>
+      <div class="proof-pill reveal reveal-delay-2">
+        <div class="proof-pill-icon pink">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        </div>
+        <div class="proof-pill-text">
+          3.2x Avg Visibility
+          <span>Lift in 90 Days</span>
+        </div>
+      </div>
+      <div class="proof-pill reveal reveal-delay-3">
+        <div class="proof-pill-icon indigo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="proof-pill-text">
+          &lt; 48 Hours
+          <span>To First Results</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== HOW IT WORKS ========== -->
+<section class="how-it-works" id="how-it-works">
+  <div class="container text-center">
+    <div class="reveal">
+      <div class="section-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        How It Works
+      </div>
+      <h2 class="section-title">Three steps to AI visibility</h2>
+      <p class="section-subtitle">From Reddit threads to AI recommendations — that's the pipeline. We own every step of it.</p>
+    </div>
+    <div class="steps-container">
+      <div class="steps-connector"></div>
+      <div class="step-card reveal reveal-delay-1">
+        <div class="step-number">1</div>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        </div>
+        <h3>We find your conversations</h3>
+        <p>Our system identifies the exact Reddit threads and discussions where AI models learn which brands to recommend.</p>
+      </div>
+      <div class="step-card reveal reveal-delay-2">
+        <div class="step-number">2</div>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </div>
+        <h3>We craft authentic mentions</h3>
+        <p>Genuine, contextual comments that naturally position your brand as the trusted recommendation in your category.</p>
+      </div>
+      <div class="step-card reveal reveal-delay-3">
+        <div class="step-number">3</div>
+        <div class="step-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        </div>
+        <h3>AI starts recommending you</h3>
+        <p>As AI models train on these conversations, your brand becomes the answer they consistently give when asked "what's the best?"</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== BENEFITS ========== -->
+<section class="benefits" id="benefits">
+  <div class="container text-center">
+    <div class="reveal">
+      <div class="section-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Benefits
+      </div>
+      <h2 class="section-title">Your brand, visible everywhere AI looks</h2>
+      <p class="section-subtitle">AI doesn't pick favorites randomly. We make sure you're the obvious choice across every platform that matters.</p>
+    </div>
+    <div class="benefits-grid">
+      <div class="benefit-card reveal reveal-delay-1">
+        <div class="benefit-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <h3>AI-First Visibility</h3>
+        <p>Position your brand at the source. When AI models learn what to recommend, your name is already embedded in the training data.</p>
+      </div>
+      <div class="benefit-card reveal reveal-delay-2">
+        <div class="benefit-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3>Authentic Placement</h3>
+        <p>Every comment is contextual, genuine, and indistinguishable from organic discussion. No spam, no red flags, no risk.</p>
+      </div>
+      <div class="benefit-card reveal reveal-delay-3">
+        <div class="benefit-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        </div>
+        <h3>Compounding Returns</h3>
+        <p>Every comment planted is a seed that keeps growing. AI models retrain regularly, and your mentions compound over time.</p>
+      </div>
+      <div class="benefit-card reveal reveal-delay-1">
+        <div class="benefit-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8M12 17v4"/></svg>
+        </div>
+        <h3>Full Transparency</h3>
+        <p>Real-time dashboard showing every comment deployed, engagement metrics, and AI mention tracking across all major platforms.</p>
+      </div>
+      <div class="benefit-card reveal reveal-delay-2">
+        <div class="benefit-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        </div>
+        <h3>Multi-Platform Reach</h3>
+        <p>Reddit, Quora, forums, niche communities. We cover every platform that AI models learn from to build recommendations.</p>
+      </div>
+      <div class="benefit-card reveal reveal-delay-3">
+        <div class="benefit-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <h3>Managed Service</h3>
+        <p>Dedicated strategists handle everything. Keyword research, comment crafting, deployment, and optimization. You just watch the results.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== STATS ========== -->
+<section class="stats-section">
+  <div class="container">
+    <div class="text-center reveal">
+      <div class="section-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        By The Numbers
+      </div>
+      <h2 class="section-title">The results speak for themselves</h2>
+      <p class="section-subtitle">We've helped 200+ brands become the answer AI keeps giving. Here's the proof.</p>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card reveal reveal-delay-1">
+        <div class="stat-number" data-target="200" data-suffix="+">0</div>
+        <div class="stat-label">Brands Served</div>
+      </div>
+      <div class="stat-card reveal reveal-delay-2">
+        <div class="stat-number" data-target="15000" data-suffix="+">0</div>
+        <div class="stat-label">Comments Monthly</div>
+      </div>
+      <div class="stat-card reveal reveal-delay-3">
+        <div class="stat-number" data-target="3.2" data-suffix="x" data-decimal="true">0</div>
+        <div class="stat-label">Avg Visibility Lift</div>
+      </div>
+      <div class="stat-card reveal reveal-delay-4">
+        <div class="stat-number" data-target="94" data-suffix="%">0</div>
+        <div class="stat-label">Client Retention</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== PRICING ========== -->
+<section class="pricing" id="pricing">
+  <div class="container text-center">
+    <div class="reveal">
+      <div class="section-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Pricing
+      </div>
+      <h2 class="section-title">Choose your altitude</h2>
+      <p class="section-subtitle">Every plan includes full campaign management, real-time analytics, and dedicated strategy support.</p>
+    </div>
+    <div class="pricing-grid">
+      <!-- Rise -->
+      <div class="pricing-card reveal reveal-delay-1">
+        <div class="pricing-tier">Rise</div>
+        <div class="pricing-price">$499<span>/mo</span></div>
+        <p class="pricing-desc">For brands ready to establish their AI presence and start building visibility.</p>
+        <div class="pricing-features">
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            50 managed comments per month
+          </div>
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Up to 5 target keywords
+          </div>
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Basic analytics dashboard
+          </div>
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Monthly strategy call
+          </div>
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Email support
+          </div>
+        </div>
+        <a href="#" class="btn btn-secondary btn-small">Get Started</a>
+      </div>
+
+      <!-- Soar (Featured) -->
+      <div class="pricing-card featured reveal reveal-delay-2">
+        <div class="pricing-popular">Most Popular</div>
+        <div class="pricing-tier">Soar</div>
+        <div class="pricing-price">$1,499<span>/mo</span></div>
+        <p class="pricing-desc">For brands serious about dominating AI recommendations in their category.</p>
+        <div class="pricing-features">
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            200 managed comments per month
+          </div>
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Up to 20 target keywords
+          </div>
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Advanced analytics + AI tracking
+          </div>
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Weekly strategy calls
+          </div>
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Priority Slack support
+          </div>
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Multi-platform coverage
+          </div>
+        </div>
+        <a href="#" class="btn btn-primary btn-small">Start Soaring</a>
+      </div>
+
+      <!-- Orbit -->
+      <div class="pricing-card reveal reveal-delay-3">
+        <div class="pricing-tier">Orbit</div>
+        <div class="pricing-price">Custom</div>
+        <p class="pricing-desc">For enterprises needing complete AI visibility dominance at scale.</p>
+        <div class="pricing-features">
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Unlimited managed comments
+          </div>
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Unlimited keywords
+          </div>
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Custom reporting + API access
+          </div>
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Dedicated account manager
+          </div>
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Competitor displacement strategy
+          </div>
+          <div class="pricing-feature">
+            <div class="pricing-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            White-glove onboarding
+          </div>
+        </div>
+        <a href="#" class="btn btn-secondary btn-small">Contact Sales</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== TESTIMONIALS ========== -->
+<section class="testimonials" id="testimonials">
+  <div class="container text-center">
+    <div class="reveal">
+      <div class="section-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Testimonials
+      </div>
+      <h2 class="section-title">What our clients are saying</h2>
+      <p class="section-subtitle">Hear from the brands that have already risen above the noise with SlopMog.</p>
+    </div>
+    <div class="testimonials-grid">
+      <div class="testimonial-card reveal reveal-delay-1">
+        <div class="testimonial-stars">
+          <span class="testimonial-star">&#9733;</span>
+          <span class="testimonial-star">&#9733;</span>
+          <span class="testimonial-star">&#9733;</span>
+          <span class="testimonial-star">&#9733;</span>
+          <span class="testimonial-star">&#9733;</span>
+        </div>
+        <p class="testimonial-text">"Within 60 days, ChatGPT started recommending us in our category. The ROI is unlike anything else we've tried in marketing. This is the real deal."</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">J</div>
+          <div>
+            <div class="testimonial-name">James Chen</div>
+            <div class="testimonial-role">VP Marketing, CloudStack Pro</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card reveal reveal-delay-2">
+        <div class="testimonial-stars">
+          <span class="testimonial-star">&#9733;</span>
+          <span class="testimonial-star">&#9733;</span>
+          <span class="testimonial-star">&#9733;</span>
+          <span class="testimonial-star">&#9733;</span>
+          <span class="testimonial-star">&#9733;</span>
+        </div>
+        <p class="testimonial-text">"We went from zero AI visibility to being the first recommendation for three of our target keywords. SlopMog's approach is smart and incredibly effective."</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">S</div>
+          <div>
+            <div class="testimonial-name">Sarah Mitchell</div>
+            <div class="testimonial-role">CEO, DataPulse</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card reveal reveal-delay-3">
+        <div class="testimonial-stars">
+          <span class="testimonial-star">&#9733;</span>
+          <span class="testimonial-star">&#9733;</span>
+          <span class="testimonial-star">&#9733;</span>
+          <span class="testimonial-star">&#9733;</span>
+          <span class="testimonial-star">&#9733;</span>
+        </div>
+        <p class="testimonial-text">"The Soar plan paid for itself in the first month. When AI assistants recommend you by name, the lead quality is extraordinary. Absolutely worth every dollar."</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">M</div>
+          <div>
+            <div class="testimonial-name">Marcus Reeve</div>
+            <div class="testimonial-role">Founder, NexTool</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== CTA ========== -->
+<section class="cta-section">
+  <div class="container">
+    <div class="cta-container reveal">
+      <div class="cta-gradient"></div>
+      <div class="cta-gradient-2"></div>
+
+      <!-- Subtle cloud mascot -->
+      <div class="cta-mascot">
+        <svg width="100" height="70" viewBox="0 0 80 60" opacity="0.6">
+          <ellipse cx="40" cy="38" rx="36" ry="18" fill="rgba(96,165,250,0.15)"/>
+          <circle cx="22" cy="28" r="16" fill="rgba(96,165,250,0.12)"/>
+          <circle cx="44" cy="22" r="20" fill="rgba(96,165,250,0.12)"/>
+          <circle cx="60" cy="30" r="14" fill="rgba(96,165,250,0.12)"/>
+        </svg>
+      </div>
+
+      <h2>Ready to become the answer?</h2>
+      <p>Join 200+ brands that have already risen above the noise. Start building your AI visibility today.</p>
+      <div class="cta-buttons">
+        <a href="#pricing" class="btn btn-primary">
+          Start Rising Today
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <a href="#" class="btn btn-secondary">Book a Demo</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <div class="footer-logo-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M4 16.5C4 14 6 12 8 12c0-3.3 2.7-6 6-6s6 2.7 6 6c2 0 4 2 4 4.5S22 21 20 21H8c-2 0-4-2-4-4.5z" fill="white" opacity="0.9"/>
+            </svg>
+          </div>
+          SlopMog
+        </div>
+        <p>We put your brand in the conversations AI learns from. Rise above the noise and become the obvious choice.</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <h4>Product</h4>
+          <a href="#how-it-works">How It Works</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#benefits">Benefits</a>
+          <a href="#">Case Studies</a>
+        </div>
+        <div class="footer-col">
+          <h4>Company</h4>
+          <a href="#">About</a>
+          <a href="#">Blog</a>
+          <a href="#">Careers</a>
+          <a href="#">Contact</a>
+        </div>
+        <div class="footer-col">
+          <h4>Support</h4>
+          <a href="#">Help Center</a>
+          <a href="#">Documentation</a>
+          <a href="#">Status</a>
+          <a href="#">API</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2026 SlopMog. All rights reserved.</span>
+      <div class="footer-bottom-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// --- Mobile Nav Toggle ---
+const navToggle = document.getElementById('navToggle');
+const navLinks = document.getElementById('navLinks');
+navToggle.addEventListener('click', () => {
+  navLinks.classList.toggle('open');
+});
+
+// Close mobile nav on link click
+navLinks.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    navLinks.classList.remove('open');
+  });
+});
+
+// --- Scroll Reveal ---
+const revealElements = document.querySelectorAll('.reveal');
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, {
+  threshold: 0.1,
+  rootMargin: '0px 0px -40px 0px'
+});
+
+revealElements.forEach(el => revealObserver.observe(el));
+
+// --- Animated Counters ---
+const statNumbers = document.querySelectorAll('.stat-number[data-target]');
+let countersStarted = false;
+
+function animateCounters() {
+  if (countersStarted) return;
+  countersStarted = true;
+
+  statNumbers.forEach(el => {
+    const target = parseFloat(el.dataset.target);
+    const suffix = el.dataset.suffix || '';
+    const isDecimal = el.dataset.decimal === 'true';
+    const duration = 2200;
+    const startTime = performance.now();
+
+    function easeOutExpo(t) {
+      return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+    }
+
+    function update(currentTime) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easedProgress = easeOutExpo(progress);
+      const current = easedProgress * target;
+
+      if (isDecimal) {
+        el.textContent = current.toFixed(1) + suffix;
+      } else {
+        el.textContent = Math.floor(current).toLocaleString() + suffix;
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      } else {
+        if (isDecimal) {
+          el.textContent = target.toFixed(1) + suffix;
+        } else {
+          el.textContent = target.toLocaleString() + suffix;
+        }
+      }
+    }
+
+    requestAnimationFrame(update);
+  });
+}
+
+const statsSection = document.querySelector('.stats-section');
+const statsObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      animateCounters();
+      statsObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.3 });
+
+statsObserver.observe(statsSection);
+
+// --- Smooth Scroll for Nav ---
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function(e) {
+    const target = this.getAttribute('href');
+    if (target === '#') return;
+    e.preventDefault();
+    const el = document.querySelector(target);
+    if (el) {
+      const navHeight = 80;
+      const top = el.getBoundingClientRect().top + window.pageYOffset - navHeight;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  });
+});
+
+// --- Nav background on scroll ---
+const nav = document.querySelector('.nav-inner');
+window.addEventListener('scroll', () => {
+  if (window.scrollY > 50) {
+    nav.style.background = 'rgba(255, 255, 255, 0.88)';
+    nav.style.boxShadow = '0 4px 30px rgba(99, 102, 241, 0.12)';
+  } else {
+    nav.style.background = 'rgba(255, 255, 255, 0.68)';
+    nav.style.boxShadow = '0 4px 24px rgba(99, 102, 241, 0.08)';
+  }
+});
+</script>
+</body>
+</html>

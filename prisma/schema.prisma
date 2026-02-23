@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── NextAuth Models ───────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  id         String   @id @default(cuid())
+  token      String   @unique
+  identifier String
+  expires    DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([identifier])
+}
+
+// ─── User ──────────────────────────────────────────────────────
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model User {
+  id               String    @id @default(cuid())
+  name             String?
+  email            String?   @unique
+  emailVerified    DateTime?
+  image            String?
+  password         String?
+  credits          Int       @default(0)
+  permanentCredits Int       @default(0)
+  stripeCustomerId String?   @unique
+  extraInfo        Json?
+
+  accounts       Account[]
+  sessions       Session[]
+  stripeCustomer StripeCustomer?
+  creditHistory  UserCreditHistory[]
+  campaigns      Campaign[]
+
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Stripe Models ─────────────────────────────────────────────
+
+model StripeCustomer {
+  id            String              @id // Stripe customer ID
+  user          User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String?             @unique
+  email         String?
+  name          String?
+  metadata      Json?
+  subscriptions StripeSubscription[]
+  charges       StripeCharge[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@map("stripe_customers")
+}
+
+model StripeProduct {
+  id          String        @id // Stripe product ID
+  name        String
+  description String?
+  active      Boolean       @default(true)
+  metadata    Json?
+  prices      StripePrice[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("stripe_products")
+}
+
+model StripePrice {
+  id            String              @id // Stripe price ID
+  product       StripeProduct?      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId     String?
+  active        Boolean             @default(true)
+  currency      String
+  unitAmount    Int // Amount in cents
+  type          String // one_time or recurring
+  interval      String? // month, year
+  intervalCount Int?
+  metadata      Json?
+  subscriptions StripeSubscription[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@map("stripe_prices")
+}
+
+model StripeSubscription {
+  id                 String         @id // Stripe subscription ID
+  customer           StripeCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId         String
+  price              StripePrice    @relation(fields: [priceId], references: [id], onDelete: Cascade)
+  priceId            String
+  status             String // active, past_due, canceled, etc.
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  canceledAt         DateTime?
+  metadata           Json?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@map("stripe_subscriptions")
+}
+
+model StripeCharge {
+  id            String         @id // Stripe charge ID
+  customer      StripeCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId    String
+  amount        Int // Amount in cents
+  currency      String
+  status        String // succeeded, pending, failed
+  description   String?
+  metadata      Json?
+  paymentMethod String?
+  refunded      Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("stripe_charges")
+}
+
+// ─── Credits ───────────────────────────────────────────────────
+
+enum CreditReason {
+  PURCHASE
+  SUBSCRIPTION_CREATE
+  SUBSCRIPTION_RENEWAL
+  SUBSCRIPTION_UPDATE
+  CAMPAIGN_USAGE
+  REGISTRATION_BONUS
+  PROMOTION
+  OTHER
+}
+
+model UserCreditHistory {
+  id              String       @id @default(cuid())
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId          String?
+  credits         Int // Amount added/removed
+  previousCredits Int
+  newCredits      Int
+  reason          CreditReason @default(OTHER)
+  reasonExtra     String?      @db.Text
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([userId])
+}
+
+// ─── Campaign Models ───────────────────────────────────────────
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  FAILED
+}
+
+model Campaign {
+  id          String         @id @default(cuid())
+  name        String
+  description String?        @db.Text
+  status      CampaignStatus @default(DRAFT)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  keywords    CampaignKeyword[]
+  posts       CampaignPost[]
+  creditsUsed Int            @default(0)
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model CampaignKeyword {
+  id         String   @id @default(cuid())
+  keyword    String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([campaignId])
+}
+
+enum PostStatus {
+  PENDING
+  GENERATED
+  POSTED
+  FAILED
+}
+
+model CampaignPost {
+  id           String     @id @default(cuid())
+  campaign     Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId   String
+  content      String     @db.Text
+  subreddit    String?
+  threadUrl    String?
+  postUrl      String?
+  status       PostStatus @default(PENDING)
+  postedAt     DateTime?
+  metadata     Json?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([campaignId])
+  @@index([status])
+}

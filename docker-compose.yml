@@ -1,0 +1,36 @@
+version: "3.8"
+services:
+  postgres:
+    image: postgres:latest
+    container_name: slopmog_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: slopmog
+    ports:
+      - "5457:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  stripe-cli:
+    image: stripe/stripe-cli
+    container_name: slopmog_stripe-cli
+    command: "listen --api-key ${STRIPE_SECRET_KEY} --forward-to host.docker.internal:3007/api/webhooks/stripe"
+    environment:
+      - STRIPE_API_KEY=${STRIPE_SECRET_KEY}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  redis:
+    image: redis:latest
+    container_name: slopmog_redis
+    ports:
+      - "6406:6379"
+
+volumes:
+  postgres_data:

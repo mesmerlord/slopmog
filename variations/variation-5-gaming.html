@@ -1,0 +1,2236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlopMog -- Insert Coin to Dominate AI Search</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+/* ============================
+   CSS VARIABLES & RESET
+   ============================ */
+:root {
+  --bg-deep: #0a0a1a;
+  --bg-navy: #0d1129;
+  --bg-purple: #1a1035;
+  --bg-card: #141432;
+  --bg-card-hover: #1c1c48;
+
+  --neon-cyan: #00f5ff;
+  --neon-magenta: #ff2d95;
+  --neon-yellow: #ffd700;
+  --neon-green: #39ff14;
+  --neon-orange: #ff6a00;
+
+  --cyan-glow: 0 0 20px rgba(0, 245, 255, 0.4), 0 0 60px rgba(0, 245, 255, 0.15);
+  --magenta-glow: 0 0 20px rgba(255, 45, 149, 0.4), 0 0 60px rgba(255, 45, 149, 0.15);
+  --yellow-glow: 0 0 20px rgba(255, 215, 0, 0.4), 0 0 60px rgba(255, 215, 0, 0.15);
+
+  --text-primary: #e8e8ff;
+  --text-secondary: #9a9ac0;
+  --text-dim: #5a5a7a;
+
+  --font-body: 'Outfit', sans-serif;
+  --font-pixel: 'Press Start 2P', monospace;
+
+  --border-glow: 1px solid rgba(0, 245, 255, 0.2);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--neon-cyan) var(--bg-deep);
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================
+   PARTICLE CANVAS
+   ============================ */
+#particles {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============================
+   SCANLINE OVERLAY
+   ============================ */
+.scanlines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+}
+
+/* ============================
+   NAVIGATION
+   ============================ */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 0 2rem;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(10, 10, 26, 0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0, 245, 255, 0.1);
+}
+
+.nav-logo {
+  font-family: var(--font-pixel);
+  font-size: 0.85rem;
+  color: var(--neon-cyan);
+  text-shadow: var(--cyan-glow);
+  letter-spacing: 2px;
+}
+
+.nav-logo .blink {
+  animation: blink 1s step-end infinite;
+}
+
+.nav-links {
+  display: flex;
+  gap: 2rem;
+  list-style: none;
+  align-items: center;
+}
+
+.nav-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: color 0.3s, text-shadow 0.3s;
+}
+
+.nav-links a:hover {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 10px rgba(0, 245, 255, 0.5);
+}
+
+.nav-cta {
+  padding: 0.5rem 1.2rem;
+  background: var(--neon-magenta);
+  color: #fff !important;
+  border-radius: 6px;
+  font-weight: 700 !important;
+  text-shadow: none !important;
+  box-shadow: var(--magenta-glow);
+  transition: transform 0.2s, box-shadow 0.3s !important;
+}
+
+.nav-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(255, 45, 149, 0.6), 0 0 80px rgba(255, 45, 149, 0.2) !important;
+  color: #fff !important;
+}
+
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.nav-hamburger span {
+  width: 24px;
+  height: 2px;
+  background: var(--neon-cyan);
+  transition: all 0.3s;
+}
+
+/* ============================
+   XP BAR (top of page)
+   ============================ */
+.xp-bar-container {
+  position: fixed;
+  top: 70px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(0, 245, 255, 0.1);
+  z-index: 999;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta), var(--neon-yellow));
+  transition: width 0.3s;
+  box-shadow: 0 0 10px rgba(0, 245, 255, 0.5);
+}
+
+/* ============================
+   HERO SECTION
+   ============================ */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 8rem 2rem 4rem;
+  overflow: hidden;
+}
+
+.hero-bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+}
+
+.hero-glow {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.hero-glow-1 {
+  top: 10%;
+  left: 20%;
+  background: var(--neon-magenta);
+}
+
+.hero-glow-2 {
+  bottom: 10%;
+  right: 15%;
+  background: var(--neon-cyan);
+}
+
+.hero-glow-3 {
+  top: 40%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-purple);
+  width: 800px;
+  height: 400px;
+  opacity: 0.5;
+}
+
+.hero-coin-prompt {
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  color: var(--neon-yellow);
+  text-shadow: var(--yellow-glow);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+  animation: blink 1.2s step-end infinite;
+  opacity: 0;
+  animation: blink 1.2s step-end infinite, fadeSlideUp 0.8s 0.3s forwards;
+}
+
+.hero-title {
+  font-size: clamp(3rem, 8vw, 6.5rem);
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 1.5rem;
+  position: relative;
+  opacity: 0;
+  animation: fadeSlideUp 0.8s 0.5s forwards;
+}
+
+.hero-title .slop {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-title .mog {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--neon-yellow), var(--neon-orange));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-subtitle {
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin-bottom: 1rem;
+  font-weight: 400;
+  opacity: 0;
+  animation: fadeSlideUp 0.8s 0.7s forwards;
+}
+
+.hero-description {
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  color: var(--neon-green);
+  letter-spacing: 1px;
+  margin-bottom: 3rem;
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
+  opacity: 0;
+  animation: fadeSlideUp 0.8s 0.9s forwards;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  opacity: 0;
+  animation: fadeSlideUp 0.8s 1.1s forwards;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2.5rem;
+  background: linear-gradient(135deg, var(--neon-magenta), #cc1177);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: var(--magenta-glow), inset 0 1px 0 rgba(255,255,255,0.2);
+  transition: transform 0.2s, box-shadow 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  transition: left 0.5s;
+}
+
+.btn-primary:hover::before {
+  left: 100%;
+}
+
+.btn-primary:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 0 40px rgba(255, 45, 149, 0.6), 0 0 100px rgba(255, 45, 149, 0.2);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2.5rem;
+  background: transparent;
+  color: var(--neon-cyan);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  border: 2px solid var(--neon-cyan);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s;
+}
+
+.btn-secondary:hover {
+  background: rgba(0, 245, 255, 0.1);
+  box-shadow: var(--cyan-glow);
+  transform: translateY(-3px);
+}
+
+/* Floating achievement badge in hero */
+.hero-achievement {
+  position: absolute;
+  bottom: 15%;
+  right: 8%;
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: var(--radius);
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  animation: floatBadge 4s ease-in-out infinite;
+  opacity: 0;
+  animation: floatBadge 4s ease-in-out infinite, fadeIn 0.8s 1.5s forwards;
+}
+
+.hero-achievement-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--neon-yellow), var(--neon-orange));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  box-shadow: var(--yellow-glow);
+}
+
+.hero-achievement-text {
+  text-align: left;
+}
+
+.hero-achievement-label {
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  color: var(--neon-yellow);
+  margin-bottom: 4px;
+}
+
+.hero-achievement-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Floating stats badge */
+.hero-stats-badge {
+  position: absolute;
+  top: 25%;
+  left: 5%;
+  background: var(--bg-card);
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  border-radius: var(--radius);
+  padding: 1rem 1.5rem;
+  animation: floatBadge 5s ease-in-out 1s infinite;
+  opacity: 0;
+  animation: floatBadge 5s ease-in-out 1s infinite, fadeIn 0.8s 1.8s forwards;
+}
+
+.hero-stats-number {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 15px rgba(0, 245, 255, 0.3);
+}
+
+.hero-stats-label {
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+
+/* ============================
+   DEMO SECTION
+   ============================ */
+.demo-section {
+  position: relative;
+  padding: 6rem 2rem;
+  background: linear-gradient(180deg, var(--bg-deep), var(--bg-navy));
+}
+
+.section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  color: var(--neon-cyan);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 1rem;
+  padding: 0.5rem 1rem;
+  background: rgba(0, 245, 255, 0.05);
+  border: 1px solid rgba(0, 245, 255, 0.15);
+  border-radius: 50px;
+}
+
+.section-title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  margin-bottom: 1rem;
+  line-height: 1.1;
+}
+
+.section-title .highlight-cyan {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+}
+
+.section-title .highlight-magenta {
+  color: var(--neon-magenta);
+  text-shadow: 0 0 20px rgba(255, 45, 149, 0.3);
+}
+
+.section-title .highlight-yellow {
+  color: var(--neon-yellow);
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.section-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+}
+
+.demo-container {
+  max-width: 900px;
+  margin: 3rem auto 0;
+}
+
+.demo-window {
+  background: var(--bg-card);
+  border: 1px solid rgba(0, 245, 255, 0.15);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.demo-window-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.2rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(0, 245, 255, 0.1);
+}
+
+.demo-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.demo-dot-red { background: #ff5f57; }
+.demo-dot-yellow { background: #ffbd2e; }
+.demo-dot-green { background: #28c840; }
+
+.demo-window-title {
+  margin-left: 0.5rem;
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+
+.demo-content {
+  padding: 2rem;
+}
+
+.demo-ai-query {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(0, 245, 255, 0.03);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 245, 255, 0.08);
+}
+
+.demo-ai-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.demo-ai-text {
+  flex: 1;
+}
+
+.demo-ai-label {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.3rem;
+}
+
+.demo-ai-question {
+  font-size: 1rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.demo-ai-answer {
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--neon-magenta);
+}
+
+.demo-ai-answer p {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 0.8rem;
+}
+
+.demo-ai-answer p:last-child { margin-bottom: 0; }
+
+.demo-ai-answer .product-mention {
+  color: var(--neon-yellow);
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+  position: relative;
+}
+
+.demo-ai-answer .product-mention::after {
+  content: 'SLOPMOG';
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-pixel);
+  font-size: 0.35rem;
+  color: var(--neon-green);
+  background: rgba(57, 255, 20, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(57, 255, 20, 0.3);
+  white-space: nowrap;
+  animation: blink 2s step-end infinite;
+}
+
+.demo-sources {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.demo-sources-label {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+}
+
+.demo-source-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  padding: 0.3rem 0;
+}
+
+.demo-source-item .reddit-icon {
+  color: var(--neon-orange);
+  font-weight: 700;
+}
+
+.demo-source-item.highlighted {
+  color: var(--neon-cyan);
+  font-weight: 500;
+}
+
+.demo-source-item.highlighted::after {
+  content: 'YOUR POST';
+  font-family: var(--font-pixel);
+  font-size: 0.35rem;
+  color: var(--neon-green);
+  background: rgba(57, 255, 20, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(57, 255, 20, 0.2);
+  margin-left: auto;
+}
+
+/* ============================
+   HOW IT WORKS - COMBO CHAIN
+   ============================ */
+.combo-section {
+  position: relative;
+  padding: 8rem 2rem;
+  text-align: center;
+  background: var(--bg-navy);
+}
+
+.combo-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  height: 60px;
+  background: linear-gradient(to bottom, transparent, var(--neon-cyan));
+}
+
+.combo-grid {
+  max-width: 1100px;
+  margin: 4rem auto 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  position: relative;
+}
+
+.combo-grid::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 5%;
+  right: 5%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-magenta), var(--neon-yellow), transparent);
+  opacity: 0.3;
+  z-index: 0;
+}
+
+.combo-step {
+  position: relative;
+  z-index: 1;
+  background: var(--bg-card);
+  border: 1px solid rgba(0, 245, 255, 0.1);
+  border-radius: var(--radius);
+  padding: 2rem 1.5rem;
+  transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+.combo-step:hover {
+  transform: translateY(-8px);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 10px 40px rgba(0, 245, 255, 0.1);
+}
+
+.combo-step-number {
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  color: var(--neon-cyan);
+  margin-bottom: 1rem;
+  letter-spacing: 2px;
+}
+
+.combo-step-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.combo-step-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.combo-step-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.combo-hit {
+  display: inline-block;
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  color: var(--neon-yellow);
+  margin-top: 1rem;
+  padding: 4px 12px;
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 4px;
+  animation: pulse-glow 2s infinite;
+}
+
+/* ============================
+   POWER-UPS (PRICING TIERS)
+   ============================ */
+.powerups-section {
+  position: relative;
+  padding: 8rem 2rem;
+  background: linear-gradient(180deg, var(--bg-navy), var(--bg-purple), var(--bg-navy));
+  text-align: center;
+}
+
+.powerups-grid {
+  max-width: 1200px;
+  margin: 4rem auto 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  align-items: stretch;
+}
+
+.powerup-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  text-align: left;
+  transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+  display: flex;
+  flex-direction: column;
+}
+
+.powerup-card:hover {
+  transform: translateY(-8px);
+}
+
+.powerup-card.tier-1:hover {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 15px 50px rgba(0, 245, 255, 0.1);
+}
+
+.powerup-card.tier-2 {
+  border-color: var(--neon-magenta);
+  box-shadow: 0 0 30px rgba(255, 45, 149, 0.1);
+  transform: scale(1.02);
+}
+
+.powerup-card.tier-2:hover {
+  transform: scale(1.02) translateY(-8px);
+  box-shadow: 0 15px 50px rgba(255, 45, 149, 0.2);
+}
+
+.powerup-card.tier-3:hover {
+  border-color: var(--neon-yellow);
+  box-shadow: 0 15px 50px rgba(255, 215, 0, 0.1);
+}
+
+.powerup-popular {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  color: #fff;
+  background: linear-gradient(90deg, var(--neon-magenta), var(--neon-orange));
+  padding: 6px 16px;
+  border-radius: 50px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.powerup-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.powerup-tier {
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  letter-spacing: 2px;
+  margin-bottom: 0.5rem;
+}
+
+.tier-1 .powerup-tier { color: var(--neon-cyan); }
+.tier-2 .powerup-tier { color: var(--neon-magenta); }
+.tier-3 .powerup-tier { color: var(--neon-yellow); }
+
+.powerup-name {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.powerup-desc {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.powerup-price {
+  font-size: 2.5rem;
+  font-weight: 900;
+  margin-bottom: 0.3rem;
+}
+
+.powerup-price .currency { font-size: 1.2rem; vertical-align: super; }
+.powerup-price .period { font-size: 0.85rem; color: var(--text-dim); font-weight: 400; }
+
+.powerup-features {
+  list-style: none;
+  margin: 1.5rem 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex: 1;
+}
+
+.powerup-features li {
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.powerup-features li::before {
+  content: '+';
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.tier-1 .powerup-features li::before {
+  color: var(--neon-cyan);
+  background: rgba(0, 245, 255, 0.1);
+}
+
+.tier-2 .powerup-features li::before {
+  color: var(--neon-magenta);
+  background: rgba(255, 45, 149, 0.1);
+}
+
+.tier-3 .powerup-features li::before {
+  color: var(--neon-yellow);
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.powerup-btn {
+  display: block;
+  width: 100%;
+  padding: 1rem;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-decoration: none;
+  transition: all 0.3s;
+  border: none;
+}
+
+.tier-1 .powerup-btn {
+  background: rgba(0, 245, 255, 0.1);
+  color: var(--neon-cyan);
+  border: 1px solid rgba(0, 245, 255, 0.3);
+}
+
+.tier-1 .powerup-btn:hover {
+  background: rgba(0, 245, 255, 0.2);
+  box-shadow: var(--cyan-glow);
+}
+
+.tier-2 .powerup-btn {
+  background: linear-gradient(135deg, var(--neon-magenta), #cc1177);
+  color: #fff;
+  box-shadow: var(--magenta-glow);
+}
+
+.tier-2 .powerup-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 40px rgba(255, 45, 149, 0.5);
+}
+
+.tier-3 .powerup-btn {
+  background: rgba(255, 215, 0, 0.1);
+  color: var(--neon-yellow);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.tier-3 .powerup-btn:hover {
+  background: rgba(255, 215, 0, 0.2);
+  box-shadow: var(--yellow-glow);
+}
+
+/* ============================
+   LEADERBOARD
+   ============================ */
+.leaderboard-section {
+  position: relative;
+  padding: 8rem 2rem;
+  background: var(--bg-navy);
+}
+
+.leaderboard-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.leaderboard-text {
+  text-align: left;
+}
+
+.leaderboard-text .section-subtitle {
+  margin-top: 1rem;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-top: 3rem;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.stat-card:hover {
+  border-color: rgba(0, 245, 255, 0.2);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+}
+
+.stat-number {
+  font-size: 2.2rem;
+  font-weight: 900;
+}
+
+.stat-card:nth-child(1) .stat-number { color: var(--neon-cyan); }
+.stat-card:nth-child(2) .stat-number { color: var(--neon-magenta); }
+.stat-card:nth-child(3) .stat-number { color: var(--neon-yellow); }
+.stat-card:nth-child(4) .stat-number { color: var(--neon-green); }
+
+.stat-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 0.3rem;
+}
+
+.stat-bar {
+  margin-top: 0.8rem;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 1.5s ease-out;
+}
+
+.stat-card:nth-child(1) .stat-bar-fill {
+  width: 92%;
+  background: linear-gradient(90deg, var(--neon-cyan), transparent);
+}
+
+.stat-card:nth-child(2) .stat-bar-fill {
+  width: 87%;
+  background: linear-gradient(90deg, var(--neon-magenta), transparent);
+}
+
+.stat-card:nth-child(3) .stat-bar-fill {
+  width: 95%;
+  background: linear-gradient(90deg, var(--neon-yellow), transparent);
+}
+
+.stat-card:nth-child(4) .stat-bar-fill {
+  width: 78%;
+  background: linear-gradient(90deg, var(--neon-green), transparent);
+}
+
+/* Leaderboard table */
+.leaderboard-table {
+  background: var(--bg-card);
+  border: 1px solid rgba(0, 245, 255, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.leaderboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.leaderboard-header-title {
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  color: var(--neon-yellow);
+  letter-spacing: 2px;
+}
+
+.leaderboard-header-live {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--neon-green);
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neon-green);
+  animation: pulse-dot 1.5s infinite;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 100px 80px;
+  align-items: center;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  transition: background 0.2s;
+}
+
+.leaderboard-row:hover {
+  background: rgba(0, 245, 255, 0.03);
+}
+
+.leaderboard-row:last-child {
+  border-bottom: none;
+}
+
+.lb-rank {
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+}
+
+.lb-rank-1 { color: var(--neon-yellow); text-shadow: var(--yellow-glow); }
+.lb-rank-2 { color: var(--neon-cyan); }
+.lb-rank-3 { color: var(--neon-magenta); }
+.lb-rank-default { color: var(--text-dim); }
+
+.lb-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.lb-xp {
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  color: var(--neon-cyan);
+  text-align: right;
+}
+
+.lb-change {
+  text-align: right;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.lb-change.up { color: var(--neon-green); }
+.lb-change.down { color: #ff4444; }
+
+/* ============================
+   BOSS LEVEL (ENTERPRISE)
+   ============================ */
+.boss-section {
+  position: relative;
+  padding: 8rem 2rem;
+  background: linear-gradient(180deg, var(--bg-navy), var(--bg-purple));
+  text-align: center;
+  overflow: hidden;
+}
+
+.boss-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 50%, rgba(255, 45, 149, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 50%, rgba(0, 245, 255, 0.08) 0%, transparent 50%);
+}
+
+.boss-container {
+  position: relative;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.boss-icon {
+  font-size: 5rem;
+  margin-bottom: 2rem;
+  display: inline-block;
+  animation: floatBadge 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 30px rgba(255, 45, 149, 0.3));
+}
+
+.boss-title {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 900;
+  margin-bottom: 1rem;
+  line-height: 1.1;
+}
+
+.boss-subtitle {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 0 auto 3rem;
+  line-height: 1.6;
+}
+
+.boss-features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.boss-feature {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius);
+  padding: 2rem 1.5rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.boss-feature:hover {
+  border-color: rgba(255, 45, 149, 0.3);
+  box-shadow: 0 5px 30px rgba(255, 45, 149, 0.1);
+}
+
+.boss-feature-icon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.boss-feature-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.boss-feature-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.boss-cta-row {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* ============================
+   GAME OVER CTA
+   ============================ */
+.gameover-section {
+  position: relative;
+  padding: 10rem 2rem;
+  text-align: center;
+  background: var(--bg-deep);
+  overflow: hidden;
+}
+
+.gameover-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 45, 149, 0.1) 0%, transparent 60%);
+}
+
+.gameover-container {
+  position: relative;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.gameover-pixel {
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  color: var(--neon-magenta);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  text-shadow: var(--magenta-glow);
+}
+
+.gameover-title {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 900;
+  margin-bottom: 1.5rem;
+  line-height: 1.05;
+}
+
+.gameover-desc {
+  font-size: 1.15rem;
+  color: var(--text-secondary);
+  margin-bottom: 3rem;
+  line-height: 1.6;
+}
+
+.gameover-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1.2rem 3rem;
+  background: linear-gradient(135deg, var(--neon-cyan), #0099cc);
+  color: var(--bg-deep);
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  font-weight: 800;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: var(--cyan-glow);
+  transition: transform 0.2s, box-shadow 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.gameover-cta::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.gameover-cta:hover::before {
+  left: 100%;
+}
+
+.gameover-cta:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 0 50px rgba(0, 245, 255, 0.5), 0 0 100px rgba(0, 245, 255, 0.2);
+}
+
+.gameover-hint {
+  margin-top: 1.5rem;
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  animation: blink 1.5s step-end infinite;
+}
+
+/* ============================
+   FOOTER
+   ============================ */
+.footer {
+  position: relative;
+  padding: 4rem 2rem 2rem;
+  background: var(--bg-deep);
+  border-top: 1px solid rgba(0, 245, 255, 0.08);
+}
+
+.footer-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.5fr repeat(3, 1fr);
+  gap: 3rem;
+}
+
+.footer-brand {
+  font-family: var(--font-pixel);
+  font-size: 0.75rem;
+  color: var(--neon-cyan);
+  margin-bottom: 1rem;
+  text-shadow: 0 0 10px rgba(0, 245, 255, 0.3);
+}
+
+.footer-desc {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+  max-width: 280px;
+}
+
+.footer-col-title {
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  color: var(--text-secondary);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 1.2rem;
+}
+
+.footer-col a {
+  display: block;
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 0.85rem;
+  padding: 0.3rem 0;
+  transition: color 0.2s;
+}
+
+.footer-col a:hover {
+  color: var(--neon-cyan);
+}
+
+.footer-bottom {
+  max-width: 1100px;
+  margin: 3rem auto 0;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer-copy {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.footer-copy .pixel-text {
+  font-family: var(--font-pixel);
+  font-size: 0.4rem;
+  color: var(--neon-yellow);
+}
+
+.footer-legal {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.footer-legal a {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-legal a:hover {
+  color: var(--neon-cyan);
+}
+
+/* ============================
+   ANIMATIONS
+   ============================ */
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes floatBadge {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.2); }
+  50% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scroll-triggered reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* ============================
+   RESPONSIVE
+   ============================ */
+@media (max-width: 1024px) {
+  .combo-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .combo-grid::before { display: none; }
+
+  .leaderboard-container {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+
+  .leaderboard-text {
+    text-align: center;
+  }
+
+  .leaderboard-text .section-subtitle {
+    margin: 1rem auto 0;
+  }
+
+  .powerups-grid {
+    grid-template-columns: 1fr;
+    max-width: 450px;
+  }
+
+  .powerup-card.tier-2 {
+    transform: none;
+    order: -1;
+  }
+
+  .powerup-card.tier-2:hover {
+    transform: translateY(-8px);
+  }
+
+  .boss-features {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .footer-container {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: 70px;
+    left: 0;
+    right: 0;
+    background: rgba(10, 10, 26, 0.97);
+    backdrop-filter: blur(20px);
+    flex-direction: column;
+    padding: 2rem;
+    gap: 1.5rem;
+    border-bottom: 1px solid rgba(0, 245, 255, 0.1);
+  }
+
+  .nav-links.open {
+    display: flex;
+  }
+
+  .nav-hamburger {
+    display: flex;
+  }
+
+  .hero-achievement,
+  .hero-stats-badge {
+    display: none;
+  }
+
+  .combo-grid {
+    grid-template-columns: 1fr;
+    max-width: 380px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .stats-row {
+    grid-template-columns: 1fr;
+  }
+
+  .leaderboard-row {
+    grid-template-columns: 30px 1fr 70px 60px;
+    padding: 0.8rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .footer-container {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .footer-desc {
+    margin: 0 auto;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero {
+    padding: 7rem 1.2rem 3rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .btn-primary, .btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .boss-cta-row {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .boss-cta-row .btn-primary,
+  .boss-cta-row .btn-secondary {
+    width: 100%;
+    max-width: 300px;
+    justify-content: center;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Particle canvas -->
+<canvas id="particles"></canvas>
+
+<!-- Faint scanlines -->
+<div class="scanlines"></div>
+
+<!-- XP progress bar -->
+<div class="xp-bar-container">
+  <div class="xp-bar-fill" id="xpBar"></div>
+</div>
+
+<!-- Navigation -->
+<nav class="nav">
+  <div class="nav-logo">SLOPMOG<span class="blink">_</span></div>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#powerups">Power-Ups</a></li>
+    <li><a href="#leaderboard">Leaderboard</a></li>
+    <li><a href="#boss">Enterprise</a></li>
+    <li><a href="#start" class="nav-cta">Start Playing</a></li>
+  </ul>
+  <div class="nav-hamburger" id="hamburger" onclick="toggleNav()">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="hero-bg-grid"></div>
+  <div class="hero-glow hero-glow-1"></div>
+  <div class="hero-glow hero-glow-2"></div>
+  <div class="hero-glow hero-glow-3"></div>
+
+  <div class="hero-coin-prompt">-- INSERT COIN TO DOMINATE AI --</div>
+
+  <h1 class="hero-title">
+    <span class="slop">Slop</span><span class="mog">Mog</span>
+  </h1>
+
+  <p class="hero-subtitle">
+    We plant Reddit posts so when AI gets asked "what's the best X?" -- YOUR product shows up. Every. Single. Time.
+  </p>
+
+  <p class="hero-description">
+    > ACHIEVEMENT UNLOCKED: AI SEARCH DOMINATION <
+  </p>
+
+  <div class="hero-actions">
+    <a href="#powerups" class="btn-primary">Start Your Campaign</a>
+    <a href="#how" class="btn-secondary">Watch the Demo</a>
+  </div>
+
+  <!-- Floating achievement -->
+  <div class="hero-achievement">
+    <div class="hero-achievement-icon">&#127942;</div>
+    <div class="hero-achievement-text">
+      <div class="hero-achievement-label">ACHIEVEMENT UNLOCKED</div>
+      <div class="hero-achievement-desc">First page on ChatGPT results</div>
+    </div>
+  </div>
+
+  <!-- Floating stats -->
+  <div class="hero-stats-badge">
+    <div class="hero-stats-number" id="heroCounter">2,847</div>
+    <div class="hero-stats-label">AI MENTIONS THIS WEEK</div>
+  </div>
+</section>
+
+<!-- ===== DEMO ===== -->
+<section class="demo-section" id="how">
+  <div style="max-width: 900px; margin: 0 auto;">
+    <div class="reveal" style="text-align: center;">
+      <div class="section-badge">&#127918; TUTORIAL ZONE</div>
+      <h2 class="section-title">See It <span class="highlight-cyan">In Action</span></h2>
+      <p class="section-subtitle" style="margin: 0.5rem auto 0;">Someone asks AI a question. SlopMog makes sure the answer includes you.</p>
+    </div>
+  </div>
+
+  <div class="demo-container reveal reveal-delay-2">
+    <div class="demo-window">
+      <div class="demo-window-bar">
+        <div class="demo-dot demo-dot-red"></div>
+        <div class="demo-dot demo-dot-yellow"></div>
+        <div class="demo-dot demo-dot-green"></div>
+        <span class="demo-window-title">AI SEARCH ENGINE</span>
+      </div>
+      <div class="demo-content">
+        <div class="demo-ai-query">
+          <div class="demo-ai-icon">&#129302;</div>
+          <div class="demo-ai-text">
+            <div class="demo-ai-label">User Query</div>
+            <div class="demo-ai-question">"What's the best project management tool for remote teams in 2025?"</div>
+          </div>
+        </div>
+        <div class="demo-ai-answer">
+          <p>Based on community discussions and user reviews, here are the top recommendations:</p>
+          <p>Many users on Reddit praise <strong>Asana</strong> and <strong>Monday.com</strong> for enterprise use. However, for remote-first teams, <span class="product-mention">FlowBoard Pro</span> has been getting significant attention, with users highlighting its async-first design, built-in timezone management, and generous free tier.</p>
+          <p>One highly-upvoted thread noted: "We switched from Jira and never looked back. FlowBoard Pro just gets remote work."</p>
+          <div class="demo-sources">
+            <div class="demo-sources-label">Sources</div>
+            <div class="demo-source-item highlighted">
+              <span class="reddit-icon">r/</span> r/remotework -- "Honest PM tool comparison after 2 years"
+            </div>
+            <div class="demo-source-item">
+              <span class="reddit-icon">r/</span> r/projectmanagement -- "Best tools for distributed teams"
+            </div>
+            <div class="demo-source-item">
+              <span class="reddit-icon">r/</span> r/startups -- "Our tech stack for a 50-person remote team"
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== COMBO CHAIN (How it works) ===== -->
+<section class="combo-section">
+  <div class="reveal">
+    <div class="section-badge">&#127775; COMBO CHAIN</div>
+    <h2 class="section-title">Four Hits to <span class="highlight-magenta">Total Domination</span></h2>
+    <p class="section-subtitle" style="margin: 0.5rem auto 0;">Our combo chain is unblockable. Here's the move list.</p>
+  </div>
+
+  <div class="combo-grid">
+    <div class="combo-step reveal reveal-delay-1">
+      <div class="combo-step-number">STEP 01</div>
+      <div class="combo-step-icon">&#128270;</div>
+      <div class="combo-step-title">Recon Phase</div>
+      <div class="combo-step-desc">We find the exact Reddit threads and subreddits that AI models are scraping for answers in your niche.</div>
+      <div class="combo-hit">HIT 1</div>
+    </div>
+    <div class="combo-step reveal reveal-delay-2">
+      <div class="combo-step-number">STEP 02</div>
+      <div class="combo-step-icon">&#128221;</div>
+      <div class="combo-step-title">Craft & Deploy</div>
+      <div class="combo-step-desc">Authentic, upvote-worthy posts and comments that naturally mention your product. No spam -- real value.</div>
+      <div class="combo-hit">HIT 2</div>
+    </div>
+    <div class="combo-step reveal reveal-delay-3">
+      <div class="combo-step-number">STEP 03</div>
+      <div class="combo-step-icon">&#128640;</div>
+      <div class="combo-step-title">Amplify Signal</div>
+      <div class="combo-step-desc">Strategic engagement to boost visibility. More upvotes, more replies, more signal for the AI to pick up.</div>
+      <div class="combo-hit">HIT 3</div>
+    </div>
+    <div class="combo-step reveal reveal-delay-4">
+      <div class="combo-step-number">STEP 04</div>
+      <div class="combo-step-icon">&#127942;</div>
+      <div class="combo-step-title">Victory Royale</div>
+      <div class="combo-step-desc">AI models now cite YOUR product as the community favorite. GG, competitors.</div>
+      <div class="combo-hit">FINISH!</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== POWER-UPS (Pricing) ===== -->
+<section class="powerups-section" id="powerups">
+  <div class="reveal">
+    <div class="section-badge">&#9889; CHOOSE YOUR POWER-UP</div>
+    <h2 class="section-title">Level Up <span class="highlight-yellow">Your Game</span></h2>
+    <p class="section-subtitle" style="margin: 0.5rem auto 0;">Every tier unlocks stronger abilities. Choose your loadout.</p>
+  </div>
+
+  <div class="powerups-grid">
+    <!-- Tier 1 -->
+    <div class="powerup-card tier-1 reveal reveal-delay-1">
+      <div class="powerup-icon">&#128302;</div>
+      <div class="powerup-tier">STARTER PACK</div>
+      <div class="powerup-name">Recon Mode</div>
+      <div class="powerup-desc">Perfect for indie hackers testing the waters. Get your first AI mentions rolling.</div>
+      <div class="powerup-price">
+        <span class="currency">$</span>499<span class="period">/mo</span>
+      </div>
+      <ul class="powerup-features">
+        <li>5 Reddit posts per month</li>
+        <li>2 target subreddits</li>
+        <li>Basic AI mention tracking</li>
+        <li>Monthly performance report</li>
+        <li>1 product / brand</li>
+      </ul>
+      <a href="#start" class="powerup-btn">Select Loadout</a>
+    </div>
+
+    <!-- Tier 2 (Popular) -->
+    <div class="powerup-card tier-2 reveal reveal-delay-2">
+      <div class="powerup-popular">MOST POPULAR</div>
+      <div class="powerup-icon">&#128165;</div>
+      <div class="powerup-tier">POWER MODE</div>
+      <div class="powerup-name">Full Send</div>
+      <div class="powerup-desc">The sweet spot. Aggressive coverage across the subreddits that matter most.</div>
+      <div class="powerup-price">
+        <span class="currency">$</span>1,499<span class="period">/mo</span>
+      </div>
+      <ul class="powerup-features">
+        <li>20 Reddit posts per month</li>
+        <li>8 target subreddits</li>
+        <li>Comment engagement campaigns</li>
+        <li>Real-time AI mention dashboard</li>
+        <li>Competitor displacement reports</li>
+        <li>3 products / brands</li>
+        <li>Dedicated strategist</li>
+      </ul>
+      <a href="#start" class="powerup-btn">Select Loadout</a>
+    </div>
+
+    <!-- Tier 3 -->
+    <div class="powerup-card tier-3 reveal reveal-delay-3">
+      <div class="powerup-icon">&#128081;</div>
+      <div class="powerup-tier">GOD MODE</div>
+      <div class="powerup-name">Aimbot</div>
+      <div class="powerup-desc">Total AI search dominance. We own every thread, every mention, every recommendation.</div>
+      <div class="powerup-price">
+        <span class="currency">$</span>3,999<span class="period">/mo</span>
+      </div>
+      <ul class="powerup-features">
+        <li>Unlimited Reddit posts</li>
+        <li>Unlimited subreddits</li>
+        <li>Multi-platform (Reddit + Quora + forums)</li>
+        <li>Custom AI monitoring suite</li>
+        <li>Competitor sabotage defense</li>
+        <li>Unlimited products / brands</li>
+        <li>24/7 war room access</li>
+        <li>Monthly strategy calls</li>
+      </ul>
+      <a href="#start" class="powerup-btn">Select Loadout</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== LEADERBOARD ===== -->
+<section class="leaderboard-section" id="leaderboard">
+  <div class="leaderboard-container">
+    <div class="leaderboard-text">
+      <div class="reveal">
+        <div class="section-badge">&#127941; HIGH SCORES</div>
+        <h2 class="section-title">The <span class="highlight-cyan">Leaderboard</span></h2>
+        <p class="section-subtitle">Real results from real campaigns. These numbers don't lie -- and neither does AI when it recommends our clients.</p>
+      </div>
+
+      <div class="stats-row reveal reveal-delay-1">
+        <div class="stat-card">
+          <div class="stat-number" data-target="847">0</div>
+          <div class="stat-label">AI citations generated</div>
+          <div class="stat-bar"><div class="stat-bar-fill"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" data-target="92">0</div>
+          <div class="stat-label">% query coverage rate</div>
+          <div class="stat-bar"><div class="stat-bar-fill"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" data-target="156">0</div>
+          <div class="stat-label">Active Reddit threads</div>
+          <div class="stat-bar"><div class="stat-bar-fill"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" data-target="23">0</div>
+          <div class="stat-label">Competitors displaced</div>
+          <div class="stat-bar"><div class="stat-bar-fill"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="reveal reveal-delay-2">
+      <div class="leaderboard-table">
+        <div class="leaderboard-header">
+          <div class="leaderboard-header-title">TOP PLAYERS THIS MONTH</div>
+          <div class="leaderboard-header-live"><div class="live-dot"></div> LIVE</div>
+        </div>
+        <div class="leaderboard-row">
+          <div class="lb-rank lb-rank-1">#1</div>
+          <div class="lb-name">FlowBoard Pro</div>
+          <div class="lb-xp">48,200 XP</div>
+          <div class="lb-change up">+12</div>
+        </div>
+        <div class="leaderboard-row">
+          <div class="lb-rank lb-rank-2">#2</div>
+          <div class="lb-name">NightOwl VPN</div>
+          <div class="lb-xp">41,850 XP</div>
+          <div class="lb-change up">+8</div>
+        </div>
+        <div class="leaderboard-row">
+          <div class="lb-rank lb-rank-3">#3</div>
+          <div class="lb-name">ZenDesk Alt</div>
+          <div class="lb-xp">38,400 XP</div>
+          <div class="lb-change up">+15</div>
+        </div>
+        <div class="leaderboard-row">
+          <div class="lb-rank lb-rank-default">#4</div>
+          <div class="lb-name">CloudKitchen.io</div>
+          <div class="lb-xp">29,100 XP</div>
+          <div class="lb-change up">+3</div>
+        </div>
+        <div class="leaderboard-row">
+          <div class="lb-rank lb-rank-default">#5</div>
+          <div class="lb-name">PixelForge</div>
+          <div class="lb-xp">24,750 XP</div>
+          <div class="lb-change down">-2</div>
+        </div>
+        <div class="leaderboard-row">
+          <div class="lb-rank lb-rank-default">#6</div>
+          <div class="lb-name">BudgetBoss</div>
+          <div class="lb-xp">21,300 XP</div>
+          <div class="lb-change up">+6</div>
+        </div>
+        <div class="leaderboard-row">
+          <div class="lb-rank lb-rank-default">#7</div>
+          <div class="lb-name">MailScout</div>
+          <div class="lb-xp">18,900 XP</div>
+          <div class="lb-change up">+1</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== BOSS LEVEL (Enterprise) ===== -->
+<section class="boss-section" id="boss">
+  <div class="boss-container">
+    <div class="reveal">
+      <div class="boss-icon">&#128126;</div>
+      <div class="section-badge">&#128123; BOSS LEVEL</div>
+      <h2 class="boss-title">Enterprise <span class="highlight-magenta">Domination</span></h2>
+      <p class="boss-subtitle">For companies that don't just want to appear in AI results -- they want to OWN them. Custom strategies, dedicated teams, total control.</p>
+    </div>
+
+    <div class="boss-features">
+      <div class="boss-feature reveal reveal-delay-1">
+        <div class="boss-feature-icon">&#128640;</div>
+        <div class="boss-feature-title">War Room Access</div>
+        <div class="boss-feature-desc">A dedicated Slack channel with your strategist, writer team, and analytics lead. Real-time campaign pivots.</div>
+      </div>
+      <div class="boss-feature reveal reveal-delay-2">
+        <div class="boss-feature-icon">&#128737;</div>
+        <div class="boss-feature-title">Defense Shield</div>
+        <div class="boss-feature-desc">We monitor for competitor slopmog attacks and neutralize them. Counter-intelligence for the AI age.</div>
+      </div>
+      <div class="boss-feature reveal reveal-delay-3">
+        <div class="boss-feature-icon">&#127760;</div>
+        <div class="boss-feature-title">Multi-Platform</div>
+        <div class="boss-feature-desc">Reddit, Quora, Stack Overflow, niche forums, review sites. We go everywhere AI is scraping.</div>
+      </div>
+    </div>
+
+    <div class="boss-cta-row reveal reveal-delay-2">
+      <a href="#start" class="btn-primary">Talk to Our Guild Leader</a>
+      <a href="#" class="btn-secondary">Download the Battle Plan</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== GAME OVER CTA ===== -->
+<section class="gameover-section" id="start">
+  <div class="gameover-container reveal">
+    <div class="gameover-pixel">GAME OVER FOR YOUR COMPETITORS</div>
+    <h2 class="gameover-title">
+      Ready to <span class="highlight-cyan">Break</span> the Leaderboard?
+    </h2>
+    <p class="gameover-desc">
+      While your competitors wonder why AI keeps recommending someone else, you'll know exactly why. Because you played the game -- and you played it with SlopMog.
+    </p>
+    <a href="mailto:play@slopmog.com" class="gameover-cta">
+      &#127918; INSERT COIN
+    </a>
+    <div class="gameover-hint">PRESS START TO CONTINUE...</div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="footer-container">
+    <div class="footer-col">
+      <div class="footer-brand">SLOPMOG</div>
+      <p class="footer-desc">Gaming the AI search results so you don't have to figure out how. Ethically questionable, undeniably effective.</p>
+    </div>
+    <div class="footer-col">
+      <div class="footer-col-title">PRODUCT</div>
+      <a href="#how">How It Works</a>
+      <a href="#powerups">Pricing</a>
+      <a href="#leaderboard">Results</a>
+      <a href="#">Case Studies</a>
+      <a href="#">API Access</a>
+    </div>
+    <div class="footer-col">
+      <div class="footer-col-title">COMPANY</div>
+      <a href="#">About Us</a>
+      <a href="#">Blog</a>
+      <a href="#">Careers</a>
+      <a href="#">Press Kit</a>
+    </div>
+    <div class="footer-col">
+      <div class="footer-col-title">SUPPORT</div>
+      <a href="#">Help Center</a>
+      <a href="#">Contact</a>
+      <a href="#">Status</a>
+      <a href="#">Discord</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="footer-copy">
+      &copy; 2025 SlopMog. All rights reserved. <span class="pixel-text">GG WP NO RE</span>
+    </div>
+    <div class="footer-legal">
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <a href="#">Cookies</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ============================
+// PARTICLES
+// ============================
+(function() {
+  const canvas = document.getElementById('particles');
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+  let w, h;
+
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+
+  class Particle {
+    constructor() {
+      this.reset();
+    }
+    reset() {
+      this.x = Math.random() * w;
+      this.y = Math.random() * h;
+      this.size = Math.random() * 2 + 0.5;
+      this.speedX = (Math.random() - 0.5) * 0.3;
+      this.speedY = (Math.random() - 0.5) * 0.3;
+      this.opacity = Math.random() * 0.4 + 0.1;
+      const colors = ['0, 245, 255', '255, 45, 149', '255, 215, 0'];
+      this.color = colors[Math.floor(Math.random() * colors.length)];
+    }
+    update() {
+      this.x += this.speedX;
+      this.y += this.speedY;
+      if (this.x < 0 || this.x > w || this.y < 0 || this.y > h) {
+        this.reset();
+      }
+    }
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${this.color}, ${this.opacity})`;
+      ctx.fill();
+    }
+  }
+
+  function init() {
+    resize();
+    const count = Math.min(Math.floor((w * h) / 15000), 80);
+    particles = [];
+    for (let i = 0; i < count; i++) {
+      particles.push(new Particle());
+    }
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, w, h);
+    particles.forEach(p => {
+      p.update();
+      p.draw();
+    });
+    requestAnimationFrame(animate);
+  }
+
+  window.addEventListener('resize', () => {
+    resize();
+    // Re-init particles if resized significantly
+    if (Math.abs(particles.length - Math.min(Math.floor((w * h) / 15000), 80)) > 10) {
+      init();
+    }
+  });
+
+  init();
+  animate();
+})();
+
+// ============================
+// XP BAR (scroll progress)
+// ============================
+window.addEventListener('scroll', () => {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = (scrollTop / docHeight) * 100;
+  document.getElementById('xpBar').style.width = progress + '%';
+});
+
+// ============================
+// SCROLL REVEAL
+// ============================
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => {
+  revealObserver.observe(el);
+});
+
+// ============================
+// STAT COUNTER ANIMATION
+// ============================
+const statObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const el = entry.target;
+      const target = parseInt(el.dataset.target);
+      if (el.dataset.counted) return;
+      el.dataset.counted = 'true';
+
+      let current = 0;
+      const increment = target / 60;
+      const timer = setInterval(() => {
+        current += increment;
+        if (current >= target) {
+          current = target;
+          clearInterval(timer);
+        }
+        el.textContent = Math.floor(current).toLocaleString();
+        if (el.dataset.target === '92') {
+          el.textContent = Math.floor(current) + '%';
+        }
+      }, 25);
+    }
+  });
+}, { threshold: 0.5 });
+
+document.querySelectorAll('.stat-number[data-target]').forEach(el => {
+  statObserver.observe(el);
+});
+
+// ============================
+// MOBILE NAV TOGGLE
+// ============================
+function toggleNav() {
+  const links = document.getElementById('navLinks');
+  const hamburger = document.getElementById('hamburger');
+  links.classList.toggle('open');
+  hamburger.classList.toggle('active');
+}
+
+// Close mobile nav when link is clicked
+document.querySelectorAll('.nav-links a').forEach(link => {
+  link.addEventListener('click', () => {
+    document.getElementById('navLinks').classList.remove('open');
+  });
+});
+
+// ============================
+// HERO COUNTER ANIMATION
+// ============================
+(function() {
+  const counter = document.getElementById('heroCounter');
+  if (!counter) return;
+  let base = 2847;
+  setInterval(() => {
+    base += Math.floor(Math.random() * 3) + 1;
+    counter.textContent = base.toLocaleString();
+  }, 3000);
+})();
+</script>
+</body>
+</html>

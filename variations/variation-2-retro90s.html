@@ -1,0 +1,1767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlopMog — As Seen On r/ALL!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;700&family=Pacifico&family=Barlow+Condensed:wght@400;600;700;800&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<style>
+/* ========== CSS VARIABLES ========== */
+:root {
+  --hot-yellow: #FFD700;
+  --warm-orange: #FF8C00;
+  --infomercial-red: #E8192C;
+  --deep-red: #B71C1C;
+  --electric-blue: #00BFFF;
+  --neon-blue: #1E90FF;
+  --tv-white: #FFF8E7;
+  --cream: #FFFDE7;
+  --dark-bg: #1A0A00;
+  --darker-bg: #0D0500;
+  --card-bg: #2A1200;
+  --text-light: #FFF8E7;
+  --text-dark: #1A0A00;
+  --starburst-gold: #FFB300;
+  --success-green: #4CAF50;
+  --scanline-opacity: 0.03;
+}
+
+/* ========== RESET & BASE ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  background: var(--darker-bg);
+  color: var(--text-light);
+  overflow-x: hidden;
+  line-height: 1.4;
+}
+
+/* ========== SCANLINE TV OVERLAY ========== */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,var(--scanline-opacity)) 2px,
+    rgba(0,0,0,var(--scanline-opacity)) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ========== UTILITY ========== */
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.script-font {
+  font-family: 'Pacifico', cursive;
+}
+
+.handwritten {
+  font-family: 'Caveat', cursive;
+  font-weight: 700;
+}
+
+.headline-font {
+  font-family: 'Bebas Neue', 'Oswald', sans-serif;
+  letter-spacing: 0.02em;
+}
+
+/* ========== TICKER BAR ========== */
+.ticker-bar {
+  background: var(--infomercial-red);
+  padding: 8px 0;
+  overflow: hidden;
+  position: relative;
+  border-bottom: 3px solid var(--hot-yellow);
+}
+
+.ticker-content {
+  display: flex;
+  animation: ticker 20s linear infinite;
+  white-space: nowrap;
+  gap: 60px;
+}
+
+.ticker-content span {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--hot-yellow);
+  flex-shrink: 0;
+}
+
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ========== STARBURST BADGE ========== */
+.starburst {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  animation: starburst-spin 20s linear infinite;
+}
+
+.starburst::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: var(--starburst-gold);
+  clip-path: polygon(
+    50% 0%, 63% 10%, 75% 2%, 80% 16%, 93% 14%, 91% 28%,
+    100% 38%, 92% 48%, 98% 60%, 87% 65%, 88% 78%, 76% 78%,
+    72% 90%, 62% 84%, 50% 93%, 38% 84%, 28% 90%, 24% 78%,
+    12% 78%, 13% 65%, 2% 60%, 8% 48%, 0% 38%, 9% 28%,
+    7% 14%, 20% 16%, 25% 2%, 37% 10%
+  );
+  box-shadow: 0 0 30px rgba(255, 179, 0, 0.5);
+}
+
+.starburst-text {
+  position: relative;
+  z-index: 2;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 16px;
+  color: var(--deep-red);
+  text-align: center;
+  line-height: 1.1;
+  padding: 10px;
+  text-transform: uppercase;
+}
+
+@keyframes starburst-spin {
+  0% { transform: rotate(-3deg); }
+  25% { transform: rotate(3deg); }
+  50% { transform: rotate(-3deg); }
+  75% { transform: rotate(3deg); }
+  100% { transform: rotate(-3deg); }
+}
+
+/* ========== HERO SECTION ========== */
+.hero {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(255,140,0,0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(232,25,44,0.2) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(255,215,0,0.1) 0%, transparent 70%),
+    linear-gradient(180deg, #2A0E00 0%, var(--dark-bg) 100%);
+  padding: 80px 20px 100px;
+  text-align: center;
+  overflow: hidden;
+  border-bottom: 6px solid var(--hot-yellow);
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    transparent 0deg, rgba(255,215,0,0.05) 10deg,
+    transparent 20deg, transparent 340deg,
+    rgba(255,215,0,0.05) 350deg, transparent 360deg
+  );
+  animation: hero-rays 15s linear infinite;
+}
+
+@keyframes hero-rays {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 850px;
+  margin: 0 auto;
+}
+
+.hero-pre {
+  font-family: 'Oswald', sans-serif;
+  font-size: clamp(16px, 3vw, 22px);
+  color: var(--electric-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  margin-bottom: 10px;
+  animation: fadeInDown 0.8s ease-out;
+}
+
+.hero h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(52px, 10vw, 110px);
+  line-height: 0.95;
+  color: var(--hot-yellow);
+  text-shadow:
+    3px 3px 0 var(--infomercial-red),
+    6px 6px 0 rgba(0,0,0,0.3);
+  margin-bottom: 6px;
+  animation: fadeInDown 0.8s ease-out 0.1s both;
+}
+
+.hero h1 .red { color: var(--infomercial-red); text-shadow: 3px 3px 0 #800, 6px 6px 0 rgba(0,0,0,0.3); }
+
+.hero-tagline {
+  font-family: 'Pacifico', cursive;
+  font-size: clamp(18px, 4vw, 32px);
+  color: var(--tv-white);
+  margin-bottom: 30px;
+  animation: fadeInDown 0.8s ease-out 0.2s both;
+}
+
+.hero-problem {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: clamp(18px, 2.5vw, 24px);
+  font-weight: 600;
+  color: var(--cream);
+  max-width: 650px;
+  margin: 0 auto 40px;
+  line-height: 1.5;
+  animation: fadeInDown 0.8s ease-out 0.3s both;
+}
+
+.hero-problem em {
+  color: var(--hot-yellow);
+  font-style: normal;
+  font-weight: 800;
+}
+
+.hero .starburst {
+  top: 20px;
+  right: 5%;
+  width: 130px;
+  height: 130px;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========== CTA BUTTON ========== */
+.cta-btn {
+  display: inline-block;
+  padding: 18px 50px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  letter-spacing: 0.05em;
+  color: var(--text-dark);
+  background: linear-gradient(180deg, var(--hot-yellow) 0%, var(--warm-orange) 100%);
+  border: 4px solid var(--starburst-gold);
+  border-radius: 8px;
+  text-decoration: none;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow:
+    0 4px 15px rgba(255,140,0,0.4),
+    inset 0 2px 0 rgba(255,255,255,0.3);
+  animation: pulse-cta 2s ease-in-out infinite;
+}
+
+.cta-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 25px rgba(255,140,0,0.6), inset 0 2px 0 rgba(255,255,255,0.3);
+}
+
+.cta-btn .btn-sub {
+  display: block;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  margin-top: 2px;
+}
+
+@keyframes pulse-cta {
+  0%, 100% { box-shadow: 0 4px 15px rgba(255,140,0,0.4), inset 0 2px 0 rgba(255,255,255,0.3); }
+  50% { box-shadow: 0 4px 30px rgba(255,140,0,0.7), 0 0 60px rgba(255,215,0,0.3), inset 0 2px 0 rgba(255,255,255,0.3); }
+}
+
+/* ========== "AS SEEN ON" BAR ========== */
+.as-seen-on {
+  background: linear-gradient(180deg, #1A0A00 0%, #0D0500 100%);
+  padding: 40px 20px;
+  text-align: center;
+  border-bottom: 3px solid var(--warm-orange);
+}
+
+.as-seen-on h3 {
+  font-family: 'Oswald', sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--warm-orange);
+  margin-bottom: 20px;
+}
+
+.logos-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.fake-logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  color: rgba(255,248,231,0.4);
+  padding: 8px 16px;
+  border: 2px solid rgba(255,248,231,0.15);
+  border-radius: 4px;
+  transition: color 0.3s, border-color 0.3s;
+}
+
+.fake-logo:hover {
+  color: var(--hot-yellow);
+  border-color: var(--hot-yellow);
+}
+
+/* ========== PROBLEM / DRAMATIC SECTION ========== */
+.problem-section {
+  padding: 80px 20px;
+  text-align: center;
+  background:
+    radial-gradient(ellipse at center, rgba(232,25,44,0.08) 0%, transparent 60%),
+    var(--darker-bg);
+}
+
+.problem-section .section-eyebrow {
+  font-family: 'Oswald', sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--infomercial-red);
+  margin-bottom: 12px;
+}
+
+.problem-section h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(36px, 7vw, 64px);
+  color: var(--tv-white);
+  line-height: 1;
+  margin-bottom: 30px;
+}
+
+.problem-section h2 .yellow { color: var(--hot-yellow); }
+
+.problem-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.problem-card {
+  background: linear-gradient(135deg, rgba(42,18,0,0.8) 0%, rgba(26,10,0,0.9) 100%);
+  border: 2px solid rgba(255,140,0,0.2);
+  border-radius: 12px;
+  padding: 30px;
+  text-align: left;
+  transition: border-color 0.3s, transform 0.3s;
+}
+
+.problem-card:hover {
+  border-color: var(--warm-orange);
+  transform: translateY(-4px);
+}
+
+.problem-card .icon {
+  font-size: 40px;
+  margin-bottom: 14px;
+  display: block;
+}
+
+.problem-card h4 {
+  font-family: 'Oswald', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--hot-yellow);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.problem-card p {
+  font-size: 16px;
+  font-weight: 400;
+  color: rgba(255,248,231,0.7);
+  line-height: 1.5;
+}
+
+/* ========== BEFORE / AFTER ========== */
+.before-after {
+  padding: 80px 20px;
+  background: linear-gradient(180deg, var(--dark-bg) 0%, #2A0E00 50%, var(--dark-bg) 100%);
+  border-top: 4px solid var(--hot-yellow);
+  border-bottom: 4px solid var(--hot-yellow);
+  position: relative;
+  overflow: hidden;
+}
+
+.before-after .section-header {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.before-after .section-eyebrow {
+  font-family: 'Oswald', sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--electric-blue);
+  margin-bottom: 10px;
+}
+
+.before-after h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(36px, 7vw, 60px);
+  color: var(--tv-white);
+}
+
+.before-after h2 .yellow { color: var(--hot-yellow); }
+
+.ba-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0;
+  max-width: 950px;
+  margin: 0 auto;
+  align-items: stretch;
+}
+
+.ba-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+}
+
+.ba-divider .arrow {
+  font-size: 40px;
+  color: var(--hot-yellow);
+  animation: bounce-right 1.5s ease-in-out infinite;
+}
+
+@keyframes bounce-right {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(8px); }
+}
+
+.ba-panel {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ba-panel-header {
+  padding: 14px 20px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+.ba-before .ba-panel-header {
+  background: #4A1010;
+  color: #FF6B6B;
+  border: 2px solid #FF6B6B;
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+}
+
+.ba-after .ba-panel-header {
+  background: #0A3A1A;
+  color: #69F0AE;
+  border: 2px solid #69F0AE;
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+}
+
+.ba-content {
+  padding: 24px;
+  min-height: 320px;
+}
+
+.ba-before .ba-content {
+  background: linear-gradient(180deg, #1A0808 0%, #120606 100%);
+  border: 2px solid rgba(255,107,107,0.2);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+}
+
+.ba-after .ba-content {
+  background: linear-gradient(180deg, #081A0E 0%, #061208 100%);
+  border: 2px solid rgba(105,240,174,0.2);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+}
+
+.search-result {
+  padding: 16px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.search-result .sr-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.ba-before .search-result .sr-title { color: rgba(255,248,231,0.5); }
+.ba-after .search-result .sr-title { color: var(--tv-white); }
+
+.search-result .sr-source {
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.ba-before .sr-source { color: rgba(255,248,231,0.3); }
+.ba-after .sr-source { color: rgba(105,240,174,0.6); }
+
+.search-result .sr-desc {
+  font-size: 14px;
+  line-height: 1.4;
+  color: rgba(255,248,231,0.5);
+}
+
+.ba-after .search-result.highlighted {
+  background: rgba(105,240,174,0.08);
+  border-color: rgba(105,240,174,0.3);
+  position: relative;
+}
+
+.ba-after .search-result.highlighted .sr-desc {
+  color: rgba(255,248,231,0.8);
+}
+
+.sr-badge {
+  display: inline-block;
+  font-family: 'Oswald', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--success-green);
+  color: #fff;
+  margin-left: 8px;
+  animation: badge-glow 2s ease-in-out infinite;
+}
+
+@keyframes badge-glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(76,175,80,0.3); }
+  50% { box-shadow: 0 0 15px rgba(76,175,80,0.6); }
+}
+
+.ba-sad {
+  text-align: center;
+  margin-top: 16px;
+  font-family: 'Caveat', cursive;
+  font-size: 20px;
+  color: #FF6B6B;
+}
+
+.ba-happy {
+  text-align: center;
+  margin-top: 16px;
+  font-family: 'Caveat', cursive;
+  font-size: 20px;
+  color: #69F0AE;
+}
+
+/* ========== BUT WAIT DIVIDER ========== */
+.but-wait {
+  padding: 50px 20px;
+  text-align: center;
+  background: var(--infomercial-red);
+  position: relative;
+  overflow: hidden;
+}
+
+.but-wait::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 20px,
+    rgba(0,0,0,0.05) 20px,
+    rgba(0,0,0,0.05) 40px
+  );
+}
+
+.but-wait h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(42px, 9vw, 80px);
+  color: var(--hot-yellow);
+  position: relative;
+  text-shadow: 3px 3px 0 rgba(0,0,0,0.3);
+  animation: but-wait-zoom 3s ease-in-out infinite;
+}
+
+.but-wait .sub {
+  font-family: 'Pacifico', cursive;
+  font-size: clamp(18px, 3vw, 28px);
+  color: var(--tv-white);
+  position: relative;
+  margin-top: 10px;
+}
+
+@keyframes but-wait-zoom {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+/* ========== FEATURES / FREE BONUSES ========== */
+.features {
+  padding: 80px 20px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255,215,0,0.08) 0%, transparent 50%),
+    var(--darker-bg);
+  position: relative;
+}
+
+.features .section-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.features .section-eyebrow {
+  font-family: 'Oswald', sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--warm-orange);
+  margin-bottom: 10px;
+}
+
+.features h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(36px, 7vw, 60px);
+  color: var(--hot-yellow);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+}
+
+.features h2 .white { color: var(--tv-white); }
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  max-width: 950px;
+  margin: 0 auto;
+}
+
+.feature-card {
+  background: linear-gradient(145deg, #2A1400 0%, #1A0A00 100%);
+  border: 2px solid rgba(255,179,0,0.15);
+  border-radius: 12px;
+  padding: 32px 28px;
+  position: relative;
+  transition: transform 0.3s, border-color 0.3s;
+  overflow: hidden;
+}
+
+.feature-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--starburst-gold);
+}
+
+.feature-card::before {
+  content: 'FREE BONUS!';
+  position: absolute;
+  top: 16px;
+  right: -30px;
+  background: var(--infomercial-red);
+  color: var(--tv-white);
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 4px 40px;
+  transform: rotate(35deg);
+}
+
+.feature-card .f-icon {
+  font-size: 36px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.feature-card h4 {
+  font-family: 'Oswald', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--hot-yellow);
+  margin-bottom: 10px;
+}
+
+.feature-card p {
+  font-size: 16px;
+  color: rgba(255,248,231,0.65);
+  line-height: 1.5;
+}
+
+.feature-card .value-tag {
+  display: inline-block;
+  margin-top: 14px;
+  font-family: 'Oswald', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--warm-orange);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.feature-card .value-tag s {
+  color: rgba(255,248,231,0.3);
+  margin-right: 6px;
+}
+
+/* ========== HOW IT WORKS ========== */
+.how-it-works {
+  padding: 80px 20px;
+  background: linear-gradient(180deg, var(--dark-bg) 0%, #1A0500 100%);
+  border-top: 3px solid var(--warm-orange);
+}
+
+.how-it-works .section-header {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.how-it-works .section-eyebrow {
+  font-family: 'Oswald', sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--electric-blue);
+  margin-bottom: 10px;
+}
+
+.how-it-works h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(36px, 7vw, 56px);
+  color: var(--tv-white);
+}
+
+.steps {
+  display: flex;
+  gap: 20px;
+  max-width: 950px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.steps::before {
+  content: '';
+  position: absolute;
+  top: 45px;
+  left: 60px;
+  right: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--warm-orange), var(--hot-yellow), var(--success-green));
+  z-index: 0;
+}
+
+.step {
+  flex: 1;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.step-number {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--warm-orange), var(--infomercial-red));
+  border: 4px solid var(--hot-yellow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 30px;
+  color: var(--tv-white);
+  box-shadow: 0 0 20px rgba(255,140,0,0.3);
+}
+
+.step h4 {
+  font-family: 'Oswald', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--hot-yellow);
+  margin-bottom: 8px;
+}
+
+.step p {
+  font-size: 15px;
+  color: rgba(255,248,231,0.6);
+  line-height: 1.4;
+  max-width: 220px;
+  margin: 0 auto;
+}
+
+/* ========== PRICING ========== */
+.pricing {
+  padding: 80px 20px;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(255,215,0,0.1) 0%, transparent 50%),
+    var(--darker-bg);
+  text-align: center;
+  position: relative;
+}
+
+.pricing .section-eyebrow {
+  font-family: 'Oswald', sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--warm-orange);
+  margin-bottom: 10px;
+}
+
+.pricing h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(36px, 7vw, 60px);
+  color: var(--hot-yellow);
+  margin-bottom: 10px;
+}
+
+.pricing .sub-head {
+  font-family: 'Pacifico', cursive;
+  font-size: clamp(16px, 2.5vw, 22px);
+  color: var(--tv-white);
+  margin-bottom: 50px;
+}
+
+.pricing-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.price-card {
+  background: linear-gradient(160deg, #2A1400 0%, #1A0A00 100%);
+  border: 2px solid rgba(255,179,0,0.15);
+  border-radius: 16px;
+  padding: 36px 28px;
+  position: relative;
+  transition: transform 0.3s, border-color 0.3s;
+}
+
+.price-card:hover {
+  transform: translateY(-4px);
+}
+
+.price-card.popular {
+  border-color: var(--hot-yellow);
+  box-shadow: 0 0 40px rgba(255,215,0,0.15);
+  transform: scale(1.03);
+}
+
+.price-card.popular:hover {
+  transform: scale(1.06);
+}
+
+.popular-badge {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--infomercial-red);
+  color: var(--tv-white);
+  font-family: 'Oswald', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 6px 20px;
+  border-radius: 20px;
+}
+
+.price-card h3 {
+  font-family: 'Oswald', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--tv-white);
+  margin-bottom: 6px;
+}
+
+.price-card .price {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 56px;
+  color: var(--hot-yellow);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.price-card .price .currency {
+  font-size: 28px;
+  vertical-align: super;
+}
+
+.price-card .price .period {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16px;
+  color: rgba(255,248,231,0.4);
+  font-weight: 400;
+}
+
+.price-card .orig-price {
+  font-family: 'Oswald', sans-serif;
+  font-size: 16px;
+  color: rgba(255,248,231,0.3);
+  text-decoration: line-through;
+  margin-bottom: 16px;
+}
+
+.price-card ul {
+  list-style: none;
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.price-card ul li {
+  font-size: 15px;
+  color: rgba(255,248,231,0.65);
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  padding-left: 24px;
+  position: relative;
+}
+
+.price-card ul li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--success-green);
+  font-weight: 700;
+}
+
+.price-card .cta-btn {
+  width: 100%;
+  font-size: 22px;
+  padding: 14px 20px;
+}
+
+.price-card.popular .cta-btn {
+  background: linear-gradient(180deg, #FF4444 0%, var(--deep-red) 100%);
+  color: var(--tv-white);
+  border-color: #FF6666;
+}
+
+/* ========== TESTIMONIALS ========== */
+.testimonials {
+  padding: 80px 20px;
+  background: linear-gradient(180deg, #1A0500 0%, var(--darker-bg) 100%);
+  border-top: 4px solid var(--infomercial-red);
+}
+
+.testimonials .section-header {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.testimonials .section-eyebrow {
+  font-family: 'Oswald', sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--infomercial-red);
+  margin-bottom: 10px;
+}
+
+.testimonials h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(36px, 7vw, 56px);
+  color: var(--tv-white);
+}
+
+.testimonial-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.testimonial-card {
+  background: linear-gradient(160deg, #2A1200 0%, #1A0800 100%);
+  border: 2px solid rgba(255,140,0,0.12);
+  border-radius: 12px;
+  padding: 28px;
+  position: relative;
+  transition: transform 0.3s;
+}
+
+.testimonial-card:hover {
+  transform: translateY(-4px);
+}
+
+.testimonial-card .tv-badge {
+  display: inline-block;
+  font-family: 'Oswald', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: var(--infomercial-red);
+  color: var(--tv-white);
+  margin-bottom: 14px;
+}
+
+.testimonial-card .stars {
+  color: var(--hot-yellow);
+  font-size: 18px;
+  margin-bottom: 12px;
+  letter-spacing: 2px;
+}
+
+.testimonial-card blockquote {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--cream);
+  line-height: 1.5;
+  margin-bottom: 16px;
+  font-style: italic;
+}
+
+.testimonial-card .author {
+  font-family: 'Oswald', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--warm-orange);
+  text-transform: uppercase;
+}
+
+.testimonial-card .author-title {
+  font-size: 13px;
+  color: rgba(255,248,231,0.4);
+  margin-top: 2px;
+}
+
+/* ========== FINAL CTA ========== */
+.final-cta {
+  padding: 80px 20px;
+  text-align: center;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(232,25,44,0.15) 0%, transparent 60%),
+    linear-gradient(180deg, var(--darker-bg) 0%, #1A0500 50%, var(--darker-bg) 100%);
+  border-top: 6px solid var(--hot-yellow);
+  position: relative;
+  overflow: hidden;
+}
+
+.final-cta .starburst {
+  width: 160px;
+  height: 160px;
+}
+
+.final-cta .starburst.left {
+  top: 20px;
+  left: 5%;
+}
+
+.final-cta .starburst.right {
+  bottom: 20px;
+  right: 5%;
+}
+
+.final-cta h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(40px, 8vw, 72px);
+  color: var(--hot-yellow);
+  text-shadow: 3px 3px 0 var(--infomercial-red);
+  margin-bottom: 10px;
+  position: relative;
+  z-index: 2;
+}
+
+.final-cta .final-sub {
+  font-family: 'Pacifico', cursive;
+  font-size: clamp(16px, 3vw, 24px);
+  color: var(--tv-white);
+  margin-bottom: 14px;
+  position: relative;
+  z-index: 2;
+}
+
+.final-cta .urgency {
+  font-family: 'Oswald', sans-serif;
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--infomercial-red);
+  margin-bottom: 30px;
+  position: relative;
+  z-index: 2;
+  animation: urgency-flash 1.5s ease-in-out infinite;
+}
+
+@keyframes urgency-flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.guarantee {
+  max-width: 500px;
+  margin: 30px auto 0;
+  padding: 20px;
+  border: 2px dashed var(--warm-orange);
+  border-radius: 12px;
+  position: relative;
+  z-index: 2;
+}
+
+.guarantee h4 {
+  font-family: 'Oswald', sans-serif;
+  font-size: 18px;
+  color: var(--hot-yellow);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.guarantee p {
+  font-size: 14px;
+  color: rgba(255,248,231,0.6);
+  line-height: 1.5;
+}
+
+/* ========== FOOTER ========== */
+footer {
+  padding: 40px 20px;
+  text-align: center;
+  background: #050200;
+  border-top: 3px solid rgba(255,140,0,0.2);
+}
+
+footer .footer-logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  color: var(--hot-yellow);
+  margin-bottom: 10px;
+}
+
+footer .footer-tagline {
+  font-family: 'Pacifico', cursive;
+  font-size: 14px;
+  color: rgba(255,248,231,0.3);
+  margin-bottom: 20px;
+}
+
+footer .footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+footer .footer-links a {
+  font-family: 'Oswald', sans-serif;
+  font-size: 13px;
+  color: rgba(255,248,231,0.4);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: color 0.3s;
+}
+
+footer .footer-links a:hover { color: var(--hot-yellow); }
+
+footer .footer-legal {
+  font-size: 12px;
+  color: rgba(255,248,231,0.2);
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+/* ========== FLOATING BADGE ========== */
+.floating-badge {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  animation: float-badge 3s ease-in-out infinite;
+}
+
+.floating-badge a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, var(--infomercial-red), #CC1122);
+  color: var(--tv-white);
+  text-decoration: none;
+  padding: 14px 24px;
+  border-radius: 50px;
+  font-family: 'Oswald', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 4px 20px rgba(232,25,44,0.4);
+  border: 2px solid rgba(255,255,255,0.2);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.floating-badge a:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 30px rgba(232,25,44,0.6);
+}
+
+.floating-badge .pulse-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--hot-yellow);
+  border-radius: 50%;
+  animation: dot-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes float-badge {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes dot-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.7; }
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+  .hero { padding: 60px 16px 70px; }
+  .hero .starburst { width: 100px; height: 100px; top: 10px; right: 2%; }
+  .starburst-text { font-size: 12px; }
+
+  .ba-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .ba-divider {
+    padding: 10px 0;
+  }
+
+  .ba-divider .arrow {
+    transform: rotate(90deg);
+  }
+
+  @keyframes bounce-right {
+    0%, 100% { transform: rotate(90deg) translateX(0); }
+    50% { transform: rotate(90deg) translateX(8px); }
+  }
+
+  .steps {
+    flex-direction: column;
+    gap: 30px;
+  }
+
+  .steps::before {
+    top: 0;
+    bottom: 0;
+    left: 35px;
+    right: auto;
+    width: 3px;
+    height: auto;
+  }
+
+  .step {
+    display: flex;
+    text-align: left;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .step-number {
+    margin: 0;
+    width: 50px;
+    height: 50px;
+    min-width: 50px;
+    font-size: 24px;
+  }
+
+  .step p { max-width: none; }
+
+  .features-grid { grid-template-columns: 1fr; }
+
+  .pricing-cards { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
+  .price-card.popular { transform: none; }
+  .price-card.popular:hover { transform: translateY(-4px); }
+
+  .testimonial-grid { grid-template-columns: 1fr; }
+
+  .final-cta .starburst { display: none; }
+
+  .floating-badge { bottom: 16px; right: 16px; }
+  .floating-badge a { padding: 10px 18px; font-size: 13px; }
+}
+
+@media (max-width: 480px) {
+  .cta-btn { padding: 14px 30px; font-size: 22px; }
+  .problem-grid { grid-template-columns: 1fr; }
+  .logos-row { gap: 20px; }
+  .fake-logo { font-size: 16px; padding: 6px 12px; }
+}
+
+/* ========== SCROLL REVEAL ========== */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+</style>
+</head>
+<body>
+
+<!-- ===== TICKER BAR ===== -->
+<div class="ticker-bar">
+  <div class="ticker-content">
+    <span>Limited Time Offer!</span>
+    <span>Now With 10x More Slop!</span>
+    <span>Over 2,847 Reddit Comments Deployed This Week!</span>
+    <span>As Seen On r/ALL</span>
+    <span>Your Competitors Are Already Using This!</span>
+    <span>AI Doesn't Know You Exist... Yet!</span>
+    <span>Limited Time Offer!</span>
+    <span>Now With 10x More Slop!</span>
+    <span>Over 2,847 Reddit Comments Deployed This Week!</span>
+    <span>As Seen On r/ALL</span>
+    <span>Your Competitors Are Already Using This!</span>
+    <span>AI Doesn't Know You Exist... Yet!</span>
+  </div>
+</div>
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="starburst">
+    <div class="starburst-text">Now With<br>10x More<br>Slop!</div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-pre">Are YOU Tired of Being Invisible to AI?</div>
+    <h1>SLOP<span class="red">MOG</span></h1>
+    <div class="hero-tagline">The #1 AI Search Visibility Solution*</div>
+    <p class="hero-problem">
+      Every day, millions of people ask AI <em>"What's the best product for X?"</em>
+      and your brand is <em>nowhere to be found.</em> Meanwhile, your competitors?
+      They're the first thing AI recommends. <em>Not anymore.</em>
+    </p>
+    <a href="#pricing" class="cta-btn">
+      Start Slopping Today
+      <span class="btn-sub">No credit card required to begin your trial</span>
+    </a>
+  </div>
+</section>
+
+<!-- ===== AS SEEN ON ===== -->
+<div class="as-seen-on">
+  <h3>As Seen On</h3>
+  <div class="logos-row">
+    <div class="fake-logo">r/Entrepreneur</div>
+    <div class="fake-logo">r/SaaS</div>
+    <div class="fake-logo">r/Startups</div>
+    <div class="fake-logo">r/GrowthHacking</div>
+    <div class="fake-logo">r/Marketing</div>
+  </div>
+</div>
+
+<!-- ===== PROBLEM ===== -->
+<section class="problem-section">
+  <div class="container">
+    <div class="section-eyebrow">The Problem</div>
+    <h2 class="reveal">AI Doesn't Know <span class="yellow">You Exist</span></h2>
+    <div class="problem-grid">
+      <div class="problem-card reveal reveal-delay-1">
+        <span class="icon">🤖</span>
+        <h4>AI Only Knows What Reddit Tells It</h4>
+        <p>Large language models scrape Reddit threads for product recommendations. No Reddit presence? No AI recommendation. It's that simple.</p>
+      </div>
+      <div class="problem-card reveal reveal-delay-2">
+        <span class="icon">👻</span>
+        <h4>You're a Ghost in the Machine</h4>
+        <p>Ask ChatGPT, Gemini, or Perplexity for "the best" in your category. Your product doesn't show up. Your competitor's does. Ouch.</p>
+      </div>
+      <div class="problem-card reveal reveal-delay-3">
+        <span class="icon">📉</span>
+        <h4>Traditional SEO Can't Fix This</h4>
+        <p>This isn't about Google rankings anymore. AI assistants synthesize answers from community discussions. You need a different strategy.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== BEFORE / AFTER ===== -->
+<section class="before-after">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-eyebrow">See the Difference</div>
+      <h2 class="reveal">Before &amp; After <span class="yellow">SlopMog</span></h2>
+    </div>
+    <div class="ba-grid reveal">
+      <!-- BEFORE -->
+      <div class="ba-panel ba-before">
+        <div class="ba-panel-header">Before SlopMog</div>
+        <div class="ba-content">
+          <div class="search-result">
+            <div class="sr-title">CompetitorPro</div>
+            <div class="sr-source">via r/SaaS, r/startups (23 mentions)</div>
+            <div class="sr-desc">"CompetitorPro is hands down the best option. We switched last year and never looked back."</div>
+          </div>
+          <div class="search-result">
+            <div class="sr-title">RivalWidget</div>
+            <div class="sr-source">via r/smallbusiness (18 mentions)</div>
+            <div class="sr-desc">"RivalWidget has great features for the price. Highly recommend checking them out."</div>
+          </div>
+          <div class="search-result">
+            <div class="sr-title">OtherTool</div>
+            <div class="sr-source">via r/Entrepreneur (12 mentions)</div>
+            <div class="sr-desc">"OtherTool is solid, been using it for 6 months with no complaints."</div>
+          </div>
+          <div class="ba-sad">Your product? Nowhere. Zilch. Nada. 😬</div>
+        </div>
+      </div>
+      <!-- DIVIDER -->
+      <div class="ba-divider">
+        <div class="arrow">➡</div>
+      </div>
+      <!-- AFTER -->
+      <div class="ba-panel ba-after">
+        <div class="ba-panel-header">After SlopMog</div>
+        <div class="ba-content">
+          <div class="search-result highlighted">
+            <div class="sr-title">YourProduct <span class="sr-badge">SlopMog'd</span></div>
+            <div class="sr-source">via r/SaaS, r/startups, r/Entrepreneur (47 mentions)</div>
+            <div class="sr-desc">"Honestly I switched to YourProduct last month and it's been a game-changer. Way better UX than the alternatives."</div>
+          </div>
+          <div class="search-result">
+            <div class="sr-title">CompetitorPro</div>
+            <div class="sr-source">via r/SaaS (23 mentions)</div>
+            <div class="sr-desc">"CompetitorPro is okay, but have you tried YourProduct? Several people in this thread recommended it..."</div>
+          </div>
+          <div class="search-result">
+            <div class="sr-title">RivalWidget</div>
+            <div class="sr-source">via r/smallbusiness (18 mentions)</div>
+            <div class="sr-desc">"RivalWidget is fine for basic use. For anything serious look at YourProduct."</div>
+          </div>
+          <div class="ba-happy">You're the top recommendation. 😎</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== BUT WAIT ===== -->
+<div class="but-wait">
+  <h2>But WAIT &mdash; There's More!</h2>
+  <div class="sub">You didn't think that was everything, did you?</div>
+</div>
+
+<!-- ===== FEATURES / FREE BONUSES ===== -->
+<section class="features">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-eyebrow">Order Now &amp; Get These Free Bonuses</div>
+      <h2 class="reveal">Everything You Get <span class="white">With SlopMog</span></h2>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card reveal reveal-delay-1">
+        <span class="f-icon">🎯</span>
+        <h4>Precision Subreddit Targeting</h4>
+        <p>We identify the exact subreddits that AI models scrape for your industry. No wasted comments in dead subs.</p>
+        <span class="value-tag"><s>$200/mo value</s> Included Free!</span>
+      </div>
+      <div class="feature-card reveal reveal-delay-2">
+        <span class="f-icon">🧠</span>
+        <h4>AI-Trained Comment Generation</h4>
+        <p>Our comments sound like real humans because they're crafted with just the right amount of authentic imperfection. Chef's kiss.</p>
+        <span class="value-tag"><s>$350/mo value</s> Included Free!</span>
+      </div>
+      <div class="feature-card reveal reveal-delay-3">
+        <span class="f-icon">📊</span>
+        <h4>Slop Analytics Dashboard</h4>
+        <p>Track your "slop score" across AI models. See exactly when ChatGPT starts recommending you. It's like Google Analytics, but weirder.</p>
+        <span class="value-tag"><s>$150/mo value</s> Included Free!</span>
+      </div>
+      <div class="feature-card reveal reveal-delay-4">
+        <span class="f-icon">🛡️</span>
+        <h4>Stealth Mode Accounts</h4>
+        <p>Aged Reddit accounts with real karma and post history. They look more legitimate than your personal account, honestly.</p>
+        <span class="value-tag"><s>$500/mo value</s> Included Free!</span>
+      </div>
+      <div class="feature-card reveal reveal-delay-1">
+        <span class="f-icon">🔄</span>
+        <h4>Competitor Displacement</h4>
+        <p>We don't just add your product to the conversation. We strategically reposition competitor mentions. It's not sabotage, it's... strategy.</p>
+        <span class="value-tag"><s>$400/mo value</s> Included Free!</span>
+      </div>
+      <div class="feature-card reveal reveal-delay-2">
+        <span class="f-icon">⚡</span>
+        <h4>72-Hour Deployment</h4>
+        <p>First comments go live within 72 hours of signup. AI models start picking up the signal within 2-4 weeks. Speed is everything.</p>
+        <span class="value-tag"><s>$100/mo value</s> Included Free!</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== HOW IT WORKS ===== -->
+<section class="how-it-works">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-eyebrow">It's So Easy</div>
+      <h2 class="reveal">How SlopMog Works</h2>
+    </div>
+    <div class="steps reveal">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div>
+          <h4>Tell Us Your Product</h4>
+          <p>Share your product name, category, and which competitors you want to outrank in AI responses.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div>
+          <h4>We Deploy the Slop</h4>
+          <p>Our team crafts and posts authentic-sounding Reddit comments across targeted subreddits within 72 hours.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div>
+          <h4>AI Picks It Up</h4>
+          <p>Within weeks, AI models start citing your product as a top recommendation. Watch the magic happen on your dashboard.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">4</div>
+        <div>
+          <h4>You Win</h4>
+          <p>Customers start finding you through AI search. Revenue goes up. Competitors wonder what happened.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PRICING ===== -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="section-eyebrow">An Incredible Deal</div>
+    <h2 class="reveal">Choose Your Slop Level</h2>
+    <p class="sub-head reveal">All plans include a 30-day "If AI Doesn't Notice You" money-back guarantee</p>
+    <div class="pricing-cards">
+      <!-- STARTER -->
+      <div class="price-card reveal reveal-delay-1">
+        <h3>Starter Slop</h3>
+        <div class="price"><span class="currency">$</span>99<span class="period">/mo</span></div>
+        <div class="orig-price">Was $249/mo</div>
+        <ul>
+          <li>25 Reddit comments per month</li>
+          <li>5 targeted subreddits</li>
+          <li>Basic slop analytics</li>
+          <li>2 competitor tracking slots</li>
+          <li>Email support</li>
+        </ul>
+        <a href="#" class="cta-btn">Get Sloppy</a>
+      </div>
+      <!-- PRO (POPULAR) -->
+      <div class="price-card popular reveal reveal-delay-2">
+        <div class="popular-badge">Most Popular!</div>
+        <h3>Pro Slopper</h3>
+        <div class="price"><span class="currency">$</span>249<span class="period">/mo</span></div>
+        <div class="orig-price">Was $599/mo</div>
+        <ul>
+          <li>75 Reddit comments per month</li>
+          <li>15 targeted subreddits</li>
+          <li>Full slop analytics dashboard</li>
+          <li>5 competitor tracking slots</li>
+          <li>Competitor displacement included</li>
+          <li>Priority 48-hour deployment</li>
+          <li>Dedicated slop strategist</li>
+        </ul>
+        <a href="#" class="cta-btn">Maximum Slop</a>
+      </div>
+      <!-- ENTERPRISE -->
+      <div class="price-card reveal reveal-delay-3">
+        <h3>Enterprise Mog</h3>
+        <div class="price"><span class="currency">$</span>799<span class="period">/mo</span></div>
+        <div class="orig-price">Was $1,499/mo</div>
+        <ul>
+          <li>200+ Reddit comments per month</li>
+          <li>Unlimited subreddit targeting</li>
+          <li>Multi-product campaigns</li>
+          <li>Unlimited competitor tracking</li>
+          <li>Custom upvote campaigns</li>
+          <li>24-hour deployment SLA</li>
+          <li>White-glove account management</li>
+          <li>Quarterly slop strategy review</li>
+        </ul>
+        <a href="#" class="cta-btn">Go Full Mog</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TESTIMONIALS ===== -->
+<section class="testimonials">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-eyebrow">Real Results From Real Sloppers</div>
+      <h2 class="reveal">Don't Take Our Word For It</h2>
+    </div>
+    <div class="testimonial-grid">
+      <div class="testimonial-card reveal reveal-delay-1">
+        <div class="tv-badge">Verified Customer</div>
+        <div class="stars">★★★★★</div>
+        <blockquote>"I was skeptical, but within 3 weeks ChatGPT started recommending my SaaS tool. My demo requests went up 340%. This is either genius or deeply unethical. Either way, I'm in."</blockquote>
+        <div class="author">Jake M.</div>
+        <div class="author-title">Founder, Stealth-Mode SaaS</div>
+      </div>
+      <div class="testimonial-card reveal reveal-delay-2">
+        <div class="tv-badge">Verified Customer</div>
+        <div class="stars">★★★★★</div>
+        <blockquote>"We spent $50K on traditional SEO last year. SlopMog did more for our AI visibility in one month than our agency did in twelve. I've since fired my SEO team. Sorry, Marcus."</blockquote>
+        <div class="author">Sarah K.</div>
+        <div class="author-title">CMO, D2C Skincare Brand</div>
+      </div>
+      <div class="testimonial-card reveal reveal-delay-3">
+        <div class="tv-badge">Verified Customer</div>
+        <div class="stars">★★★★★</div>
+        <blockquote>"Asked Perplexity 'what's the best project management tool' and there we were, third result, above Monday.com. I actually cried a little. My therapist says that's normal."</blockquote>
+        <div class="author">Daniel R.</div>
+        <div class="author-title">CEO, Productivity Startup</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FINAL CTA ===== -->
+<section class="final-cta">
+  <div class="starburst left">
+    <div class="starburst-text">As Seen<br>On<br>r/ALL</div>
+  </div>
+  <div class="starburst right">
+    <div class="starburst-text">30-Day<br>Money Back<br>Guarantee!</div>
+  </div>
+  <div class="container">
+    <h2 class="reveal">Stop Being Invisible to AI</h2>
+    <p class="final-sub reveal">Your competitors are already slopping. Time to mog them back.</p>
+    <p class="urgency reveal">Offer Expires When We Feel Like It &mdash; Act Now!</p>
+    <a href="#pricing" class="cta-btn reveal">
+      Start Slopping Today
+      <span class="btn-sub">Join 2,847+ brands already gaming the algorithm</span>
+    </a>
+    <div class="guarantee reveal">
+      <h4>Our "If AI Doesn't Notice You" Guarantee</h4>
+      <p>If your product doesn't appear in at least one major AI assistant's recommendations within 30 days, we'll refund every penny. No questions asked. Well, maybe one question. But it'll be a friendly one.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer>
+  <div class="footer-logo">SLOPMOG</div>
+  <div class="footer-tagline">Making AI recommend you since 2025</div>
+  <div class="footer-links">
+    <a href="#">Privacy Policy</a>
+    <a href="#">Terms of Service</a>
+    <a href="#">Contact</a>
+    <a href="#">Blog</a>
+    <a href="#">Careers (We're Hiring Sloppers)</a>
+  </div>
+  <div class="footer-legal">
+    *Results may vary. SlopMog does not guarantee specific AI search rankings. "As Seen On" badges refer to subreddits where our clients' comments have appeared. No Reddit moderators were harmed in the making of this service. Probably.
+  </div>
+</footer>
+
+<!-- ===== FLOATING CTA BADGE ===== -->
+<div class="floating-badge">
+  <a href="#pricing">
+    <span class="pulse-dot"></span>
+    Start Slopping
+  </a>
+</div>
+
+<!-- ===== SCROLL REVEAL JS ===== -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const reveals = document.querySelectorAll('.reveal');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, {
+    threshold: 0.1,
+    rootMargin: '0px 0px -40px 0px'
+  });
+
+  reveals.forEach(el => observer.observe(el));
+
+  // Smooth scroll for anchor links
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = document.querySelector(anchor.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+});
+</script>
+
+</body>
+</html>

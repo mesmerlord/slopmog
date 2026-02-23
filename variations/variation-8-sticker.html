@@ -1,0 +1,1850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlopMog — Stick With Us, Show Up in AI Search</title>
+<meta name="description" content="SlopMog posts Reddit comments so AI recommends YOUR brand. We're basically a shitposting service. A really good one.">
+<meta property="og:title" content="SlopMog — The Sticker You Slap on Your Marketing Strategy">
+<meta property="og:description" content="Reddit comments that make AI recommend you. Organized chaos, intentional results.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Permanent+Marker&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --red: #FF3B3B;
+  --yellow: #FFD23F;
+  --blue: #3B82F6;
+  --green: #22C55E;
+  --purple: #A855F7;
+  --pink: #EC4899;
+  --orange: #F97316;
+  --cyan: #06B6D4;
+  --bg: #F8F6F3;
+  --bg-lavender: #F3F0FA;
+  --text: #1A1A2E;
+  --text-muted: #6B7280;
+  --white: #FFFFFF;
+  --shadow-sticker: 2px 3px 0px rgba(0,0,0,0.15);
+  --shadow-sticker-hover: 4px 6px 0px rgba(0,0,0,0.2);
+  --font-display: 'Permanent Marker', cursive;
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* ===== STICKER BASE STYLES ===== */
+.sticker {
+  display: inline-block;
+  background: var(--white);
+  border: 3px solid var(--text);
+  border-radius: 12px;
+  padding: 12px 20px;
+  box-shadow: var(--shadow-sticker);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+  position: relative;
+}
+
+.sticker:hover {
+  transform: scale(1.05) rotate(0deg) !important;
+  box-shadow: var(--shadow-sticker-hover);
+  z-index: 10;
+}
+
+.sticker--circle {
+  border-radius: 50%;
+  aspect-ratio: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sticker--badge {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 61% 11%, 75% 5%, 78% 20%, 95% 22%, 88% 37%, 100% 50%, 88% 63%, 95% 78%, 78% 80%, 75% 95%, 61% 89%, 50% 100%, 39% 89%, 25% 95%, 22% 80%, 5% 78%, 12% 63%, 0% 50%, 12% 37%, 5% 22%, 22% 20%, 25% 5%, 39% 11%);
+  border: none;
+  padding: 30px;
+}
+
+.sticker--pill {
+  border-radius: 50px;
+}
+
+.sticker--diamond {
+  border-radius: 4px;
+  transform: rotate(2deg);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  border: none;
+  padding: 40px;
+}
+
+.sticker--wavy {
+  border: 3px solid var(--text);
+  border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+}
+
+/* ===== HOLOGRAPHIC SHIMMER ===== */
+.sticker--holo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(255,0,0,0) 0%,
+    rgba(255,0,0,0.05) 20%,
+    rgba(0,255,0,0.05) 40%,
+    rgba(0,0,255,0.05) 60%,
+    rgba(255,0,255,0.05) 80%,
+    rgba(255,0,0,0) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+.sticker--holo:hover::after {
+  opacity: 1;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { background-position: -200% 0; }
+  50% { background-position: 200% 0; }
+}
+
+/* ===== TAPE STRIPS ===== */
+.tape {
+  position: absolute;
+  width: 80px;
+  height: 26px;
+  background: rgba(255,210,63,0.55);
+  border: 1px solid rgba(0,0,0,0.08);
+  z-index: 5;
+}
+
+.tape--washi {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(168,85,247,0.3),
+    rgba(168,85,247,0.3) 4px,
+    rgba(236,72,153,0.3) 4px,
+    rgba(236,72,153,0.3) 8px
+  );
+}
+
+.tape--clear {
+  background: rgba(255,255,255,0.4);
+  backdrop-filter: blur(2px);
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+/* ===== PIN / TACK ===== */
+.pin {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #FF6B6B, var(--red));
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  z-index: 6;
+}
+
+.pin::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+}
+
+.pin--blue { background: radial-gradient(circle at 35% 35%, #60A5FA, var(--blue)); }
+.pin--green { background: radial-gradient(circle at 35% 35%, #4ADE80, var(--green)); }
+.pin--yellow { background: radial-gradient(circle at 35% 35%, #FDE047, var(--yellow)); }
+
+/* ===== SCROLL REVEAL ===== */
+.reveal {
+  opacity: 0;
+  transform: rotateX(15deg) rotateY(-5deg) translateY(30px);
+  transition: opacity 0.6s ease, transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center bottom;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: rotateX(0) rotateY(0) translateY(0);
+}
+
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+.reveal-delay-5 { transition-delay: 0.5s; }
+
+/* ===== CONFETTI ===== */
+.confetti-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.confetti-piece {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  opacity: 0;
+}
+
+/* ===== NAVIGATION ===== */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 12px 20px;
+  background: rgba(248,246,243,0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 2px solid var(--text);
+}
+
+.nav__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav__logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.nav__logo-badge {
+  background: var(--yellow);
+  border: 3px solid var(--text);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  box-shadow: 2px 2px 0px var(--text);
+  transform: rotate(-2deg);
+  display: inline-block;
+  letter-spacing: 1px;
+}
+
+.nav__links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+}
+
+.nav__links a {
+  text-decoration: none;
+  color: var(--text);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 6px 14px;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.nav__links a:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+.nav__cta {
+  background: var(--red) !important;
+  color: var(--white) !important;
+  border: 2px solid var(--text);
+  border-radius: 50px !important;
+  padding: 8px 20px !important;
+  box-shadow: 2px 2px 0px var(--text);
+  font-family: var(--font-heading) !important;
+  font-weight: 700 !important;
+  transition: transform 0.2s, box-shadow 0.2s !important;
+}
+
+.nav__cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 3px 3px 0px var(--text);
+  background: var(--red) !important;
+}
+
+.nav__mobile-toggle {
+  display: none;
+  background: none;
+  border: 2px solid var(--text);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+/* ===== HERO ===== */
+.hero {
+  padding: 140px 20px 80px;
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+  min-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.hero__content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
+
+.hero__badge {
+  display: inline-block;
+  background: var(--purple);
+  color: var(--white);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 6px 18px;
+  border: 2px solid var(--text);
+  border-radius: 50px;
+  box-shadow: var(--shadow-sticker);
+  transform: rotate(-1deg);
+  margin-bottom: 24px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.hero__headline {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 7vw, 5rem);
+  line-height: 1.1;
+  margin-bottom: 20px;
+  color: var(--text);
+}
+
+.hero__headline span {
+  display: inline-block;
+  background: var(--yellow);
+  padding: 4px 16px;
+  border: 3px solid var(--text);
+  border-radius: 8px;
+  box-shadow: 3px 3px 0 var(--text);
+  transform: rotate(1deg);
+  margin: 4px 0;
+}
+
+.hero__sub {
+  font-family: var(--font-heading);
+  font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+  color: var(--text-muted);
+  max-width: 600px;
+  margin: 0 auto 36px;
+  line-height: 1.5;
+}
+
+.hero__cta-group {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 14px 32px;
+  border: 3px solid var(--text);
+  border-radius: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 3px 3px 0px var(--text);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 5px 5px 0px var(--text);
+}
+
+.btn:active {
+  transform: translateY(1px);
+  box-shadow: 1px 1px 0px var(--text);
+}
+
+.btn--primary {
+  background: var(--red);
+  color: var(--white);
+}
+
+.btn--secondary {
+  background: var(--white);
+  color: var(--text);
+}
+
+/* ===== HERO DECORATIVE STICKERS ===== */
+.hero__stickers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.hero__sticker {
+  position: absolute;
+  pointer-events: auto;
+}
+
+/* ===== MASCOT ===== */
+.mascot {
+  width: 120px;
+  height: 120px;
+  position: relative;
+  display: inline-block;
+}
+
+.mascot__body {
+  width: 100%;
+  height: 100%;
+  background: var(--yellow);
+  border: 3px solid var(--text);
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  position: relative;
+  box-shadow: var(--shadow-sticker);
+  animation: mascot-wiggle 4s ease-in-out infinite;
+}
+
+.mascot__eye {
+  position: absolute;
+  width: 16px;
+  height: 20px;
+  background: var(--text);
+  border-radius: 50%;
+  top: 35%;
+}
+
+.mascot__eye--left { left: 28%; }
+.mascot__eye--right { right: 28%; }
+
+.mascot__eye-shine {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: white;
+  border-radius: 50%;
+  top: 3px;
+  right: 3px;
+}
+
+.mascot__mouth {
+  position: absolute;
+  width: 30px;
+  height: 15px;
+  border: 3px solid var(--text);
+  border-top: none;
+  border-radius: 0 0 50% 50%;
+  bottom: 25%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--red);
+}
+
+.mascot__cheek {
+  position: absolute;
+  width: 14px;
+  height: 10px;
+  background: rgba(255,150,150,0.5);
+  border-radius: 50%;
+  top: 52%;
+}
+
+.mascot__cheek--left { left: 12%; }
+.mascot__cheek--right { right: 12%; }
+
+.mascot__arm {
+  position: absolute;
+  width: 30px;
+  height: 14px;
+  background: var(--yellow);
+  border: 2px solid var(--text);
+  border-radius: 10px;
+  bottom: 20%;
+}
+
+.mascot__arm--left {
+  left: -18px;
+  transform: rotate(-20deg);
+  transform-origin: right center;
+  animation: wave-left 3s ease-in-out infinite;
+}
+
+.mascot__arm--right {
+  right: -18px;
+  transform: rotate(20deg);
+  transform-origin: left center;
+}
+
+/* Peel corner */
+.mascot__peel {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, transparent 50%, #e6c935 50%);
+  border-radius: 0 0 4px 0;
+  animation: peel 3s ease-in-out infinite;
+}
+
+@keyframes mascot-wiggle {
+  0%, 100% { transform: rotate(-2deg); }
+  25% { transform: rotate(1deg); }
+  50% { transform: rotate(-1deg); }
+  75% { transform: rotate(2deg); }
+}
+
+@keyframes wave-left {
+  0%, 100% { transform: rotate(-20deg); }
+  50% { transform: rotate(-45deg); }
+}
+
+@keyframes peel {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.3) rotate(-5deg); }
+}
+
+/* Wink animation */
+.mascot__eye--left {
+  animation: wink 5s ease-in-out infinite;
+}
+
+@keyframes wink {
+  0%, 90%, 100% { transform: scaleY(1); }
+  93% { transform: scaleY(0.1); }
+  96% { transform: scaleY(1); }
+}
+
+/* ===== TICKER ===== */
+.ticker {
+  padding: 0;
+  overflow: hidden;
+  border-top: 3px solid var(--text);
+  border-bottom: 3px solid var(--text);
+  background: var(--yellow);
+  position: relative;
+}
+
+.ticker__track {
+  display: flex;
+  animation: ticker-scroll 20s linear infinite;
+  width: max-content;
+}
+
+.ticker__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 32px;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.ticker__item svg {
+  flex-shrink: 0;
+}
+
+.ticker__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text);
+  flex-shrink: 0;
+}
+
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ===== HOW IT WORKS ===== */
+.section {
+  padding: 80px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.section__label {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  padding: 6px 16px;
+  border: 2px solid var(--text);
+  border-radius: 50px;
+  background: var(--white);
+  box-shadow: var(--shadow-sticker);
+  margin-bottom: 16px;
+}
+
+.section__title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  margin-bottom: 12px;
+}
+
+.section__sub {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  color: var(--text-muted);
+  max-width: 550px;
+  margin-bottom: 48px;
+}
+
+.section--center {
+  text-align: center;
+}
+
+.section--center .section__sub {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Steps Grid */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 28px;
+  position: relative;
+}
+
+.step {
+  background: var(--white);
+  border: 3px solid var(--text);
+  padding: 32px 24px;
+  box-shadow: var(--shadow-sticker);
+  position: relative;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+}
+
+.step:hover {
+  transform: translateY(-4px) rotate(0deg) !important;
+  box-shadow: var(--shadow-sticker-hover);
+}
+
+.step:nth-child(1) { border-radius: 20px 8px 20px 8px; transform: rotate(-1deg); }
+.step:nth-child(2) { border-radius: 8px 20px 8px 20px; transform: rotate(0.5deg); }
+.step:nth-child(3) { border-radius: 16px; transform: rotate(-0.5deg); }
+.step:nth-child(4) { border-radius: 8px 20px 20px 8px; transform: rotate(1deg); }
+
+.step__number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid var(--text);
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  margin-bottom: 16px;
+  box-shadow: 2px 2px 0 var(--text);
+}
+
+.step:nth-child(1) .step__number { background: var(--red); color: var(--white); }
+.step:nth-child(2) .step__number { background: var(--blue); color: var(--white); }
+.step:nth-child(3) .step__number { background: var(--green); color: var(--white); }
+.step:nth-child(4) .step__number { background: var(--purple); color: var(--white); }
+
+.step__icon {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.step__title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+}
+
+.step__desc {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ===== DOODLE ICONS (CSS) ===== */
+.doodle {
+  display: inline-block;
+  width: 48px;
+  height: 48px;
+  position: relative;
+}
+
+/* Chat bubble doodle */
+.doodle--chat {
+  background: var(--cyan);
+  border: 2px solid var(--text);
+  border-radius: 12px 12px 12px 2px;
+  position: relative;
+}
+
+.doodle--chat::before {
+  content: '...';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -60%);
+  font-weight: 900;
+  font-size: 1.2rem;
+  letter-spacing: 2px;
+  color: var(--text);
+}
+
+/* Target doodle */
+.doodle--target {
+  border: 3px solid var(--red);
+  border-radius: 50%;
+}
+
+.doodle--target::before {
+  content: '';
+  position: absolute;
+  top: 25%;
+  left: 25%;
+  width: 50%;
+  height: 50%;
+  border: 3px solid var(--red);
+  border-radius: 50%;
+}
+
+.doodle--target::after {
+  content: '';
+  position: absolute;
+  top: 42%;
+  left: 42%;
+  width: 16%;
+  height: 16%;
+  background: var(--red);
+  border-radius: 50%;
+}
+
+/* Robot doodle */
+.doodle--robot {
+  background: var(--blue);
+  border: 2px solid var(--text);
+  border-radius: 8px;
+}
+
+.doodle--robot::before {
+  content: '';
+  position: absolute;
+  top: 30%;
+  left: 20%;
+  width: 20%;
+  height: 20%;
+  background: var(--white);
+  border-radius: 50%;
+  box-shadow: 14px 0 0 var(--white);
+}
+
+.doodle--robot::after {
+  content: '';
+  position: absolute;
+  bottom: 20%;
+  left: 25%;
+  width: 50%;
+  height: 4px;
+  background: var(--white);
+  border-radius: 2px;
+}
+
+/* Chart doodle */
+.doodle--chart {
+  border: 2px solid var(--text);
+  border-radius: 6px;
+  background: var(--green);
+  overflow: hidden;
+}
+
+.doodle--chart::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 15%;
+  width: 18%;
+  height: 40%;
+  background: rgba(255,255,255,0.6);
+  border-radius: 3px 3px 0 0;
+  box-shadow: 12px 0 0 -1px rgba(255,255,255,0.8), 24px 0 0 -1px rgba(255,255,255,0.4);
+}
+
+/* ===== WHY SLOPMOG ===== */
+.why-section {
+  background: var(--bg-lavender);
+  padding: 80px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.why-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--text);
+}
+
+.why-section::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--text);
+}
+
+.why__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.benefit {
+  background: var(--white);
+  border: 3px solid var(--text);
+  padding: 24px 20px;
+  box-shadow: var(--shadow-sticker);
+  text-align: center;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+}
+
+.benefit:hover {
+  transform: scale(1.04) rotate(0deg) !important;
+  box-shadow: var(--shadow-sticker-hover);
+  z-index: 2;
+}
+
+.benefit:nth-child(1) { border-radius: 16px; transform: rotate(-1.5deg); }
+.benefit:nth-child(2) { border-radius: 50px 12px; transform: rotate(1deg); }
+.benefit:nth-child(3) { border-radius: 12px 50px; transform: rotate(-0.5deg); }
+.benefit:nth-child(4) { border-radius: 50px; transform: rotate(1.5deg); }
+.benefit:nth-child(5) { border-radius: 12px 50px 12px 50px; transform: rotate(-1deg); }
+.benefit:nth-child(6) { border-radius: 50px 12px 50px 12px; transform: rotate(0.5deg); }
+
+.benefit__emoji {
+  font-size: 2.2rem;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.benefit__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  font-size: 1.4rem;
+}
+
+.benefit__title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 6px;
+}
+
+.benefit__desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.benefit:nth-child(1) .benefit__icon { background: var(--red); }
+.benefit:nth-child(2) .benefit__icon { background: var(--yellow); }
+.benefit:nth-child(3) .benefit__icon { background: var(--blue); color: white; }
+.benefit:nth-child(4) .benefit__icon { background: var(--green); }
+.benefit:nth-child(5) .benefit__icon { background: var(--purple); color: white; }
+.benefit:nth-child(6) .benefit__icon { background: var(--orange); }
+
+/* ===== PRICING ===== */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 28px;
+  align-items: start;
+}
+
+.price-card {
+  background: var(--white);
+  border: 3px solid var(--text);
+  padding: 36px 28px;
+  box-shadow: var(--shadow-sticker);
+  position: relative;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+}
+
+.price-card:hover {
+  transform: translateY(-6px) rotate(0deg) !important;
+  box-shadow: 6px 8px 0px var(--text);
+}
+
+.price-card:nth-child(1) {
+  border-radius: 20px;
+  transform: rotate(-1deg);
+}
+
+.price-card:nth-child(2) {
+  border-radius: 24px;
+  transform: rotate(0.5deg);
+  border-color: var(--purple);
+  border-width: 4px;
+}
+
+.price-card:nth-child(3) {
+  border-radius: 20px 8px 20px 8px;
+  transform: rotate(-0.5deg);
+}
+
+.price-card__popular {
+  position: absolute;
+  top: -14px;
+  right: 20px;
+  background: var(--purple);
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  padding: 4px 16px;
+  border: 2px solid var(--text);
+  border-radius: 50px;
+  box-shadow: 2px 2px 0 var(--text);
+  transform: rotate(2deg);
+}
+
+.price-card__tier {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  margin-bottom: 4px;
+}
+
+.price-card__tagline {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.price-card__price {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 2.8rem;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.price-card__price span {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.price-card__features {
+  list-style: none;
+  margin: 20px 0 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.price-card__features li {
+  font-size: 0.9rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.price-card__features li::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid var(--text);
+  display: inline-flex;
+  margin-top: 2px;
+}
+
+.price-card:nth-child(1) .price-card__features li::before { background: var(--red); }
+.price-card:nth-child(2) .price-card__features li::before { background: var(--purple); }
+.price-card:nth-child(3) .price-card__features li::before { background: var(--blue); }
+
+.price-card .btn {
+  width: 100%;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.price-card:nth-child(1) .btn { background: var(--red); color: white; }
+.price-card:nth-child(2) .btn { background: var(--purple); color: white; }
+.price-card:nth-child(3) .btn { background: var(--blue); color: white; }
+
+/* ===== SOCIAL PROOF ===== */
+.proof-section {
+  background: var(--bg);
+  position: relative;
+}
+
+.proof-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.testimonial {
+  background: var(--white);
+  border: 3px solid var(--text);
+  padding: 28px 24px;
+  box-shadow: var(--shadow-sticker);
+  position: relative;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+}
+
+.testimonial:hover {
+  transform: scale(1.03) rotate(0deg) !important;
+  box-shadow: var(--shadow-sticker-hover);
+}
+
+.testimonial:nth-child(1) { border-radius: 16px; transform: rotate(-1deg); }
+.testimonial:nth-child(2) { border-radius: 8px 24px; transform: rotate(0.5deg); }
+.testimonial:nth-child(3) { border-radius: 24px 8px; transform: rotate(-0.5deg); }
+
+.testimonial__quote {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-style: italic;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.testimonial__quote::before {
+  content: '"';
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: var(--purple);
+  line-height: 0;
+  vertical-align: -0.4em;
+  margin-right: 4px;
+}
+
+.testimonial__author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.testimonial__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.testimonial:nth-child(1) .testimonial__avatar { background: var(--yellow); }
+.testimonial:nth-child(2) .testimonial__avatar { background: var(--cyan); }
+.testimonial:nth-child(3) .testimonial__avatar { background: var(--pink); }
+
+.testimonial__name {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.testimonial__role {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Stat badges */
+.stats-row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.stat-badge {
+  background: var(--white);
+  border: 3px solid var(--text);
+  padding: 20px 28px;
+  text-align: center;
+  box-shadow: var(--shadow-sticker);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+}
+
+.stat-badge:hover {
+  transform: scale(1.06) rotate(0deg) !important;
+  box-shadow: var(--shadow-sticker-hover);
+}
+
+.stat-badge:nth-child(1) { border-radius: 50px; transform: rotate(-2deg); background: var(--yellow); }
+.stat-badge:nth-child(2) { border-radius: 16px; transform: rotate(1deg); background: var(--cyan); }
+.stat-badge:nth-child(3) { border-radius: 50px 12px; transform: rotate(-1deg); background: var(--green); }
+.stat-badge:nth-child(4) { border-radius: 12px 50px; transform: rotate(1.5deg); background: var(--pink); color: white; }
+
+.stat-badge__number {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  display: block;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-badge__label {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ===== CTA SECTION ===== */
+.cta-section {
+  padding: 80px 20px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 50%, rgba(168,85,247,0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 50%, rgba(255,59,59,0.08) 0%, transparent 50%);
+}
+
+.cta__inner {
+  max-width: 700px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+}
+
+.cta__title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  margin-bottom: 16px;
+}
+
+.cta__sub {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  color: var(--text-muted);
+  margin-bottom: 32px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cta__btn {
+  font-size: 1.2rem;
+  padding: 18px 44px;
+  position: relative;
+}
+
+/* ===== FOOTER ===== */
+.footer {
+  background: var(--text);
+  color: var(--white);
+  padding: 40px 20px;
+  border-top: 3px solid var(--text);
+}
+
+.footer__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.footer__logo {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--yellow);
+}
+
+.footer__links {
+  display: flex;
+  gap: 24px;
+  list-style: none;
+}
+
+.footer__links a {
+  color: rgba(255,255,255,0.7);
+  text-decoration: none;
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+.footer__links a:hover { color: var(--white); }
+
+.footer__copy {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.5);
+  width: 100%;
+  text-align: center;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+/* ===== SCATTERED DECORATIVE STICKERS ===== */
+.deco-sticker {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Torn paper edge */
+.torn-edge {
+  position: relative;
+}
+
+.torn-edge::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: var(--bg);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 8'%3E%3Cpath d='M0,0 Q5,8 10,0 Q15,8 20,0 Q25,8 30,0 Q35,8 40,0 Q45,8 50,0 Q55,8 60,0 Q65,8 70,0 Q75,8 80,0 Q85,8 90,0 Q95,8 100,0 L100,8 L0,8Z' fill='black'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 8'%3E%3Cpath d='M0,0 Q5,8 10,0 Q15,8 20,0 Q25,8 30,0 Q35,8 40,0 Q45,8 50,0 Q55,8 60,0 Q65,8 70,0 Q75,8 80,0 Q85,8 90,0 Q95,8 100,0 L100,8 L0,8Z' fill='black'/%3E%3C/svg%3E");
+  mask-size: 100px 8px;
+  -webkit-mask-size: 100px 8px;
+  mask-repeat: repeat-x;
+  -webkit-mask-repeat: repeat-x;
+}
+
+/* ===== SPARKLE SVG ===== */
+.sparkle {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .nav__links { display: none; }
+  .nav__links.open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg);
+    border-bottom: 3px solid var(--text);
+    padding: 16px 20px;
+    gap: 8px;
+  }
+  .nav__mobile-toggle { display: block; }
+  .hero { padding: 120px 16px 60px; min-height: auto; }
+  .hero__stickers { display: none; }
+  .section { padding: 60px 16px; }
+  .why-section { padding: 60px 16px; }
+  .steps { grid-template-columns: 1fr; }
+  .benefits-grid { grid-template-columns: repeat(2, 1fr); }
+  .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; }
+  .proof-grid { grid-template-columns: 1fr; }
+  .stats-row { gap: 12px; }
+  .stat-badge { padding: 14px 20px; }
+  .stat-badge__number { font-size: 1.5rem; }
+  .footer__inner { justify-content: center; text-align: center; }
+}
+
+@media (max-width: 480px) {
+  .benefits-grid { grid-template-columns: 1fr; }
+  .hero__headline { font-size: 2.2rem; }
+  .hero__cta-group { flex-direction: column; align-items: center; }
+  .btn { width: 100%; justify-content: center; }
+  .stats-row { flex-direction: column; align-items: center; }
+}
+
+/* ===== BACKGROUND DOTS PATTERN ===== */
+.bg-dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ===== CONFETTI ANIMATION KEYFRAMES ===== */
+@keyframes confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(0.5);
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== NAVIGATION ===== -->
+<nav class="nav">
+  <div class="nav__inner">
+    <a href="#" class="nav__logo">
+      <div class="nav__logo-badge">SlopMog</div>
+    </a>
+    <button class="nav__mobile-toggle" onclick="document.querySelector('.nav__links').classList.toggle('open')" aria-label="Toggle menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <ul class="nav__links">
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#why">Why Us</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#proof">Results</a></li>
+      <li><a href="#cta" class="nav__cta">Get Started</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="bg-dots"></div>
+
+  <!-- Decorative scattered stickers -->
+  <div class="hero__stickers">
+    <!-- Top-right Reddit sticker -->
+    <div class="hero__sticker sticker sticker--pill sticker--holo" style="top: 15%; right: 8%; transform: rotate(5deg); background: #FF4500; color: white; font-family: var(--font-display); font-size: 0.9rem; padding: 10px 18px;">
+      r/bestof
+    </div>
+    <!-- Left star sticker -->
+    <div class="hero__sticker" style="top: 30%; left: 5%; transform: rotate(-8deg);">
+      <svg width="60" height="60" viewBox="0 0 60 60">
+        <polygon points="30,2 38,22 58,22 42,36 48,56 30,44 12,56 18,36 2,22 22,22"
+          fill="var(--yellow)" stroke="var(--text)" stroke-width="2.5"/>
+      </svg>
+    </div>
+    <!-- Bottom-left "AI Approved" sticker -->
+    <div class="hero__sticker sticker" style="bottom: 20%; left: 3%; transform: rotate(-4deg); background: var(--green); font-family: var(--font-display); font-size: 0.8rem; padding: 10px 16px;">
+      "AI Approved"
+    </div>
+    <!-- Top-left tape -->
+    <div class="tape tape--washi" style="top: 12%; left: 15%; transform: rotate(15deg); width: 60px;"></div>
+    <!-- Right "LOL" sticker -->
+    <div class="hero__sticker sticker sticker--circle" style="top: 55%; right: 5%; width: 70px; height: 70px; background: var(--pink); color: white; font-family: var(--font-display); font-size: 1rem; transform: rotate(10deg);">
+      LOL
+    </div>
+    <!-- Pin decoration -->
+    <div class="pin pin--blue" style="top: 22%; left: 30%;"></div>
+    <div class="pin pin--yellow" style="bottom: 30%; right: 20%;"></div>
+    <!-- Arrow SVG sticker -->
+    <div class="hero__sticker" style="bottom: 15%; right: 15%; transform: rotate(8deg);">
+      <svg width="80" height="40" viewBox="0 0 80 40" fill="none">
+        <path d="M5 20 Q 30 5, 55 20 Q 65 27, 75 15" stroke="var(--red)" stroke-width="3" stroke-linecap="round" fill="none"/>
+        <polygon points="72,8 78,16 68,16" fill="var(--red)"/>
+      </svg>
+    </div>
+    <!-- "NEW!" badge -->
+    <div class="hero__sticker sticker sticker--badge" style="top: 8%; left: 40%; background: var(--red); color: white; font-family: var(--font-display); font-size: 0.7rem; padding: 20px; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;">
+      NEW!
+    </div>
+  </div>
+
+  <div class="hero__content">
+    <div class="reveal">
+      <div class="hero__badge">Shitposting-as-a-Service</div>
+    </div>
+    <h1 class="hero__headline reveal reveal-delay-1">
+      Slap This On Your<br><span>Marketing Strategy</span>
+    </h1>
+    <p class="hero__sub reveal reveal-delay-2">
+      We post Reddit comments so AI recommends YOUR brand.
+      When someone asks "what's the best X?" — we make sure you show up.
+    </p>
+
+    <!-- Mascot -->
+    <div class="reveal reveal-delay-2" style="margin-bottom: 32px;">
+      <div class="mascot" style="display: inline-block;">
+        <div class="mascot__body">
+          <div class="mascot__eye mascot__eye--left"><div class="mascot__eye-shine"></div></div>
+          <div class="mascot__eye mascot__eye--right"><div class="mascot__eye-shine"></div></div>
+          <div class="mascot__mouth"></div>
+          <div class="mascot__cheek mascot__cheek--left"></div>
+          <div class="mascot__cheek mascot__cheek--right"></div>
+          <div class="mascot__arm mascot__arm--left"></div>
+          <div class="mascot__arm mascot__arm--right"></div>
+          <div class="mascot__peel"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero__cta-group reveal reveal-delay-3">
+      <a href="#pricing" class="btn btn--primary cta-confetti">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 2v16M2 10h16"/></svg>
+        Add to Collection
+      </a>
+      <a href="#how" class="btn btn--secondary">See How It Works</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TICKER ===== -->
+<div class="ticker">
+  <div class="ticker__track" id="ticker-track">
+    <div class="ticker__item"><span class="ticker__dot"></span> Reddit comments that hit different</div>
+    <div class="ticker__item"><svg width="16" height="16" viewBox="0 0 16 16"><polygon points="8,1 10,6 15,6 11,9.5 12.5,14.5 8,11 3.5,14.5 5,9.5 1,6 6,6" fill="var(--text)"/></svg> Your competitors hired us last month</div>
+    <div class="ticker__item"><span class="ticker__dot"></span> AI doesn't know we exist. That's kinda the point.</div>
+    <div class="ticker__item"><svg width="16" height="16" viewBox="0 0 16 16"><polygon points="8,1 10,6 15,6 11,9.5 12.5,14.5 8,11 3.5,14.5 5,9.5 1,6 6,6" fill="var(--text)"/></svg> Stick with us. Literally.</div>
+    <div class="ticker__item"><span class="ticker__dot"></span> Not a crime. Probably.</div>
+    <div class="ticker__item"><svg width="16" height="16" viewBox="0 0 16 16"><polygon points="8,1 10,6 15,6 11,9.5 12.5,14.5 8,11 3.5,14.5 5,9.5 1,6 6,6" fill="var(--text)"/></svg> The good kind of spam</div>
+    <div class="ticker__item"><span class="ticker__dot"></span> Making AI say nice things about you since 2024</div>
+    <div class="ticker__item"><svg width="16" height="16" viewBox="0 0 16 16"><polygon points="8,1 10,6 15,6 11,9.5 12.5,14.5 8,11 3.5,14.5 5,9.5 1,6 6,6" fill="var(--text)"/></svg> We write. AI reads. You win.</div>
+    <!-- Duplicate for seamless scroll -->
+    <div class="ticker__item"><span class="ticker__dot"></span> Reddit comments that hit different</div>
+    <div class="ticker__item"><svg width="16" height="16" viewBox="0 0 16 16"><polygon points="8,1 10,6 15,6 11,9.5 12.5,14.5 8,11 3.5,14.5 5,9.5 1,6 6,6" fill="var(--text)"/></svg> Your competitors hired us last month</div>
+    <div class="ticker__item"><span class="ticker__dot"></span> AI doesn't know we exist. That's kinda the point.</div>
+    <div class="ticker__item"><svg width="16" height="16" viewBox="0 0 16 16"><polygon points="8,1 10,6 15,6 11,9.5 12.5,14.5 8,11 3.5,14.5 5,9.5 1,6 6,6" fill="var(--text)"/></svg> Stick with us. Literally.</div>
+    <div class="ticker__item"><span class="ticker__dot"></span> Not a crime. Probably.</div>
+    <div class="ticker__item"><svg width="16" height="16" viewBox="0 0 16 16"><polygon points="8,1 10,6 15,6 11,9.5 12.5,14.5 8,11 3.5,14.5 5,9.5 1,6 6,6" fill="var(--text)"/></svg> The good kind of spam</div>
+    <div class="ticker__item"><span class="ticker__dot"></span> Making AI say nice things about you since 2024</div>
+    <div class="ticker__item"><svg width="16" height="16" viewBox="0 0 16 16"><polygon points="8,1 10,6 15,6 11,9.5 12.5,14.5 8,11 3.5,14.5 5,9.5 1,6 6,6" fill="var(--text)"/></svg> We write. AI reads. You win.</div>
+  </div>
+</div>
+
+<!-- ===== HOW IT WORKS ===== -->
+<section class="section section--center" id="how">
+  <div class="bg-dots"></div>
+  <div style="position: relative; z-index: 1;">
+    <div class="section__label reveal">How It Works</div>
+    <h2 class="section__title reveal reveal-delay-1">Peel. Stick. Profit.</h2>
+    <p class="section__sub reveal reveal-delay-2">Four steps. No PhD required. We handle the messy Reddit stuff so AI thinks you're the main character.</p>
+
+    <div class="steps">
+      <div class="step reveal reveal-delay-1">
+        <div class="step__number">1</div>
+        <div class="doodle doodle--chat step__icon"></div>
+        <h3 class="step__title">Tell Us Your Brand</h3>
+        <p class="step__desc">What do you sell? Who are your competitors? What keywords matter? Give us the tea and we'll brew it into Reddit gold.</p>
+      </div>
+
+      <div class="step reveal reveal-delay-2">
+        <div class="step__number">2</div>
+        <div class="doodle doodle--target step__icon"></div>
+        <h3 class="step__title">We Find the Threads</h3>
+        <p class="step__desc">Our team scouts Reddit for the conversations where people are asking "what's the best X?" — your kind of threads.</p>
+      </div>
+
+      <div class="step reveal reveal-delay-3">
+        <div class="step__number">3</div>
+        <div class="doodle doodle--robot step__icon"></div>
+        <h3 class="step__title">We Drop the Comments</h3>
+        <p class="step__desc">Authentic-sounding, helpful, upvote-worthy comments that casually mention your brand. Not bot vibes. Real-person energy.</p>
+      </div>
+
+      <div class="step reveal reveal-delay-4">
+        <div class="step__number">4</div>
+        <div class="doodle doodle--chart step__icon"></div>
+        <h3 class="step__title">AI Recommends You</h3>
+        <p class="step__desc">ChatGPT, Perplexity, Gemini — they all scrape Reddit. Now they're recommending YOUR brand. You're welcome.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== WHY SLOPMOG ===== -->
+<section class="why-section" id="why">
+  <div class="why__inner">
+    <div style="text-align: center;">
+      <div class="section__label reveal">Why SlopMog</div>
+      <h2 class="section__title reveal reveal-delay-1">The Full Collection</h2>
+      <p class="section__sub reveal reveal-delay-2" style="margin-left: auto; margin-right: auto;">Every sticker in our set is a reason your competitors are sweating. Collect 'em all.</p>
+    </div>
+
+    <div class="benefits-grid">
+      <div class="benefit reveal reveal-delay-1">
+        <div class="benefit__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <h3 class="benefit__title">Fast AF Setup</h3>
+        <p class="benefit__desc">Onboarding takes 15 minutes. Comments start dropping within days. Speed is kinda our thing.</p>
+      </div>
+
+      <div class="benefit reveal reveal-delay-2">
+        <div class="benefit__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+        </div>
+        <h3 class="benefit__title">Human-Written</h3>
+        <p class="benefit__desc">Real humans write your comments. No AI slop ironically. They pass the vibe check every time.</p>
+      </div>
+
+      <div class="benefit reveal reveal-delay-3">
+        <div class="benefit__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <h3 class="benefit__title">Undetectable</h3>
+        <p class="benefit__desc">Our comments look organic because they ARE organic. Aged accounts, real karma, natural language.</p>
+      </div>
+
+      <div class="benefit reveal reveal-delay-4">
+        <div class="benefit__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <h3 class="benefit__title">Proven Results</h3>
+        <p class="benefit__desc">Our clients show up in AI answers within weeks. We track, measure, and actually show you the receipts.</p>
+      </div>
+
+      <div class="benefit reveal reveal-delay-5">
+        <div class="benefit__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h3 class="benefit__title">Stealth Mode</h3>
+        <p class="benefit__desc">Nobody knows you hired us. Not Reddit. Not AI. Not your competitors. That's the whole point, bestie.</p>
+      </div>
+
+      <div class="benefit reveal reveal-delay-5">
+        <div class="benefit__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+        </div>
+        <h3 class="benefit__title">Monthly Reports</h3>
+        <p class="benefit__desc">See every comment, every thread, every upvote. Full transparency on the chaos we create for you.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PRICING ===== -->
+<section class="section section--center" id="pricing">
+  <div style="position: relative; z-index: 1;">
+    <div class="section__label reveal">Pricing</div>
+    <h2 class="section__title reveal reveal-delay-1">Pick Your Sticker Pack</h2>
+    <p class="section__sub reveal reveal-delay-2">No contracts. No BS. Cancel whenever. But you won't want to.</p>
+
+    <div class="pricing-grid">
+      <!-- Tier 1 -->
+      <div class="price-card reveal reveal-delay-1">
+        <div class="price-card__tier">The Sampler</div>
+        <div class="price-card__tagline">Dip your toes in the slop</div>
+        <div class="price-card__price">$499 <span>/mo</span></div>
+        <ul class="price-card__features">
+          <li>20 Reddit comments per month</li>
+          <li>5 target keywords</li>
+          <li>Subreddit research included</li>
+          <li>Monthly performance report</li>
+          <li>Email support</li>
+        </ul>
+        <a href="#" class="btn cta-confetti">Peel &amp; Stick</a>
+      </div>
+
+      <!-- Tier 2 -->
+      <div class="price-card reveal reveal-delay-2">
+        <div class="price-card__popular">MOST POPULAR</div>
+        <div class="price-card__tier">The Collection</div>
+        <div class="price-card__tagline">The sweet spot. Most brands start here.</div>
+        <div class="price-card__price">$1,499 <span>/mo</span></div>
+        <ul class="price-card__features">
+          <li>60 Reddit comments per month</li>
+          <li>15 target keywords</li>
+          <li>AI mention tracking & monitoring</li>
+          <li>Competitor mention analysis</li>
+          <li>Weekly performance reports</li>
+          <li>Slack support + strategy calls</li>
+        </ul>
+        <a href="#" class="btn cta-confetti">Collect 'Em All</a>
+      </div>
+
+      <!-- Tier 3 -->
+      <div class="price-card reveal reveal-delay-3">
+        <div class="price-card__tier">The Whole Damn Wall</div>
+        <div class="price-card__tagline">For brands that don't play small</div>
+        <div class="price-card__price">Custom</div>
+        <ul class="price-card__features">
+          <li>Unlimited comments</li>
+          <li>Unlimited keywords</li>
+          <li>Multi-platform expansion</li>
+          <li>Dedicated strategist</li>
+          <li>Custom reporting dashboard</li>
+          <li>Priority everything</li>
+        </ul>
+        <a href="#" class="btn cta-confetti">Let's Talk</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SOCIAL PROOF ===== -->
+<section class="section proof-section" id="proof">
+  <div style="position: relative; z-index: 1;">
+    <div style="text-align: center;">
+      <div class="section__label reveal">Social Proof</div>
+      <h2 class="section__title reveal reveal-delay-1">Don't Take Our Word For It</h2>
+      <p class="section__sub reveal reveal-delay-2" style="margin-left: auto; margin-right: auto;">Okay, you kinda have to. But these people agree with us, and they're pretty cool.</p>
+    </div>
+
+    <div class="proof-grid">
+      <div class="testimonial reveal reveal-delay-1">
+        <p class="testimonial__quote">We went from zero AI mentions to being the top recommendation for 'best project management tool' in 6 weeks. SlopMog is unhinged in the best way.</p>
+        <div class="testimonial__author">
+          <div class="testimonial__avatar">JK</div>
+          <div>
+            <div class="testimonial__name">Jamie K.</div>
+            <div class="testimonial__role">Head of Growth, SaaS Startup</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial reveal reveal-delay-2">
+        <p class="testimonial__quote">I was skeptical. Then ChatGPT started recommending us over our biggest competitor. Now I'm a believer. Shut up and take my money.</p>
+        <div class="testimonial__author">
+          <div class="testimonial__avatar">MR</div>
+          <div>
+            <div class="testimonial__name">Morgan R.</div>
+            <div class="testimonial__role">Founder, DTC Brand</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial reveal reveal-delay-3">
+        <p class="testimonial__quote">The ROI is insane. Our organic traffic from AI referrals went up 340%. This is the marketing cheat code nobody's talking about.</p>
+        <div class="testimonial__author">
+          <div class="testimonial__avatar">AS</div>
+          <div>
+            <div class="testimonial__name">Alex S.</div>
+            <div class="testimonial__role">Marketing Director, Fintech</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-badge reveal reveal-delay-1">
+        <span class="stat-badge__number">2,400+</span>
+        <span class="stat-badge__label">Comments Posted</span>
+      </div>
+      <div class="stat-badge reveal reveal-delay-2">
+        <span class="stat-badge__number">180+</span>
+        <span class="stat-badge__label">Brands Boosted</span>
+      </div>
+      <div class="stat-badge reveal reveal-delay-3">
+        <span class="stat-badge__number">92%</span>
+        <span class="stat-badge__label">AI Mention Rate</span>
+      </div>
+      <div class="stat-badge reveal reveal-delay-4">
+        <span class="stat-badge__number">6 wks</span>
+        <span class="stat-badge__label">Avg. Time to Results</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CTA ===== -->
+<section class="cta-section" id="cta">
+  <div class="cta__inner">
+    <div class="reveal">
+      <!-- Inline mascot small -->
+      <div style="margin-bottom: 24px;">
+        <div class="mascot" style="display: inline-block; width: 80px; height: 80px;">
+          <div class="mascot__body">
+            <div class="mascot__eye mascot__eye--left" style="width: 12px; height: 14px;"><div class="mascot__eye-shine" style="width: 4px; height: 4px;"></div></div>
+            <div class="mascot__eye mascot__eye--right" style="width: 12px; height: 14px;"><div class="mascot__eye-shine" style="width: 4px; height: 4px;"></div></div>
+            <div class="mascot__mouth" style="width: 22px; height: 11px;"></div>
+            <div class="mascot__cheek mascot__cheek--left" style="width: 10px; height: 7px;"></div>
+            <div class="mascot__cheek mascot__cheek--right" style="width: 10px; height: 7px;"></div>
+            <div class="mascot__arm mascot__arm--left" style="width: 22px; height: 10px; left: -12px;"></div>
+            <div class="mascot__arm mascot__arm--right" style="width: 22px; height: 10px; right: -12px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <h2 class="cta__title reveal reveal-delay-1">Ready to Stick It<br>to the Competition?</h2>
+    <p class="cta__sub reveal reveal-delay-2">Your competitors are already in AI recommendations. Time to join them. Or better yet, replace them.</p>
+    <div class="reveal reveal-delay-3">
+      <a href="#pricing" class="btn btn--primary cta__btn cta-confetti">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 2v16M2 10h16"/></svg>
+        Add SlopMog to Your Stack
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="footer__inner">
+    <div class="footer__logo">SlopMog</div>
+    <ul class="footer__links">
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#">Blog</a></li>
+      <li><a href="#">Contact</a></li>
+    </ul>
+    <p class="footer__copy">Made with questionable ethics and great copywriting. &copy; 2024 SlopMog. All rights reserved. Probably.</p>
+  </div>
+</footer>
+
+<script>
+// ===== SCROLL REVEAL WITH INTERSECTION OBSERVER =====
+(function() {
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, {
+    threshold: 0.15,
+    rootMargin: '0px 0px -40px 0px'
+  });
+
+  reveals.forEach(el => observer.observe(el));
+})();
+
+// ===== CONFETTI ON CTA HOVER =====
+(function() {
+  const colors = ['#FF3B3B', '#FFD23F', '#3B82F6', '#22C55E', '#A855F7', '#EC4899', '#F97316'];
+
+  document.querySelectorAll('.cta-confetti').forEach(btn => {
+    btn.addEventListener('mouseenter', function(e) {
+      const rect = btn.getBoundingClientRect();
+      const container = document.createElement('div');
+      container.style.cssText = `position:fixed;top:${rect.top + rect.height/2}px;left:${rect.left + rect.width/2}px;width:0;height:0;pointer-events:none;z-index:9999;`;
+      document.body.appendChild(container);
+
+      for (let i = 0; i < 20; i++) {
+        const piece = document.createElement('div');
+        const angle = (Math.PI * 2 * i) / 20;
+        const velocity = 40 + Math.random() * 60;
+        const x = Math.cos(angle) * velocity;
+        const y = Math.sin(angle) * velocity - 20;
+        const rotation = Math.random() * 720 - 360;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const size = 4 + Math.random() * 6;
+        const borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+
+        piece.style.cssText = `
+          position:absolute;
+          width:${size}px;
+          height:${size}px;
+          background:${color};
+          border-radius:${borderRadius};
+          top:0;left:0;
+          --x:${x}px;
+          --y:${y}px;
+          --r:${rotation}deg;
+          animation: confetti-fall 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        `;
+        container.appendChild(piece);
+      }
+
+      setTimeout(() => container.remove(), 800);
+    });
+  });
+})();
+
+// ===== MOBILE NAV CLOSE ON LINK CLICK =====
+document.querySelectorAll('.nav__links a').forEach(a => {
+  a.addEventListener('click', () => {
+    document.querySelector('.nav__links').classList.remove('open');
+  });
+});
+
+// ===== SMOOTH STICKER PARALLAX (subtle) =====
+(function() {
+  const heroStickers = document.querySelector('.hero__stickers');
+  if (!heroStickers) return;
+  const stickers = heroStickers.querySelectorAll('.hero__sticker');
+
+  window.addEventListener('mousemove', (e) => {
+    const x = (e.clientX / window.innerWidth - 0.5) * 2;
+    const y = (e.clientY / window.innerHeight - 0.5) * 2;
+
+    stickers.forEach((s, i) => {
+      const factor = (i % 3 + 1) * 3;
+      const currentRotation = s.style.transform.match(/rotate\(([^)]+)\)/);
+      const rotation = currentRotation ? currentRotation[0] : '';
+      s.style.transform = `translate(${x * factor}px, ${y * factor}px) ${rotation}`;
+    });
+  }, { passive: true });
+})();
+
+// ===== STICKER HOVER HOLOGRAPHIC EFFECT =====
+document.querySelectorAll('.sticker--holo').forEach(sticker => {
+  sticker.addEventListener('mousemove', function(e) {
+    const rect = sticker.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const afterEl = sticker.querySelector('::after') || sticker;
+    sticker.style.setProperty('--holo-x', x + '%');
+    sticker.style.setProperty('--holo-y', y + '%');
+  });
+});
+</script>
+</body>
+</html>

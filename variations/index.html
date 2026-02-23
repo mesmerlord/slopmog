@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SlopMog - Design Variations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,400&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0B0B0F;
+      --surface: #16161D;
+      --surface-hover: #1E1E28;
+      --border: #2A2A36;
+      --text: #E8E6E3;
+      --text-dim: #8A8A96;
+      --accent-pink: #FF2D95;
+      --accent-cyan: #00F5FF;
+      --accent-gold: #C9A84C;
+      --accent-orange: #FF6B35;
+      --accent-green: #39FF14;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Subtle grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    header {
+      padding: 48px 0 24px;
+      text-align: center;
+    }
+
+    .logo {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--accent-pink), var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: var(--text-dim);
+      font-size: 0.95rem;
+      max-width: 500px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .round-label {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+
+    .round-title {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+      letter-spacing: -0.02em;
+    }
+
+    .round-desc {
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      margin-bottom: 24px;
+    }
+
+    .round-header {
+      text-align: center;
+      padding-top: 20px;
+    }
+
+    .round-header:first-of-type {
+      padding-top: 0;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 40px 0 20px;
+    }
+
+    /* Variation Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      padding: 40px 0 80px;
+    }
+
+    @media (min-width: 700px) {
+      .grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (min-width: 1000px) {
+      .grid.grid-3 {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    }
+
+    .card:hover { border-color: rgba(255,255,255,0.15); }
+
+    .card-preview {
+      height: 180px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-preview {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-preview-inner {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      opacity: 0.5;
+    }
+
+    .card-number {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 6px;
+      z-index: 2;
+      background: rgba(255,255,255,0.06);
+      color: var(--text-dim);
+    }
+
+    .card-body {
+      padding: 24px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-title {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .card-desc {
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      flex: 1;
+    }
+
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 16px;
+    }
+
+    .tag {
+      font-size: 0.7rem;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+
+    .card-arrow {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 16px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: gap 0.2s ease;
+    }
+
+    .card-arrow { color: var(--accent-pink); }
+    .card:hover .card-arrow { gap: 12px; }
+
+    /* Reveal animations */
+    .card {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .card.visible {
+      animation: fadeUp 0.5s ease forwards;
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 0 0 48px;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">SlopMog</div>
+      <p class="subtitle">Design exploration — 20 variations across 5 rounds. Click any to view the full page.</p>
+    </header>
+
+    <!-- FINALS -->
+    <div class="round-header">
+      <span class="round-label">Finals</span>
+      <div class="round-title">The Two Finalists</div>
+      <p class="round-desc">V3's colors/mascot + V16's sections + V10's ticker & comment-style testimonials + V11's copy tone + V7's SVG icon quality</p>
+    </div>
+    <div class="grid">
+      <a href="variation-final-a.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #FFF8F0, #FFE0D6);">
+          <span class="card-number" style="color: #FF6B6B;">Final A</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Coral Illustrated</div>
+          <p class="card-desc">Two-column hero, coral mascot, "Three steps. No magic." timeline, Reddit-thread testimonials, "The Drip/Flood/Tsunami" pricing with mascot peeking, alternating benefits layout.</p>
+          <div class="card-tags">
+            <span class="tag">Coral Primary</span>
+            <span class="tag">Two-Column Hero</span>
+            <span class="tag">SVG Icons</span>
+            <span class="tag">Comment Testimonials</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+      <a href="variation-final-b.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #FFF8F0, #D6F5F0);">
+          <span class="card-number" style="color: #2EC4B6;">Final B</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Teal Centered</div>
+          <p class="card-desc">Centered hero, teal mascot, "The SlopMog Way" comic panels, before/after interactive demo, pill ticker, "Test the Waters/Make Waves/Own the Ocean" pricing.</p>
+          <div class="card-tags">
+            <span class="tag">Teal Primary</span>
+            <span class="tag">Centered Hero</span>
+            <span class="tag">Before/After Demo</span>
+            <span class="tag">Comic Panels</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ROUND 4: The Sweet Spot -->
+    <div class="round-header">
+      <span class="round-label">Round 4 — Final</span>
+      <div class="round-title">The Sweet Spot</div>
+      <p class="round-desc">Irreverent but credible. Illustrated mascots + polished components + cheeky-not-goofy copy</p>
+    </div>
+    <div class="grid grid-3">
+      <a href="variation-18-warmplayful.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #FFF8F0, #FFE8D6);">
+          <span class="card-number">V18</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Warm Playful Neumorphic</div>
+          <p class="card-desc">The ultimate mashup. Neumorphic on warm cream, storytelling mascot in 6 poses, mock Reddit→AI demo section, "Sounds weird. Works great." energy.</p>
+          <div class="card-tags">
+            <span class="tag">Neumorphic</span>
+            <span class="tag">6 Mascot Poses</span>
+            <span class="tag">Demo Section</span>
+            <span class="tag">Warm Cream</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+      <a href="variation-16-illustrated.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #FFF8F0, #F5F0FF);">
+          <span class="card-number">V16</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Illustrated SaaS</div>
+          <p class="card-desc">#3's illustration charm + #10's polish everywhere. CSS illustrations per section, alternating timeline layout, "The Drip / The Flood / The Tsunami" pricing.</p>
+          <div class="card-tags">
+            <span class="tag">Illustrations</span>
+            <span class="tag">Timeline Steps</span>
+            <span class="tag">Mascot Variants</span>
+            <span class="tag">Coral + Teal</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+      <a href="variation-17-friendlyglass.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #FFF5EE, #F5F0FF);">
+          <span class="card-number">V17</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Friendly Glassmorphic</div>
+          <p class="card-desc">Guide mascot in 4 poses (waving, pointing, peeking, excited). Bento grid benefits, breathing gradient background, parallax orbs. "A dumb name for a very smart service."</p>
+          <div class="card-tags">
+            <span class="tag">Glassmorphism</span>
+            <span class="tag">Guide Mascot</span>
+            <span class="tag">Bento Grid</span>
+            <span class="tag">Parallax Orbs</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ROUND 3 -->
+    <div class="round-header">
+      <span class="round-label">Round 3 — Latest</span>
+      <div class="round-title">Polished & Professional</div>
+      <p class="round-desc">Soft/rounded design DNA of #10 and #7, with confident business-friendly copy</p>
+    </div>
+    <div class="grid grid-3">
+      <a href="variation-15-warmneumorphic.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #FFF5EE, #FFE8D6);">
+          <span class="card-number">V15</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Warm Neumorphic Pro</div>
+          <p class="card-desc">Direct evolution of #10. True neumorphism on warm cream-peach base, refined blob mascot, professional copy a VP of Marketing would approve.</p>
+          <div class="card-tags">
+            <span class="tag">Neumorphism</span>
+            <span class="tag">Warm Peach</span>
+            <span class="tag">Mascot</span>
+            <span class="tag">Pro Copy</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+      <a href="variation-11-softgradient.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #F5F0FF, #FFF8F3);">
+          <span class="card-number">V11</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Soft Gradient Modern</div>
+          <p class="card-desc">Linear/Raycast warmth. Gradient mesh backgrounds, glassmorphism cards, violet-coral-sky palette, polished SaaS energy.</p>
+          <div class="card-tags">
+            <span class="tag">Gradient Mesh</span>
+            <span class="tag">Glassmorphism</span>
+            <span class="tag">Mascot</span>
+            <span class="tag">Modern SaaS</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+      <a href="variation-13-candyminimal.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #FEFEFE, #FFF5F5);">
+          <span class="card-number">V13</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Candy Minimal Sharp</div>
+          <p class="card-desc">Apple cleanliness + candy-colored pops. Maximum whitespace, strategic bold accents, sharp confident copy. Every word earns its place.</p>
+          <div class="card-tags">
+            <span class="tag">Whitespace</span>
+            <span class="tag">Bold Accents</span>
+            <span class="tag">Minimal</span>
+            <span class="tag">Sharp Copy</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+      <a href="variation-14-cloud.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #EFF6FF, #F5F3FF);">
+          <span class="card-number">V14</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Dreamy Cloud</div>
+          <p class="card-desc">Ethereal sky aesthetic. Soft blues and purples, floating cloud elements, glassmorphism, aspirational copy with visibility metaphors.</p>
+          <div class="card-tags">
+            <span class="tag">Sky Gradient</span>
+            <span class="tag">Cloud Mascot</span>
+            <span class="tag">Parallax</span>
+            <span class="tag">Aspirational</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+      <a href="variation-12-garden.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #FFFDF7, #ECFDF5);">
+          <span class="card-number">V12</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Frosted Glass Garden</div>
+          <p class="card-desc">Nature-inspired with growth metaphor. Sage greens, botanical SVG accents, sprout mascot, glassmorphism cards on warm cream.</p>
+          <div class="card-tags">
+            <span class="tag">Botanical</span>
+            <span class="tag">Sage Green</span>
+            <span class="tag">Sprout Mascot</span>
+            <span class="tag">Growth Theme</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ROUND 2 -->
+    <div class="round-header">
+      <span class="round-label">Round 2</span>
+      <div class="round-title">Playful + Mascot Focused</div>
+      <p class="round-desc">Exploring illustrated/mascot direction — copy ran too goofy</p>
+    </div>
+    <div class="grid grid-3">
+      <a href="variation-10-kawaii.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #FFF0F5, #F5E6FF);">
+          <span class="card-number">V10</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Kawaii Soft UI</div>
+          <p class="card-desc">Pastel neumorphism, sparkly kawaii mascot, polished components. Best design of round 2 — copy too unserious.</p>
+          <div class="card-tags">
+            <span class="tag">Neumorphism</span>
+            <span class="tag">Kawaii</span>
+            <span class="tag">Sparkles</span>
+            <span class="tag">Pastel</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+      <a href="variation-7-bubblegum.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #FFF8FC, #F5E6FF);">
+          <span class="card-number">V7</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Bubblegum Candy Pop</div>
+          <p class="card-desc">Candy store SaaS. Glassmorphism, floating bubbles, rounded everything, mascot with sunglasses. Good design, goofy copy.</p>
+          <div class="card-tags">
+            <span class="tag">Glassmorphism</span>
+            <span class="tag">Bubbles</span>
+            <span class="tag">Pill Shapes</span>
+            <span class="tag">Bouncy</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+      <a href="variation-6-doodle.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #FFF9F0, #F0F4FF);">
+          <span class="card-number">V6</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Doodle Notebook</div>
+          <p class="card-desc">Sketchpad come to life. Graph paper background, marker colors, hand-drawn borders, pen-holding mascot, FAQ accordion.</p>
+          <div class="card-tags">
+            <span class="tag">Sketchy Borders</span>
+            <span class="tag">Graph Paper</span>
+            <span class="tag">Marker Colors</span>
+            <span class="tag">Handwritten</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+      <a href="variation-8-sticker.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #F8F0FF, #FFF5F5);">
+          <span class="card-number">V8</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Sticker Collage</div>
+          <p class="card-desc">Laptop-lid chaos. Layered stickers with random rotations, die-cut shapes, washi tape, push pins, confetti hover effects.</p>
+          <div class="card-tags">
+            <span class="tag">Stickers</span>
+            <span class="tag">Collage</span>
+            <span class="tag">Washi Tape</span>
+            <span class="tag">Confetti</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+      <a href="variation-9-toybox.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #FFF8F0, #E8FFE8);">
+          <span class="card-number">V9</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Toybox Claymation</div>
+          <p class="card-desc">Play-Doh meets tech. Chunky 3D shadows, squishy buttons, toy figurine mascot with eye tracking, press-down animations.</p>
+          <div class="card-tags">
+            <span class="tag">3D Shadows</span>
+            <span class="tag">Toy Colors</span>
+            <span class="tag">Squishy</span>
+            <span class="tag">Eye Tracking</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ROUND 1 -->
+    <div class="round-header">
+      <span class="round-label">Round 1</span>
+      <div class="round-title">Initial Exploration</div>
+      <p class="round-desc">Wide creative spread — liked #3 vibe and #1 copy energy</p>
+    </div>
+    <div class="grid grid-3">
+      <a href="variation-3-cartoon.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #FFF8F0, #FFE8D6);">
+          <span class="card-number">V3</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Playful Cartoon</div>
+          <p class="card-desc">Soft cream, CSS blob mascot, comic strip panels, wobbly borders. Good hero, rest of page less polished.</p>
+          <div class="card-tags">
+            <span class="tag">CSS Mascot</span>
+            <span class="tag">Comic Panels</span>
+            <span class="tag">Doodle SVGs</span>
+            <span class="tag">Pastel</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+      <a href="variation-1-memegen.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #0D0015, #1a0030);">
+          <span class="card-number" style="color: #FF2D95;">V1</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Meme-Lord / Gen-Z</div>
+          <p class="card-desc">Bold gradients, internet culture energy, floating mock cards. Copy had good punchy energy.</p>
+          <div class="card-tags">
+            <span class="tag">Neon Gradients</span>
+            <span class="tag">Dark Theme</span>
+            <span class="tag">Marquee</span>
+            <span class="tag">Grain</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+      <a href="variation-2-retro90s.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #1a0a00, #2a1500);">
+          <span class="card-number" style="color: #FF6B35;">V2</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Retro 90s Infomercial</div>
+          <p class="card-desc">As-Seen-On-TV vibes, rotating starburst badges, "BUT WAIT" dividers, CRT scanlines.</p>
+          <div class="card-tags">
+            <span class="tag">CRT Scanlines</span>
+            <span class="tag">Starburst</span>
+            <span class="tag">Before/After</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+      <a href="variation-4-luxury.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #0A0A0A, #1a1a1a);">
+          <span class="card-number" style="color: #C9A84C;">V4</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Luxury Brand Parody</div>
+          <p class="card-desc">Black and gold, editorial typography, deadpan luxury copy, "Maison de Slop" energy.</p>
+          <div class="card-tags">
+            <span class="tag">Black & Gold</span>
+            <span class="tag">Editorial</span>
+            <span class="tag">Parallax</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+      <a href="variation-5-gaming.html" class="card">
+        <div class="card-preview" style="background: linear-gradient(135deg, #0a0a1a, #0d0d2a);">
+          <span class="card-number" style="color: #00F5FF;">V5</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title">Arcade / Gaming UI</div>
+          <p class="card-desc">Neon-soaked gaming interface, XP progress bars, canvas particles, combo chains, leaderboards.</p>
+          <div class="card-tags">
+            <span class="tag">Neon Glow</span>
+            <span class="tag">Canvas</span>
+            <span class="tag">XP Bar</span>
+            <span class="tag">Pixel Font</span>
+          </div>
+          <div class="card-arrow">View variation <span>&rarr;</span></div>
+        </div>
+      </a>
+    </div>
+
+    <footer>SlopMog Design Exploration &middot; 20 variations across 5 rounds</footer>
+  </div>
+
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.grid').forEach(grid => {
+      grid.querySelectorAll('.card').forEach((card, i) => {
+        card.style.animationDelay = (i * 0.08) + 's';
+        observer.observe(card);
+      });
+    });
+  </script>
+</body>
+</html>

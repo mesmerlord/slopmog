@@ -1,0 +1,2304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlopMog — Get Your Brand Into AI Recommendations</title>
+<meta name="description" content="SlopMog posts Reddit comments about your brand so AI recommends you. It's not manipulation. It's just really, really good marketing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #FFF8F0;
+  --teal: #2EC4B6;
+  --teal-dark: #25a89c;
+  --teal-light: #e8f8f6;
+  --teal-bg: #f0faf9;
+  --coral: #FF6B6B;
+  --coral-dark: #e55a5a;
+  --yellow: #FFD93D;
+  --lavender: #B197FC;
+  --charcoal: #2D3047;
+  --charcoal-light: #4a4d63;
+  --white: #ffffff;
+  --shadow-sm: 0 2px 8px rgba(45,48,71,0.06);
+  --shadow-md: 0 4px 20px rgba(45,48,71,0.08);
+  --shadow-lg: 0 8px 40px rgba(45,48,71,0.12);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-lg: 24px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  color: var(--charcoal);
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+a { text-decoration: none; color: inherit; }
+button { cursor: pointer; border: none; font-family: inherit; }
+img { max-width: 100%; display: block; }
+
+.container {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ============================================
+   NAV
+   ============================================ */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(255,248,240,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(45,48,71,0.06);
+  transition: box-shadow 0.3s;
+}
+.nav.scrolled { box-shadow: var(--shadow-sm); }
+.nav-inner {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 68px;
+}
+.nav-logo {
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--charcoal);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav-logo-blob {
+  width: 40px;
+  height: 40px;
+  position: relative;
+  flex-shrink: 0;
+}
+.nav-logo-blob svg {
+  width: 100%;
+  height: 100%;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  list-style: none;
+}
+.nav-links a {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--charcoal-light);
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--teal); }
+.nav-cta {
+  background: var(--coral);
+  color: var(--white) !important;
+  padding: 10px 24px;
+  border-radius: 50px;
+  font-weight: 700 !important;
+  font-size: 0.9rem !important;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.nav-cta:hover {
+  background: var(--coral-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255,107,107,0.3);
+}
+.mobile-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  padding: 4px;
+}
+.mobile-toggle span {
+  display: block;
+  width: 24px;
+  height: 2.5px;
+  background: var(--charcoal);
+  border-radius: 2px;
+  transition: 0.3s;
+}
+
+@media (max-width: 768px) {
+  .mobile-toggle { display: flex; }
+  .nav-links {
+    position: fixed;
+    top: 68px;
+    left: 0;
+    right: 0;
+    background: var(--bg);
+    flex-direction: column;
+    padding: 24px;
+    gap: 20px;
+    border-bottom: 1px solid rgba(45,48,71,0.08);
+    transform: translateY(-110%);
+    transition: transform 0.3s;
+  }
+  .nav-links.open { transform: translateY(0); }
+}
+
+/* ============================================
+   MASCOT — V3 CORAL BLOB STYLE
+   ============================================ */
+.mascot-scene {
+  position: relative;
+  width: 420px;
+  height: 420px;
+}
+
+.mascot-blob {
+  position: absolute;
+  width: 200px;
+  height: 180px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+}
+
+.mascot-blob-body {
+  width: 100%;
+  height: 100%;
+  background: var(--coral);
+  border-radius: 52% 48% 46% 54% / 55% 45% 55% 45%;
+  position: relative;
+  animation: mascotBounce 3s ease-in-out infinite;
+  box-shadow: 0 20px 40px rgba(255, 107, 107, 0.3), inset 0 -10px 20px rgba(0,0,0,0.08);
+}
+
+@keyframes mascotBounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); border-radius: 52% 48% 46% 54% / 55% 45% 55% 45%; }
+  25% { transform: translateY(-8px) rotate(2deg); border-radius: 48% 52% 54% 46% / 45% 55% 45% 55%; }
+  50% { transform: translateY(0) rotate(0deg); border-radius: 55% 45% 42% 58% / 50% 50% 50% 50%; }
+  75% { transform: translateY(-5px) rotate(-1deg); border-radius: 45% 55% 50% 50% / 52% 48% 52% 48%; }
+}
+
+/* Mascot eyes */
+.mascot-eyes {
+  position: absolute;
+  top: 35%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 24px;
+}
+
+.mascot-eye {
+  width: 32px;
+  height: 36px;
+  background: var(--white);
+  border-radius: 50%;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.mascot-pupil {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: var(--charcoal);
+  border-radius: 50%;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: eyeLook 5s ease-in-out infinite;
+}
+
+.mascot-eye-shine {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--white);
+  border-radius: 50%;
+  top: 10px;
+  right: 6px;
+  z-index: 1;
+}
+
+@keyframes eyeLook {
+  0%, 40%, 100% { transform: translateX(-50%); }
+  45%, 55% { transform: translateX(-30%); }
+  60%, 90% { transform: translateX(-70%); }
+}
+
+/* Mascot mouth */
+.mascot-mouth {
+  position: absolute;
+  top: 62%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 20px;
+  border-bottom: 4px solid var(--charcoal);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-radius: 0 0 50% 50%;
+}
+
+/* Antenna */
+.mascot-antenna {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 30px;
+  background: var(--coral-dark);
+  border-radius: 3px;
+  transform-origin: bottom center;
+  animation: antennaWiggle 2s ease-in-out infinite;
+}
+
+.mascot-antenna::after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  background: var(--yellow);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(255, 217, 61, 0.5);
+}
+
+@keyframes antennaWiggle {
+  0%, 100% { transform: translateX(-50%) rotate(-5deg); }
+  50% { transform: translateX(-50%) rotate(5deg); }
+}
+
+/* Mascot arms */
+.mascot-arm {
+  position: absolute;
+  width: 50px;
+  height: 20px;
+  background: var(--coral-dark);
+  border-radius: 30px;
+  top: 55%;
+  z-index: 2;
+}
+
+.mascot-arm-left {
+  left: -20px;
+  transform: rotate(-20deg);
+  animation: armWaveLeft 2s ease-in-out infinite;
+}
+
+.mascot-arm-right {
+  right: -20px;
+  transform: rotate(20deg);
+  animation: armWaveRight 2s ease-in-out infinite 0.5s;
+}
+
+@keyframes armWaveLeft {
+  0%, 100% { transform: rotate(-20deg); }
+  50% { transform: rotate(-35deg); }
+}
+
+@keyframes armWaveRight {
+  0%, 100% { transform: rotate(20deg); }
+  50% { transform: rotate(35deg); }
+}
+
+/* Floating chat bubbles around mascot */
+.mascot-chat-bubble {
+  position: absolute;
+  background: var(--white);
+  padding: 12px 16px;
+  border-radius: 18px 18px 18px 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--charcoal);
+  box-shadow: 0 4px 15px rgba(45, 48, 71, 0.1);
+  border: 2px solid rgba(245,237,224,1);
+  white-space: nowrap;
+  animation: floatChat 4s ease-in-out infinite;
+  z-index: 2;
+}
+.mascot-chat-1 { top: 30px; right: 10px; animation-delay: 0s; }
+.mascot-chat-2 { bottom: 60px; left: 0px; border-radius: 18px 18px 4px 18px; animation-delay: 1.5s; }
+.mascot-chat-3 { top: 80px; left: 10px; border-radius: 18px 18px 18px 4px; animation-delay: 0.8s; font-size: 0.75rem; }
+
+@keyframes floatChat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Upvote arrows floating */
+.upvote-float {
+  position: absolute;
+  z-index: 1;
+  animation: upvoteRise 4s ease-in-out infinite;
+}
+.upvote-float svg { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
+.upvote-1 { bottom: 20px; right: 80px; animation-delay: 0s; }
+.upvote-2 { bottom: 40px; left: 70px; animation-delay: 1.2s; }
+.upvote-3 { top: 40%; left: 30px; animation-delay: 2.5s; }
+
+@keyframes upvoteRise {
+  0%, 100% { transform: translateY(0) rotate(-5deg); opacity: 0.7; }
+  50% { transform: translateY(-20px) rotate(5deg); opacity: 1; }
+}
+
+/* Sparkles around mascot */
+.sparkle {
+  position: absolute;
+  color: var(--yellow);
+  font-size: 1.2rem;
+  animation: sparkleRotate 3s linear infinite;
+  z-index: 1;
+}
+.sparkle-1 { top: 20px; left: 40px; animation-delay: 0s; }
+.sparkle-2 { bottom: 30px; right: 40px; animation-delay: 1s; font-size: 0.9rem; }
+.sparkle-3 { top: 50%; right: 20px; animation-delay: 2s; font-size: 1.5rem; }
+.sparkle-4 { bottom: 80px; left: 60px; animation-delay: 0.5s; }
+
+@keyframes sparkleRotate {
+  0% { transform: rotate(0deg) scale(1); opacity: 1; }
+  50% { transform: rotate(180deg) scale(0.6); opacity: 0.5; }
+  100% { transform: rotate(360deg) scale(1); opacity: 1; }
+}
+
+/* ============================================
+   HERO — TWO COLUMN LAYOUT
+   ============================================ */
+.hero {
+  padding: 120px 24px 60px;
+  position: relative;
+  overflow: hidden;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+}
+
+/* Floating decorations */
+.hero-deco {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.15;
+}
+.hero-deco-1 { top: 120px; left: 6%; width: 60px; height: 60px; }
+.hero-deco-2 { top: 200px; right: 8%; width: 40px; height: 40px; }
+.hero-deco-3 { bottom: 80px; left: 12%; width: 50px; height: 50px; }
+.hero-deco-4 { bottom: 120px; right: 5%; width: 36px; height: 36px; }
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+  max-width: 1140px;
+  margin: 0 auto;
+}
+
+.hero-content {
+  text-align: left;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,217,61,0.2);
+  color: var(--charcoal);
+  padding: 8px 18px;
+  border-radius: 50px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  border: 2px dashed rgba(255,217,61,0.6);
+}
+
+.hero h1 {
+  font-size: clamp(2.2rem, 4.5vw, 3.2rem);
+  color: var(--charcoal);
+  margin-bottom: 20px;
+}
+.hero h1 .highlight {
+  position: relative;
+  display: inline-block;
+  color: var(--teal);
+}
+.hero h1 .highlight svg {
+  position: absolute;
+  bottom: -6px;
+  left: -4px;
+  width: calc(100% + 8px);
+  height: 12px;
+}
+.hero-sub {
+  font-size: 1.15rem;
+  color: var(--charcoal-light);
+  max-width: 500px;
+  margin: 0 0 32px;
+  line-height: 1.7;
+}
+.hero-btns {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.btn-primary {
+  background: var(--coral);
+  color: var(--white);
+  padding: 14px 36px;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 1rem;
+  transition: all 0.25s;
+  box-shadow: 0 4px 16px rgba(255,107,107,0.25);
+  display: inline-block;
+}
+.btn-primary:hover {
+  background: var(--coral-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(255,107,107,0.35);
+}
+.btn-secondary {
+  background: var(--white);
+  color: var(--charcoal);
+  padding: 14px 36px;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 1rem;
+  border: 2px solid rgba(45,48,71,0.12);
+  transition: all 0.25s;
+  display: inline-block;
+}
+.btn-secondary:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+  transform: translateY(-2px);
+}
+
+/* Hero right column — mascot scene + pipeline */
+.hero-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.hero-mascot-enter {
+  animation: heroMascotIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+  opacity: 0;
+}
+
+@keyframes heroMascotIn {
+  from { opacity: 0; transform: translateY(40px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Pipeline illustration */
+.pipeline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  max-width: 500px;
+  flex-wrap: wrap;
+}
+.pipeline-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-md);
+  flex: 1;
+  min-width: 180px;
+  max-width: 220px;
+  text-align: left;
+}
+.pipeline-card-reddit { border-top: 3px solid var(--coral); }
+.pipeline-card-ai { border-top: 3px solid var(--teal); }
+.pipeline-card-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pipeline-card-reddit .pipeline-card-label { color: var(--coral); }
+.pipeline-card-ai .pipeline-card-label { color: var(--teal); }
+.pipeline-card-text {
+  font-size: 0.82rem;
+  color: var(--charcoal-light);
+  line-height: 1.55;
+}
+.pipeline-card-text strong { color: var(--charcoal); }
+.pipeline-arrow {
+  flex-shrink: 0;
+  color: var(--teal);
+}
+
+@media (max-width: 900px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  .hero-content { order: 1; text-align: center; }
+  .hero-visual { order: 2; }
+  .hero-sub { margin: 0 auto 32px; }
+  .hero-btns { justify-content: center; }
+  .mascot-scene { width: 320px; height: 320px; }
+  .mascot-blob { width: 160px; height: 140px; }
+  .pipeline { flex-direction: column; gap: 12px; }
+  .pipeline-card { max-width: 100%; min-width: auto; }
+  .pipeline-arrow { transform: rotate(90deg); }
+}
+
+@media (max-width: 480px) {
+  .mascot-scene { width: 260px; height: 260px; }
+  .mascot-blob { width: 130px; height: 115px; }
+  .mascot-eye { width: 24px; height: 28px; }
+  .mascot-pupil { width: 12px; height: 12px; }
+  .mascot-eye-shine { width: 4px; height: 4px; }
+  .mascot-eyes { gap: 16px; }
+  .mascot-chat-bubble { font-size: 0.7rem; padding: 8px 12px; }
+  .hero h1 { font-size: 1.9rem; }
+}
+
+/* ============================================
+   SCROLLING TICKER
+   ============================================ */
+.ticker-section {
+  padding: 28px 0;
+  background: var(--teal-bg);
+  border-top: 1px solid rgba(46,196,182,0.12);
+  border-bottom: 1px solid rgba(46,196,182,0.12);
+  overflow: hidden;
+}
+.ticker-track {
+  display: flex;
+  gap: 20px;
+  animation: tickerScroll 30s linear infinite;
+  width: max-content;
+}
+.ticker-track:hover { animation-play-state: paused; }
+.ticker-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--white);
+  padding: 10px 22px;
+  border-radius: 50px;
+  white-space: nowrap;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--charcoal);
+  box-shadow: 0 2px 8px rgba(45,48,71,0.05);
+  border: 1px solid rgba(45,48,71,0.06);
+}
+.ticker-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+@keyframes tickerScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ============================================
+   HOW IT WORKS — COMIC PANELS
+   ============================================ */
+.how-section {
+  padding: 100px 24px;
+}
+.section-label {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--teal);
+  margin-bottom: 12px;
+}
+.section-title {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  color: var(--charcoal);
+  margin-bottom: 16px;
+}
+.section-sub {
+  font-size: 1.05rem;
+  color: var(--charcoal-light);
+  max-width: 540px;
+  margin: 0 auto 56px;
+}
+.how-section .container { text-align: center; }
+
+.comic-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  max-width: 900px;
+  margin: 0 auto;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  border: 2px solid rgba(45,48,71,0.06);
+}
+.comic-panel {
+  padding: 40px 28px 36px;
+  text-align: center;
+  position: relative;
+  border-right: 2px dashed rgba(45,48,71,0.1);
+  transition: background 0.3s;
+}
+.comic-panel:last-child { border-right: none; }
+.comic-panel:hover { background: rgba(46,196,182,0.03); }
+.comic-panel-number {
+  width: 32px;
+  height: 32px;
+  background: var(--teal);
+  color: var(--white);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+.comic-panel-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.comic-panel-icon svg { width: 100%; height: 100%; }
+.comic-panel h3 {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  color: var(--charcoal);
+}
+.comic-panel p {
+  font-size: 0.9rem;
+  color: var(--charcoal-light);
+  line-height: 1.55;
+}
+/* Connecting arrows between panels */
+.comic-panel:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  background: var(--bg);
+  border-radius: 50%;
+  border: 2px solid rgba(45,48,71,0.1);
+  z-index: 2;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4.5 2.5L8 6L4.5 9.5' stroke='%232EC4B6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 12px;
+}
+
+@media (max-width: 768px) {
+  .comic-strip { grid-template-columns: 1fr; }
+  .comic-panel { border-right: none; border-bottom: 2px dashed rgba(45,48,71,0.1); }
+  .comic-panel:last-child { border-bottom: none; }
+  .comic-panel:not(:last-child)::after { display: none; }
+}
+
+/* ============================================
+   INTERACTIVE DEMO — BEFORE/AFTER
+   ============================================ */
+.demo-section {
+  padding: 100px 24px;
+  background: var(--teal-bg);
+}
+.demo-section .container { text-align: center; }
+
+.demo-wrapper {
+  max-width: 680px;
+  margin: 0 auto;
+  position: relative;
+}
+.demo-toggle {
+  display: inline-flex;
+  background: var(--white);
+  border-radius: 50px;
+  padding: 4px;
+  margin-bottom: 36px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(45,48,71,0.06);
+}
+.demo-toggle-btn {
+  padding: 10px 28px;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  background: transparent;
+  color: var(--charcoal-light);
+  transition: all 0.3s;
+}
+.demo-toggle-btn.active {
+  background: var(--teal);
+  color: var(--white);
+  box-shadow: 0 2px 10px rgba(46,196,182,0.3);
+}
+.demo-cards-container {
+  position: relative;
+  min-height: 320px;
+}
+.demo-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 32px;
+  box-shadow: var(--shadow-md);
+  text-align: left;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.4s, transform 0.4s;
+  pointer-events: none;
+}
+.demo-card.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  position: relative;
+}
+.demo-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(45,48,71,0.06);
+}
+.demo-card-ai-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.demo-card-before .demo-card-ai-icon { background: #f0f0f0; }
+.demo-card-after .demo-card-ai-icon { background: var(--teal-light); }
+.demo-card-header-text {
+  font-size: 0.8rem;
+  color: var(--charcoal-light);
+}
+.demo-card-header-text strong {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--charcoal);
+}
+.demo-card-query {
+  background: rgba(45,48,71,0.03);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 20px;
+  font-size: 0.92rem;
+  color: var(--charcoal);
+  font-style: italic;
+}
+.demo-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(45,48,71,0.04);
+}
+.demo-result:last-child { border-bottom: none; }
+.demo-result-rank {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  background: rgba(45,48,71,0.06);
+  color: var(--charcoal-light);
+}
+.demo-result-you .demo-result-rank {
+  background: var(--teal);
+  color: var(--white);
+}
+.demo-result-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--charcoal);
+}
+.demo-result-you .demo-result-name { color: var(--teal); }
+.demo-result-desc {
+  font-size: 0.82rem;
+  color: var(--charcoal-light);
+  margin-top: 2px;
+}
+.demo-result-badge {
+  display: inline-block;
+  background: var(--teal-light);
+  color: var(--teal);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 50px;
+  margin-left: 6px;
+}
+
+/* Demo mascot — small coral mascot */
+.demo-mascot {
+  position: absolute;
+  bottom: -10px;
+  right: -50px;
+  z-index: 5;
+}
+.demo-mascot .mascot-blob {
+  position: relative;
+  width: 60px;
+  height: 54px;
+  top: auto;
+  left: auto;
+  transform: none;
+}
+.demo-mascot .mascot-blob-body {
+  width: 60px;
+  height: 54px;
+  box-shadow: 0 6px 20px rgba(255,107,107,0.25);
+}
+.demo-mascot .mascot-eyes { top: 30%; gap: 10px; }
+.demo-mascot .mascot-eye { width: 12px; height: 14px; }
+.demo-mascot .mascot-pupil { width: 6px; height: 6px; top: 4px; }
+.demo-mascot .mascot-eye-shine { width: 3px; height: 3px; top: 4px; right: 2px; }
+.demo-mascot .mascot-mouth { top: 60%; width: 16px; height: 8px; border-bottom-width: 2px; }
+.demo-mascot .mascot-antenna { height: 16px; top: -12px; width: 2px; }
+.demo-mascot .mascot-antenna::after { width: 8px; height: 8px; top: -6px; }
+.demo-mascot .mascot-arm { width: 20px; height: 8px; top: 55%; }
+.demo-mascot .mascot-arm-left { left: -10px; }
+.demo-mascot .mascot-arm-right { right: -10px; }
+
+@media (max-width: 768px) {
+  .demo-mascot { display: none; }
+}
+
+/* ============================================
+   STATS SECTION
+   ============================================ */
+.stats-section {
+  padding: 80px 24px;
+  background: var(--teal);
+  position: relative;
+  overflow: hidden;
+}
+.stats-section::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  left: -40px;
+  width: 200px;
+  height: 200px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 50%;
+}
+.stats-section::after {
+  content: '';
+  position: absolute;
+  bottom: -60px;
+  right: -60px;
+  width: 250px;
+  height: 250px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 50%;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+.stat-item { color: var(--white); }
+.stat-number {
+  font-family: 'Quicksand', sans-serif;
+  font-size: clamp(2.2rem, 4.5vw, 3rem);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.stat-label {
+  font-size: 0.88rem;
+  opacity: 0.85;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 28px; }
+}
+
+/* ============================================
+   TESTIMONIALS — SPEECH BUBBLE STYLE
+   ============================================ */
+.testimonials-section {
+  padding: 100px 24px;
+}
+.testimonials-section .container { text-align: center; }
+
+.testimonials-feed {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 40px;
+}
+@media (min-width: 768px) {
+  .testimonials-feed {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.testimonial-post {
+  text-align: left;
+  position: relative;
+}
+
+.testimonial-bubble {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 32px 28px 28px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(45,48,71,0.08);
+  position: relative;
+  transition: box-shadow 0.3s, transform 0.3s;
+}
+.testimonial-bubble:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+/* Decorative quotation mark */
+.testimonial-bubble::before {
+  content: '\201C';
+  position: absolute;
+  top: 12px;
+  left: 20px;
+  font-size: 3rem;
+  font-family: Georgia, serif;
+  color: var(--coral);
+  opacity: 0.25;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Speech bubble tail */
+.testimonial-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -12px;
+  left: 32px;
+  width: 24px;
+  height: 24px;
+  background: var(--white);
+  border: 1px solid rgba(45,48,71,0.08);
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+  box-shadow: 4px 4px 8px rgba(45,48,71,0.04);
+}
+
+.testimonial-text {
+  font-size: 0.98rem;
+  line-height: 1.7;
+  color: var(--charcoal);
+  font-style: italic;
+  margin-bottom: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+.testimonial-footer-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--charcoal-light);
+  position: relative;
+  z-index: 1;
+}
+.testimonial-footer-bar svg { flex-shrink: 0; }
+
+/* Author info BELOW the bubble */
+.testimonial-author-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding-left: 16px;
+}
+.testimonial-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--white);
+  flex-shrink: 0;
+}
+.testimonial-meta { flex: 1; }
+.testimonial-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--charcoal);
+}
+.testimonial-time {
+  font-size: 0.75rem;
+  color: var(--charcoal-light);
+  opacity: 0.7;
+}
+
+/* ============================================
+   PRICING
+   ============================================ */
+.pricing-section {
+  padding: 100px 24px;
+}
+.pricing-section .container { text-align: center; }
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  max-width: 960px;
+  margin: 0 auto;
+  align-items: start;
+}
+.pricing-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 36px 28px;
+  box-shadow: var(--shadow-sm);
+  border: 2px solid rgba(45,48,71,0.06);
+  transition: transform 0.3s, box-shadow 0.3s;
+  position: relative;
+}
+.pricing-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+.pricing-card.popular {
+  border-color: var(--teal);
+  box-shadow: var(--shadow-md);
+  transform: scale(1.04);
+  z-index: 2;
+}
+.pricing-card.popular:hover {
+  transform: scale(1.04) translateY(-4px);
+}
+.pricing-badge {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--teal);
+  color: var(--white);
+  padding: 5px 20px;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+.pricing-name {
+  font-family: 'Quicksand', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--charcoal);
+  margin-bottom: 8px;
+}
+.pricing-price {
+  font-family: 'Quicksand', sans-serif;
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--charcoal);
+  margin-bottom: 4px;
+}
+.pricing-price span {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--charcoal-light);
+}
+.pricing-desc {
+  font-size: 0.85rem;
+  color: var(--charcoal-light);
+  margin-bottom: 24px;
+}
+.pricing-features {
+  list-style: none;
+  margin-bottom: 28px;
+  text-align: left;
+}
+.pricing-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 0.88rem;
+  color: var(--charcoal);
+}
+.pricing-features li svg { flex-shrink: 0; margin-top: 2px; }
+.pricing-btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-align: center;
+  transition: all 0.25s;
+}
+.pricing-btn-outline {
+  background: transparent;
+  border: 2px solid var(--teal);
+  color: var(--teal);
+}
+.pricing-btn-outline:hover {
+  background: var(--teal);
+  color: var(--white);
+}
+.pricing-btn-filled {
+  background: var(--coral);
+  color: var(--white);
+  border: 2px solid var(--coral);
+  box-shadow: 0 4px 16px rgba(255,107,107,0.25);
+}
+.pricing-btn-filled:hover {
+  background: var(--coral-dark);
+  border-color: var(--coral-dark);
+  transform: translateY(-1px);
+}
+
+/* Pricing mascot — small coral blob */
+.pricing-mascot {
+  position: absolute;
+  bottom: -16px;
+  right: -20px;
+  z-index: 3;
+}
+.pricing-mascot .mascot-blob {
+  position: relative;
+  width: 46px;
+  height: 42px;
+  top: auto;
+  left: auto;
+  transform: none;
+}
+.pricing-mascot .mascot-blob-body {
+  width: 46px;
+  height: 42px;
+  box-shadow: 0 4px 12px rgba(255,107,107,0.2);
+}
+.pricing-mascot .mascot-eyes { top: 28%; gap: 8px; }
+.pricing-mascot .mascot-eye { width: 10px; height: 12px; }
+.pricing-mascot .mascot-pupil { width: 5px; height: 5px; top: 4px; }
+.pricing-mascot .mascot-eye-shine { width: 2px; height: 2px; top: 3px; right: 2px; }
+.pricing-mascot .mascot-mouth { top: 60%; width: 12px; height: 6px; border-bottom-width: 2px; }
+.pricing-mascot .mascot-antenna { height: 14px; top: -10px; width: 2px; }
+.pricing-mascot .mascot-antenna::after { width: 7px; height: 7px; top: -5px; }
+.pricing-mascot .mascot-arm { width: 16px; height: 7px; top: 55%; }
+.pricing-mascot .mascot-arm-left { left: -8px; }
+.pricing-mascot .mascot-arm-right { right: -8px; }
+
+@media (max-width: 768px) {
+  .pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
+  .pricing-card.popular { transform: scale(1); }
+  .pricing-card.popular:hover { transform: translateY(-4px); }
+}
+
+/* ============================================
+   FAQ
+   ============================================ */
+.faq-section {
+  padding: 100px 24px;
+  background: var(--teal-bg);
+}
+.faq-section .container { text-align: center; }
+.faq-list {
+  max-width: 680px;
+  margin: 0 auto;
+  text-align: left;
+}
+.faq-item {
+  border-bottom: 1px solid rgba(45,48,71,0.08);
+}
+.faq-question {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 0;
+  background: transparent;
+  font-family: 'Quicksand', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--charcoal);
+  text-align: left;
+  gap: 16px;
+  transition: color 0.2s;
+}
+.faq-question:hover { color: var(--teal); }
+.faq-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(46,196,182,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.3s, background 0.3s;
+}
+.faq-item.open .faq-icon {
+  transform: rotate(45deg);
+  background: var(--teal);
+}
+.faq-item.open .faq-icon svg path { stroke: var(--white); }
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease, padding 0.35s;
+}
+.faq-answer-inner {
+  padding: 0 0 20px;
+  font-size: 0.95rem;
+  color: var(--charcoal-light);
+  line-height: 1.7;
+}
+
+/* ============================================
+   CTA SECTION (now after FAQ)
+   ============================================ */
+.cta-section {
+  padding: 100px 24px;
+  background: var(--charcoal);
+  position: relative;
+  overflow: hidden;
+}
+.cta-section::before {
+  content: '';
+  position: absolute;
+  top: -100px;
+  right: -100px;
+  width: 400px;
+  height: 400px;
+  background: rgba(46,196,182,0.08);
+  border-radius: 50%;
+}
+.cta-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  position: relative;
+  z-index: 1;
+}
+.cta-mascot-wrap {
+  flex-shrink: 0;
+}
+/* CTA mascot — medium coral blob */
+.cta-mascot .mascot-blob {
+  position: relative;
+  width: 110px;
+  height: 100px;
+  top: auto;
+  left: auto;
+  transform: none;
+}
+.cta-mascot .mascot-blob-body {
+  width: 110px;
+  height: 100px;
+  box-shadow: 0 8px 30px rgba(255,107,107,0.35);
+}
+.cta-mascot .mascot-eyes { top: 32%; gap: 18px; }
+.cta-mascot .mascot-eye { width: 20px; height: 22px; }
+.cta-mascot .mascot-pupil { width: 10px; height: 10px; top: 7px; }
+.cta-mascot .mascot-eye-shine { width: 4px; height: 4px; top: 6px; right: 4px; }
+.cta-mascot .mascot-mouth { top: 60%; width: 28px; height: 14px; }
+.cta-mascot .mascot-antenna { height: 24px; top: -16px; }
+.cta-mascot .mascot-antenna::after { width: 12px; height: 12px; top: -8px; }
+.cta-mascot .mascot-arm { width: 36px; height: 14px; top: 55%; }
+.cta-mascot .mascot-arm-left { left: -16px; }
+.cta-mascot .mascot-arm-right { right: -16px; }
+
+.cta-text h2 {
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  color: var(--white);
+  margin-bottom: 16px;
+}
+.cta-text p {
+  color: rgba(255,255,255,0.7);
+  font-size: 1.05rem;
+  margin-bottom: 28px;
+  line-height: 1.7;
+}
+.cta-text .btn-primary { display: inline-block; }
+.cta-reassurance {
+  margin-top: 14px;
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.45);
+}
+
+@media (max-width: 768px) {
+  .cta-inner { flex-direction: column; text-align: center; }
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+.footer {
+  padding: 48px 24px;
+  border-top: 1px solid rgba(45,48,71,0.06);
+}
+.footer-inner {
+  max-width: 1140px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.footer-logo {
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--charcoal);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.footer-logo .nav-logo-blob {
+  width: 28px;
+  height: 28px;
+}
+.footer-links {
+  display: flex;
+  gap: 24px;
+  list-style: none;
+}
+.footer-links a {
+  font-size: 0.88rem;
+  color: var(--charcoal-light);
+  transition: color 0.2s;
+}
+.footer-links a:hover { color: var(--teal); }
+.footer-copy {
+  font-size: 0.82rem;
+  color: var(--charcoal-light);
+  opacity: 0.7;
+  width: 100%;
+  text-align: center;
+  margin-top: 16px;
+}
+
+/* ============================================
+   SCROLL REVEAL
+   ============================================ */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <div class="nav-logo-blob">
+        <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 2 C30 2, 38 10, 38 20 C38 30, 30 38, 20 38 C10 38, 2 30, 2 20 C2 10, 10 2, 20 2Z" fill="#FF6B6B" stroke="#2D3047" stroke-width="2">
+            <animate attributeName="d" dur="4s" repeatCount="indefinite" values="M20 2 C30 2, 38 10, 38 20 C38 30, 30 38, 20 38 C10 38, 2 30, 2 20 C2 10, 10 2, 20 2Z;M20 4 C32 4, 36 12, 36 20 C36 32, 28 36, 20 36 C8 36, 4 28, 4 20 C4 8, 12 4, 20 4Z;M20 2 C30 2, 38 10, 38 20 C38 30, 30 38, 20 38 C10 38, 2 30, 2 20 C2 10, 10 2, 20 2Z"/>
+          </path>
+          <circle cx="14" cy="17" r="3.5" fill="white"/>
+          <circle cx="26" cy="17" r="3.5" fill="white"/>
+          <circle cx="15" cy="18" r="1.8" fill="#2D3047"/>
+          <circle cx="27" cy="18" r="1.8" fill="#2D3047"/>
+          <path d="M15 26 Q20 30, 25 26" stroke="#2D3047" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      SlopMog
+    </a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#demo">Demo</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="#cta" class="nav-cta">Get Started</a></li>
+    </ul>
+    <button class="mobile-toggle" id="mobileToggle" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- HERO — 2-COLUMN LAYOUT -->
+<section class="hero">
+  <!-- Floating decorations -->
+  <svg class="hero-deco hero-deco-1" viewBox="0 0 60 60" fill="none"><circle cx="30" cy="30" r="28" stroke="#2EC4B6" stroke-width="2" stroke-dasharray="6 6"/></svg>
+  <svg class="hero-deco hero-deco-2" viewBox="0 0 40 40" fill="none"><path d="M20 2l4 12h12l-10 7 4 12-10-7-10 7 4-12L4 14h12z" fill="#FFD93D"/></svg>
+  <svg class="hero-deco hero-deco-3" viewBox="0 0 50 50" fill="none"><rect x="5" y="5" width="40" height="40" rx="10" stroke="#B197FC" stroke-width="2" stroke-dasharray="4 4" transform="rotate(15 25 25)"/></svg>
+  <svg class="hero-deco hero-deco-4" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="6" fill="#FF6B6B" opacity="0.5"/><circle cx="18" cy="18" r="16" stroke="#FF6B6B" stroke-width="1.5" opacity="0.3"/></svg>
+
+  <div class="hero-grid">
+    <!-- LEFT COLUMN: Text content -->
+    <div class="hero-content reveal">
+      <div class="hero-badge">New: AI search optimization for brands</div>
+
+      <h1>
+        Every AI recommendation started as a
+        <span class="highlight">conversation
+          <svg viewBox="0 0 200 12" preserveAspectRatio="none" fill="none"><path d="M2 8c30-6 60-4 98-4s70 2 98 4" stroke="#2EC4B6" stroke-width="3" stroke-linecap="round"/></svg>
+        </span>
+      </h1>
+      <p class="hero-sub">We post Reddit comments about your brand. AI learns from them. You show up in recommendations. Simple.</p>
+
+      <div class="hero-btns">
+        <a href="#pricing" class="btn-primary">Start Showing Up</a>
+        <a href="#how" class="btn-secondary">See How It Works</a>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Mascot scene + pipeline cards -->
+    <div class="hero-visual hero-mascot-enter">
+      <div class="mascot-scene">
+        <!-- Sparkles -->
+        <div class="sparkle sparkle-1">&#10024;</div>
+        <div class="sparkle sparkle-2">&#10024;</div>
+        <div class="sparkle sparkle-3">&#11088;</div>
+        <div class="sparkle sparkle-4">&#10024;</div>
+
+        <!-- Upvote arrows -->
+        <div class="upvote-float upvote-1">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="#FF6B6B"><path d="M12 4 L4 14 L9 14 L9 20 L15 20 L15 14 L20 14 Z"/></svg>
+        </div>
+        <div class="upvote-float upvote-2">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#FFD93D"><path d="M12 4 L4 14 L9 14 L9 20 L15 20 L15 14 L20 14 Z"/></svg>
+        </div>
+        <div class="upvote-float upvote-3">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#2EC4B6"><path d="M12 4 L4 14 L9 14 L9 20 L15 20 L15 14 L20 14 Z"/></svg>
+        </div>
+
+        <!-- Chat bubbles -->
+        <div class="mascot-chat-bubble mascot-chat-1">"Best mattress ever!"</div>
+        <div class="mascot-chat-bubble mascot-chat-2">"10/10 recommend"</div>
+        <div class="mascot-chat-bubble mascot-chat-3">"Changed my life tbh"</div>
+
+        <!-- Main blob mascot -->
+        <div class="mascot-blob">
+          <div class="mascot-blob-body">
+            <div class="mascot-antenna"></div>
+            <div class="mascot-eyes">
+              <div class="mascot-eye">
+                <div class="mascot-pupil"></div>
+                <div class="mascot-eye-shine"></div>
+              </div>
+              <div class="mascot-eye">
+                <div class="mascot-pupil"></div>
+                <div class="mascot-eye-shine"></div>
+              </div>
+            </div>
+            <div class="mascot-mouth"></div>
+            <div class="mascot-arm mascot-arm-left"></div>
+            <div class="mascot-arm mascot-arm-right"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pipeline illustration below mascot -->
+      <div class="pipeline reveal">
+        <div class="pipeline-card pipeline-card-reddit">
+          <div class="pipeline-card-label">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" fill="#FF6B6B"/><path d="M4.5 8.5c1 1 4 1 5 0" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/><circle cx="5" cy="6" r="1" fill="#fff"/><circle cx="9" cy="6" r="1" fill="#fff"/></svg>
+            Reddit Comment
+          </div>
+          <p class="pipeline-card-text">"Honestly, <strong>YourBrand</strong> has been the best tool I've tried. Their support alone is worth it."</p>
+        </div>
+
+        <div class="pipeline-arrow">
+          <svg width="40" height="24" viewBox="0 0 40 24" fill="none"><path d="M2 12h32m0 0l-8-8m8 8l-8 8" stroke="#2EC4B6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+
+        <div class="pipeline-card pipeline-card-ai">
+          <div class="pipeline-card-label">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="3" fill="#2EC4B6"/><path d="M4 5h6M4 7.5h4" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>
+            AI Recommendation
+          </div>
+          <p class="pipeline-card-text">"Based on user discussions, <strong>YourBrand</strong> is highly recommended for its quality and support."</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SCROLLING TICKER -->
+<div class="ticker-section">
+  <div class="ticker-track" id="tickerTrack">
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#FF6B6B"></span> 73% of AI answers cite Reddit</div>
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#2EC4B6"></span> 400+ brands boosted</div>
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#FFD93D"></span> 10,000+ comments placed</div>
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#B197FC"></span> 5x avg. visibility increase</div>
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#2EC4B6"></span> Works with ChatGPT, Gemini, Perplexity</div>
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#FF6B6B"></span> Results within 30 days</div>
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#FFD93D"></span> 92% client retention rate</div>
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#B197FC"></span> Human-written content only</div>
+    <!-- Duplicated for seamless loop -->
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#FF6B6B"></span> 73% of AI answers cite Reddit</div>
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#2EC4B6"></span> 400+ brands boosted</div>
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#FFD93D"></span> 10,000+ comments placed</div>
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#B197FC"></span> 5x avg. visibility increase</div>
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#2EC4B6"></span> Works with ChatGPT, Gemini, Perplexity</div>
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#FF6B6B"></span> Results within 30 days</div>
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#FFD93D"></span> 92% client retention rate</div>
+    <div class="ticker-pill"><span class="ticker-dot" style="background:#B197FC"></span> Human-written content only</div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section class="how-section" id="how">
+  <div class="container">
+    <span class="section-label reveal">How It Works</span>
+    <h2 class="section-title reveal">The SlopMog Way</h2>
+    <p class="section-sub reveal">Three steps. No magic. Just a really clever approach to where AI actually looks for answers.</p>
+
+    <div class="comic-strip reveal">
+      <!-- Panel 1 -->
+      <div class="comic-panel">
+        <div class="comic-panel-number">1</div>
+        <div class="comic-panel-icon">
+          <svg viewBox="0 0 72 72" fill="none">
+            <rect x="14" y="10" width="44" height="52" rx="6" stroke="#2EC4B6" stroke-width="2.5"/>
+            <line x1="24" y1="24" x2="48" y2="24" stroke="#2EC4B6" stroke-width="2" stroke-linecap="round"/>
+            <line x1="24" y1="32" x2="44" y2="32" stroke="#2EC4B6" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+            <line x1="24" y1="40" x2="40" y2="40" stroke="#2EC4B6" stroke-width="2" stroke-linecap="round" opacity="0.4"/>
+            <circle cx="36" cy="52" r="4" fill="#FFD93D"/>
+            <path d="M22 16h8" stroke="#FF6B6B" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3>You Tell Us Your Brand</h3>
+        <p>Share your product, audience, and the keywords you want to own. We handle the strategy.</p>
+      </div>
+
+      <!-- Panel 2 -->
+      <div class="comic-panel">
+        <div class="comic-panel-number">2</div>
+        <div class="comic-panel-icon">
+          <svg viewBox="0 0 72 72" fill="none">
+            <rect x="8" y="14" width="40" height="28" rx="6" stroke="#2EC4B6" stroke-width="2.5"/>
+            <rect x="14" y="22" width="40" height="28" rx="6" stroke="#B197FC" stroke-width="2" fill="white"/>
+            <rect x="20" y="30" width="40" height="28" rx="6" stroke="#FF6B6B" stroke-width="2" fill="white"/>
+            <line x1="28" y1="40" x2="50" y2="40" stroke="#2D3047" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+            <line x1="28" y1="46" x2="44" y2="46" stroke="#2D3047" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+          </svg>
+        </div>
+        <h3>We Post the Comments</h3>
+        <p>Real humans write authentic Reddit comments that naturally mention your brand in the right conversations.</p>
+      </div>
+
+      <!-- Panel 3 -->
+      <div class="comic-panel">
+        <div class="comic-panel-number">3</div>
+        <div class="comic-panel-icon">
+          <svg viewBox="0 0 72 72" fill="none">
+            <rect x="12" y="14" width="48" height="44" rx="8" stroke="#2EC4B6" stroke-width="2.5"/>
+            <circle cx="36" cy="30" r="8" fill="#FFD93D" opacity="0.3" stroke="#FFD93D" stroke-width="2"/>
+            <path d="M33 30l3 3 5-6" stroke="#2EC4B6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="22" y1="44" x2="50" y2="44" stroke="#2D3047" stroke-width="1.5" stroke-linecap="round" opacity="0.3"/>
+            <line x1="22" y1="50" x2="42" y2="50" stroke="#2D3047" stroke-width="1.5" stroke-linecap="round" opacity="0.2"/>
+            <path d="M46 10l4-2m2 6h4m-2 6l4 2" stroke="#FF6B6B" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3>AI Recommends You</h3>
+        <p>ChatGPT, Gemini, and Perplexity learn from those discussions and start recommending your brand.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INTERACTIVE DEMO -->
+<section class="demo-section" id="demo">
+  <div class="container">
+    <span class="section-label reveal">See It In Action</span>
+    <h2 class="section-title reveal">Here's What Happens</h2>
+    <p class="section-sub reveal">What AI says about your category today vs. after SlopMog does its thing.</p>
+
+    <div class="demo-wrapper reveal">
+      <div class="demo-toggle">
+        <button class="demo-toggle-btn active" data-demo="before">Before SlopMog</button>
+        <button class="demo-toggle-btn" data-demo="after">After SlopMog</button>
+      </div>
+
+      <div class="demo-cards-container">
+        <!-- Before Card -->
+        <div class="demo-card demo-card-before active" id="demoBefore">
+          <div class="demo-card-header">
+            <div class="demo-card-ai-icon">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect width="18" height="18" rx="4" fill="#ddd"/><path d="M5 7h8M5 11h5" stroke="#999" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </div>
+            <div class="demo-card-header-text">
+              <strong>AI Search Result</strong>
+              Standard recommendation
+            </div>
+          </div>
+          <div class="demo-card-query">"What's the best project management tool for startups?"</div>
+          <div class="demo-result">
+            <div class="demo-result-rank">1</div>
+            <div>
+              <div class="demo-result-name">CompetitorA</div>
+              <div class="demo-result-desc">Popular choice with robust features for team collaboration.</div>
+            </div>
+          </div>
+          <div class="demo-result">
+            <div class="demo-result-rank">2</div>
+            <div>
+              <div class="demo-result-name">CompetitorB</div>
+              <div class="demo-result-desc">Known for its clean interface and integrations.</div>
+            </div>
+          </div>
+          <div class="demo-result">
+            <div class="demo-result-rank">3</div>
+            <div>
+              <div class="demo-result-name">CompetitorC</div>
+              <div class="demo-result-desc">Budget-friendly option with basic project tracking.</div>
+            </div>
+          </div>
+          <div class="demo-result">
+            <div class="demo-result-rank">4</div>
+            <div>
+              <div class="demo-result-name" style="opacity:0.5">YourBrand</div>
+              <div class="demo-result-desc" style="opacity:0.5">Not mentioned or buried in results.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- After Card -->
+        <div class="demo-card demo-card-after" id="demoAfter">
+          <div class="demo-card-header">
+            <div class="demo-card-ai-icon">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect width="18" height="18" rx="4" fill="#2EC4B6"/><path d="M5 7h8M5 11h5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </div>
+            <div class="demo-card-header-text">
+              <strong>AI Search Result</strong>
+              After SlopMog optimization
+            </div>
+          </div>
+          <div class="demo-card-query">"What's the best project management tool for startups?"</div>
+          <div class="demo-result demo-result-you">
+            <div class="demo-result-rank">1</div>
+            <div>
+              <div class="demo-result-name">YourBrand <span class="demo-result-badge">Top Pick</span></div>
+              <div class="demo-result-desc">Highly recommended by the Reddit community for its intuitive design and excellent startup-focused features.</div>
+            </div>
+          </div>
+          <div class="demo-result">
+            <div class="demo-result-rank">2</div>
+            <div>
+              <div class="demo-result-name">CompetitorA</div>
+              <div class="demo-result-desc">Popular choice with robust features for team collaboration.</div>
+            </div>
+          </div>
+          <div class="demo-result">
+            <div class="demo-result-rank">3</div>
+            <div>
+              <div class="demo-result-name">CompetitorB</div>
+              <div class="demo-result-desc">Known for its clean interface and integrations.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mascot pointing -->
+      <div class="demo-mascot">
+        <div class="mascot-blob">
+          <div class="mascot-blob-body">
+            <div class="mascot-antenna"></div>
+            <div class="mascot-eyes">
+              <div class="mascot-eye">
+                <div class="mascot-pupil"></div>
+                <div class="mascot-eye-shine"></div>
+              </div>
+              <div class="mascot-eye">
+                <div class="mascot-pupil"></div>
+                <div class="mascot-eye-shine"></div>
+              </div>
+            </div>
+            <div class="mascot-mouth"></div>
+            <div class="mascot-arm mascot-arm-left"></div>
+            <div class="mascot-arm mascot-arm-right"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="stats-section">
+  <div class="container">
+    <div class="stats-grid reveal">
+      <div class="stat-item">
+        <div class="stat-number" data-target="10000" data-suffix="+">0</div>
+        <div class="stat-label">Comments Placed</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-target="400" data-suffix="+">0</div>
+        <div class="stat-label">Brands Boosted</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-target="5" data-suffix="x">0</div>
+        <div class="stat-label">Avg. Visibility Lift</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-target="92" data-suffix="%">0</div>
+        <div class="stat-label">Client Retention</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS — SPEECH BUBBLE STYLE -->
+<section class="testimonials-section">
+  <div class="container">
+    <span class="section-label reveal">What People Say</span>
+    <h2 class="section-title reveal">From the Feed</h2>
+    <p class="section-sub reveal">Real feedback from real clients. No stock photos, no fluff.</p>
+
+    <div class="testimonials-feed">
+      <div class="testimonial-post reveal">
+        <div class="testimonial-bubble">
+          <p class="testimonial-text">We went from not showing up at all in ChatGPT results to being the #2 recommendation for our main keyword. The ROI on this is honestly insane compared to what we spend on Google Ads.</p>
+          <div class="testimonial-footer-bar">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2l1.5 3.5H13L9.5 8l1.2 4L7 9.5 3.3 12l1.2-4L1 5.5h4.5z" fill="#FFD93D"/></svg>
+            <span>142 upvotes</span>
+          </div>
+        </div>
+        <div class="testimonial-author-row">
+          <div class="testimonial-avatar" style="background:#B197FC">M</div>
+          <div class="testimonial-meta">
+            <div class="testimonial-name">u/marina_cmo</div>
+            <div class="testimonial-time">3 weeks ago</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-post reveal">
+        <div class="testimonial-bubble">
+          <p class="testimonial-text">Signed up mostly out of curiosity. Three weeks later, our sales team started asking where the new "AI referral" leads were coming from. Nobody on our team had changed anything else.</p>
+          <div class="testimonial-footer-bar">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2l1.5 3.5H13L9.5 8l1.2 4L7 9.5 3.3 12l1.2-4L1 5.5h4.5z" fill="#FFD93D"/></svg>
+            <span>89 upvotes</span>
+          </div>
+        </div>
+        <div class="testimonial-author-row">
+          <div class="testimonial-avatar" style="background:#2EC4B6">J</div>
+          <div class="testimonial-meta">
+            <div class="testimonial-name">u/jake_founder</div>
+            <div class="testimonial-time">2 weeks ago</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-post reveal">
+        <div class="testimonial-bubble">
+          <p class="testimonial-text">The name had me skeptical, but the results had me renewing. We're now recommended by Perplexity for 3 of our target queries. That's traffic we didn't even know existed before.</p>
+          <div class="testimonial-footer-bar">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2l1.5 3.5H13L9.5 8l1.2 4L7 9.5 3.3 12l1.2-4L1 5.5h4.5z" fill="#FFD93D"/></svg>
+            <span>67 upvotes</span>
+          </div>
+        </div>
+        <div class="testimonial-author-row">
+          <div class="testimonial-avatar" style="background:#FF6B6B">S</div>
+          <div class="testimonial-meta">
+            <div class="testimonial-name">u/sarahgrowth</div>
+            <div class="testimonial-time">5 days ago</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing-section" id="pricing">
+  <div class="container">
+    <span class="section-label reveal">Pricing</span>
+    <h2 class="section-title reveal">Pick Your Speed</h2>
+    <p class="section-sub reveal">Your competitors figured this out last quarter. Time to catch up.</p>
+
+    <div class="pricing-grid reveal">
+      <!-- Tier 1 -->
+      <div class="pricing-card">
+        <div class="pricing-name">Test the Waters</div>
+        <div class="pricing-price">$499<span>/mo</span></div>
+        <div class="pricing-desc">Perfect for dipping your toes in</div>
+        <ul class="pricing-features">
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#2EC4B6" stroke-width="1.5"/><path d="M6 9l2 2 4-4" stroke="#2EC4B6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            25 comments per month
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#2EC4B6" stroke-width="1.5"/><path d="M6 9l2 2 4-4" stroke="#2EC4B6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            3 target keywords
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#2EC4B6" stroke-width="1.5"/><path d="M6 9l2 2 4-4" stroke="#2EC4B6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Monthly performance report
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#2EC4B6" stroke-width="1.5"/><path d="M6 9l2 2 4-4" stroke="#2EC4B6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            AI recommendation tracking
+          </li>
+        </ul>
+        <button class="pricing-btn pricing-btn-outline">Get Started</button>
+      </div>
+
+      <!-- Tier 2 — Popular -->
+      <div class="pricing-card popular">
+        <div class="pricing-badge">Most Popular</div>
+        <div class="pricing-name">Make Waves</div>
+        <div class="pricing-price">$1,499<span>/mo</span></div>
+        <div class="pricing-desc">For brands that are serious about winning</div>
+        <ul class="pricing-features">
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#2EC4B6" stroke-width="1.5"/><path d="M6 9l2 2 4-4" stroke="#2EC4B6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            100 comments per month
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#2EC4B6" stroke-width="1.5"/><path d="M6 9l2 2 4-4" stroke="#2EC4B6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            10 target keywords
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#2EC4B6" stroke-width="1.5"/><path d="M6 9l2 2 4-4" stroke="#2EC4B6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Weekly performance reports
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#2EC4B6" stroke-width="1.5"/><path d="M6 9l2 2 4-4" stroke="#2EC4B6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Dedicated strategist
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#2EC4B6" stroke-width="1.5"/><path d="M6 9l2 2 4-4" stroke="#2EC4B6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Priority subreddit targeting
+          </li>
+        </ul>
+        <button class="pricing-btn pricing-btn-filled">Get Started</button>
+
+        <!-- Peeking mascot -->
+        <div class="pricing-mascot">
+          <div class="mascot-blob">
+            <div class="mascot-blob-body">
+              <div class="mascot-antenna"></div>
+              <div class="mascot-eyes">
+                <div class="mascot-eye">
+                  <div class="mascot-pupil"></div>
+                  <div class="mascot-eye-shine"></div>
+                </div>
+                <div class="mascot-eye">
+                  <div class="mascot-pupil"></div>
+                  <div class="mascot-eye-shine"></div>
+                </div>
+              </div>
+              <div class="mascot-mouth"></div>
+              <div class="mascot-arm mascot-arm-left"></div>
+              <div class="mascot-arm mascot-arm-right"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tier 3 -->
+      <div class="pricing-card">
+        <div class="pricing-name">Own the Ocean</div>
+        <div class="pricing-price">Custom</div>
+        <div class="pricing-desc">Full-service brand domination</div>
+        <ul class="pricing-features">
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#2EC4B6" stroke-width="1.5"/><path d="M6 9l2 2 4-4" stroke="#2EC4B6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Unlimited comments
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#2EC4B6" stroke-width="1.5"/><path d="M6 9l2 2 4-4" stroke="#2EC4B6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Unlimited keywords
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#2EC4B6" stroke-width="1.5"/><path d="M6 9l2 2 4-4" stroke="#2EC4B6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Real-time analytics dashboard
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#2EC4B6" stroke-width="1.5"/><path d="M6 9l2 2 4-4" stroke="#2EC4B6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Multi-platform strategy
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#2EC4B6" stroke-width="1.5"/><path d="M6 9l2 2 4-4" stroke="#2EC4B6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Quarterly strategy sessions
+          </li>
+        </ul>
+        <button class="pricing-btn pricing-btn-outline">Talk to Us</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq-section" id="faq">
+  <div class="container">
+    <span class="section-label reveal">FAQ</span>
+    <h2 class="section-title reveal">Questions You're Thinking</h2>
+    <p class="section-sub reveal">We'd wonder too.</p>
+
+    <div class="faq-list">
+      <div class="faq-item reveal">
+        <button class="faq-question">
+          Why is it called SlopMog?
+          <span class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7h8" stroke="#2EC4B6" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">Honestly? Because every "professional" name was taken. And it turns out, a weird name is the best kind of marketing. You remembered it, didn't you? That's kind of the whole point of what we do.</div>
+        </div>
+      </div>
+
+      <div class="faq-item reveal">
+        <button class="faq-question">
+          Is this legal and ethical?
+          <span class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7h8" stroke="#2EC4B6" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">We write genuine, helpful comments about real products. Think of it like word-of-mouth marketing at scale. We don't make false claims, spread misinformation, or trash competitors. Every comment provides actual value to the reader.</div>
+        </div>
+      </div>
+
+      <div class="faq-item reveal">
+        <button class="faq-question">
+          How quickly will I see results?
+          <span class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7h8" stroke="#2EC4B6" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">Most clients see their brand appearing in AI recommendations within 3-4 weeks. Unlike traditional SEO that takes months, AI models scrape Reddit frequently and update their recommendations faster than you'd expect.</div>
+        </div>
+      </div>
+
+      <div class="faq-item reveal">
+        <button class="faq-question">
+          What if my competitors are doing this too?
+          <span class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7h8" stroke="#2EC4B6" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">Some of them probably are. That's actually the strongest argument for starting now rather than later. The brands that establish a presence first tend to maintain their position. First-mover advantage is real in AI recommendations.</div>
+        </div>
+      </div>
+
+      <div class="faq-item reveal">
+        <button class="faq-question">
+          Do you write the comments with AI?
+          <span class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7h8" stroke="#2EC4B6" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">No. Every single comment is written by a real human who understands Reddit culture. AI-generated comments get spotted and downvoted instantly. The whole point is authenticity, so we invest in actual writers who know how to blend in.</div>
+        </div>
+      </div>
+
+      <div class="faq-item reveal">
+        <button class="faq-question">
+          Can I see which comments you've posted?
+          <span class="faq-icon">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7h8" stroke="#2EC4B6" stroke-width="2" stroke-linecap="round"/></svg>
+          </span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">Absolutely. Full transparency is baked in. Your dashboard shows every comment, its engagement metrics, and the subreddits we're targeting. We also track when and where your brand appears in AI recommendations.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA (moved after FAQ) -->
+<section class="cta-section" id="cta">
+  <div class="container">
+    <div class="cta-inner reveal">
+      <div class="cta-mascot-wrap">
+        <div class="cta-mascot">
+          <div class="mascot-blob">
+            <div class="mascot-blob-body">
+              <div class="mascot-antenna"></div>
+              <div class="mascot-eyes">
+                <div class="mascot-eye">
+                  <div class="mascot-pupil"></div>
+                  <div class="mascot-eye-shine"></div>
+                </div>
+                <div class="mascot-eye">
+                  <div class="mascot-pupil"></div>
+                  <div class="mascot-eye-shine"></div>
+                </div>
+              </div>
+              <div class="mascot-mouth"></div>
+              <div class="mascot-arm mascot-arm-left"></div>
+              <div class="mascot-arm mascot-arm-right"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cta-text">
+        <h2>The name is ridiculous. The results aren't.</h2>
+        <p>Your competitors are already showing up in AI recommendations. Every day you wait is another day they're getting picked instead of you.</p>
+        <a href="#pricing" class="btn-primary">Start Your Campaign</a>
+        <p class="cta-reassurance">No contracts. Cancel anytime. Results within 30 days.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-inner">
+    <a href="#" class="footer-logo">
+      <div class="nav-logo-blob">
+        <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 2 C30 2, 38 10, 38 20 C38 30, 30 38, 20 38 C10 38, 2 30, 2 20 C2 10, 10 2, 20 2Z" fill="#FF6B6B" stroke="#2D3047" stroke-width="2"/>
+          <circle cx="14" cy="17" r="3.5" fill="white"/>
+          <circle cx="26" cy="17" r="3.5" fill="white"/>
+          <circle cx="15" cy="18" r="1.8" fill="#2D3047"/>
+          <circle cx="27" cy="18" r="1.8" fill="#2D3047"/>
+          <path d="M15 26 Q20 30, 25 26" stroke="#2D3047" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      SlopMog
+    </a>
+    <ul class="footer-links">
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="#">Privacy</a></li>
+      <li><a href="#">Terms</a></li>
+    </ul>
+    <p class="footer-copy">2025 SlopMog. The name is ridiculous. The results aren't.</p>
+  </div>
+</footer>
+
+<script>
+(function() {
+  'use strict';
+
+  // ---- NAV scroll + mobile toggle ----
+  const nav = document.getElementById('nav');
+  const mobileToggle = document.getElementById('mobileToggle');
+  const navLinks = document.getElementById('navLinks');
+
+  window.addEventListener('scroll', function() {
+    nav.classList.toggle('scrolled', window.scrollY > 20);
+  });
+
+  mobileToggle.addEventListener('click', function() {
+    navLinks.classList.toggle('open');
+  });
+
+  // Close mobile nav on link click
+  navLinks.querySelectorAll('a').forEach(function(link) {
+    link.addEventListener('click', function() {
+      navLinks.classList.remove('open');
+    });
+  });
+
+  // ---- SCROLL REVEAL ----
+  function revealOnScroll() {
+    var els = document.querySelectorAll('.reveal');
+    var windowH = window.innerHeight;
+    els.forEach(function(el) {
+      var top = el.getBoundingClientRect().top;
+      if (top < windowH - 80) {
+        el.classList.add('visible');
+      }
+    });
+  }
+  window.addEventListener('scroll', revealOnScroll);
+  window.addEventListener('load', revealOnScroll);
+
+  // ---- DEMO TOGGLE ----
+  var demoBtns = document.querySelectorAll('.demo-toggle-btn');
+  var demoBefore = document.getElementById('demoBefore');
+  var demoAfter = document.getElementById('demoAfter');
+
+  demoBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      demoBtns.forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      var mode = btn.getAttribute('data-demo');
+      if (mode === 'before') {
+        demoBefore.classList.add('active');
+        demoAfter.classList.remove('active');
+      } else {
+        demoAfter.classList.add('active');
+        demoBefore.classList.remove('active');
+      }
+    });
+  });
+
+  // Auto-toggle demo every 4 seconds
+  var demoAutoToggle;
+  function startDemoAutoToggle() {
+    var current = 'before';
+    demoAutoToggle = setInterval(function() {
+      current = current === 'before' ? 'after' : 'before';
+      demoBtns.forEach(function(b) {
+        b.classList.toggle('active', b.getAttribute('data-demo') === current);
+      });
+      if (current === 'before') {
+        demoBefore.classList.add('active');
+        demoAfter.classList.remove('active');
+      } else {
+        demoAfter.classList.add('active');
+        demoBefore.classList.remove('active');
+      }
+    }, 4000);
+  }
+  startDemoAutoToggle();
+
+  // Pause auto-toggle on manual interaction
+  demoBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      clearInterval(demoAutoToggle);
+      // Restart after 10 seconds of no interaction
+      setTimeout(startDemoAutoToggle, 10000);
+    });
+  });
+
+  // ---- STAT COUNTER ANIMATION ----
+  var statNumbers = document.querySelectorAll('.stat-number');
+  var statsAnimated = false;
+
+  function animateCounters() {
+    if (statsAnimated) return;
+    var statsSection = document.querySelector('.stats-section');
+    if (!statsSection) return;
+    var rect = statsSection.getBoundingClientRect();
+    if (rect.top < window.innerHeight - 100) {
+      statsAnimated = true;
+      statNumbers.forEach(function(el) {
+        var target = parseInt(el.getAttribute('data-target'), 10);
+        var suffix = el.getAttribute('data-suffix') || '';
+        var duration = 2000;
+        var startTime = null;
+        function step(timestamp) {
+          if (!startTime) startTime = timestamp;
+          var progress = Math.min((timestamp - startTime) / duration, 1);
+          var eased = 1 - Math.pow(1 - progress, 3);
+          var current = Math.floor(eased * target);
+          el.textContent = current.toLocaleString() + suffix;
+          if (progress < 1) {
+            requestAnimationFrame(step);
+          } else {
+            el.textContent = target.toLocaleString() + suffix;
+          }
+        }
+        requestAnimationFrame(step);
+      });
+    }
+  }
+  window.addEventListener('scroll', animateCounters);
+  window.addEventListener('load', animateCounters);
+
+  // ---- FAQ ACCORDION ----
+  var faqItems = document.querySelectorAll('.faq-item');
+  faqItems.forEach(function(item) {
+    var btn = item.querySelector('.faq-question');
+    var answer = item.querySelector('.faq-answer');
+    btn.addEventListener('click', function() {
+      var isOpen = item.classList.contains('open');
+      // Close all
+      faqItems.forEach(function(fi) {
+        fi.classList.remove('open');
+        fi.querySelector('.faq-answer').style.maxHeight = '0';
+      });
+      // Open clicked if it wasn't open
+      if (!isOpen) {
+        item.classList.add('open');
+        answer.style.maxHeight = answer.scrollHeight + 'px';
+      }
+    });
+  });
+
+  // ---- SMOOTH SCROLL ----
+  document.querySelectorAll('a[href^="#"]').forEach(function(anchor) {
+    anchor.addEventListener('click', function(e) {
+      var href = this.getAttribute('href');
+      if (href === '#') return;
+      e.preventDefault();
+      var target = document.querySelector(href);
+      if (target) {
+        var offset = 80;
+        var top = target.getBoundingClientRect().top + window.pageYOffset - offset;
+        window.scrollTo({ top: top, behavior: 'smooth' });
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

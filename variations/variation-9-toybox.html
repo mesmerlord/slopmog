@@ -1,0 +1,2485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlopMog — We Shitpost So AI Loves You</title>
+<meta name="description" content="SlopMog posts Reddit comments so AI recommends YOUR brand. It's like having an army of very convincing NPCs.">
+<meta property="og:title" content="SlopMog — Toy Box Edition">
+<meta property="og:description" content="We build Reddit NPC armies. They're very convincing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --clay-red: #E85D5D;
+  --clay-red-dark: #C44040;
+  --sky-blue: #5DADE2;
+  --sky-blue-dark: #3498DB;
+  --grass-green: #58D68D;
+  --grass-green-dark: #2ECC71;
+  --sunshine: #F4D03F;
+  --sunshine-dark: #D4AC0D;
+  --warm-orange: #F0884A;
+  --warm-orange-dark: #D46A2B;
+  --soft-purple: #BB8FCE;
+  --soft-purple-dark: #9B59B6;
+  --cream: #FFF9F0;
+  --pale-mint: #F0FFF4;
+  --pale-peach: #FFF5EE;
+  --text-dark: #3A2D28;
+  --text-mid: #5C4A42;
+  --text-light: #8B7A72;
+  --white: #FFFFFF;
+  --shadow-color: rgba(58, 45, 40, 0.2);
+  --shadow-heavy: rgba(58, 45, 40, 0.35);
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: linear-gradient(170deg, var(--cream) 0%, var(--pale-mint) 40%, var(--pale-peach) 70%, var(--cream) 100%);
+  color: var(--text-dark);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5 {
+  font-family: 'Lilita One', cursive;
+  letter-spacing: 0.02em;
+}
+
+/* ===== UTILITY ===== */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}
+
+/* ===== 3D BUTTON BASE ===== */
+.toy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Lilita One', cursive;
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  border: 4px solid var(--text-dark);
+  border-radius: 18px;
+  padding: 14px 32px;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease;
+  text-decoration: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.toy-btn-primary {
+  background: var(--clay-red);
+  color: var(--white);
+  box-shadow:
+    0 6px 0 var(--clay-red-dark),
+    0 8px 12px var(--shadow-color),
+    inset 0 2px 0 rgba(255,255,255,0.25);
+}
+
+.toy-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 0 var(--clay-red-dark),
+    0 12px 20px var(--shadow-color),
+    inset 0 2px 0 rgba(255,255,255,0.25);
+}
+
+.toy-btn-primary:active {
+  transform: translateY(4px);
+  box-shadow:
+    0 2px 0 var(--clay-red-dark),
+    0 4px 6px var(--shadow-color),
+    inset 0 2px 0 rgba(255,255,255,0.15);
+}
+
+.toy-btn-secondary {
+  background: var(--sunshine);
+  color: var(--text-dark);
+  box-shadow:
+    0 6px 0 var(--sunshine-dark),
+    0 8px 12px var(--shadow-color),
+    inset 0 2px 0 rgba(255,255,255,0.3);
+}
+
+.toy-btn-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 0 var(--sunshine-dark),
+    0 12px 20px var(--shadow-color),
+    inset 0 2px 0 rgba(255,255,255,0.3);
+}
+
+.toy-btn-secondary:active {
+  transform: translateY(4px);
+  box-shadow:
+    0 2px 0 var(--sunshine-dark),
+    0 4px 6px var(--shadow-color),
+    inset 0 2px 0 rgba(255,255,255,0.2);
+}
+
+.toy-btn-blue {
+  background: var(--sky-blue);
+  color: var(--white);
+  box-shadow:
+    0 6px 0 var(--sky-blue-dark),
+    0 8px 12px var(--shadow-color),
+    inset 0 2px 0 rgba(255,255,255,0.25);
+}
+
+.toy-btn-blue:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 0 var(--sky-blue-dark),
+    0 12px 20px var(--shadow-color),
+    inset 0 2px 0 rgba(255,255,255,0.25);
+}
+
+.toy-btn-blue:active {
+  transform: translateY(4px);
+  box-shadow:
+    0 2px 0 var(--sky-blue-dark),
+    0 4px 6px var(--shadow-color),
+    inset 0 2px 0 rgba(255,255,255,0.15);
+}
+
+/* ===== TOY CARD ===== */
+.toy-card {
+  background: var(--white);
+  border: 4px solid var(--text-dark);
+  border-radius: 24px;
+  padding: 32px;
+  position: relative;
+  box-shadow:
+    0 8px 0 var(--shadow-color),
+    0 12px 24px rgba(58,45,40,0.1),
+    inset 0 2px 0 rgba(255,255,255,0.8);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+.toy-card:hover {
+  transform: translateY(-6px) rotate(-1deg);
+  box-shadow:
+    0 14px 0 var(--shadow-color),
+    0 20px 40px rgba(58,45,40,0.12),
+    inset 0 2px 0 rgba(255,255,255,0.8);
+}
+
+/* ===== SECTION REVEAL ===== */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* ===== BOUNCING DECORATION ===== */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(5deg); }
+}
+
+@keyframes floatAlt {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(-4deg); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bounce-in {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes wobble {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+.deco {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.deco-star {
+  width: 32px;
+  height: 32px;
+  animation: float 3s ease-in-out infinite;
+}
+
+.deco-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 4px solid;
+  animation: floatAlt 4s ease-in-out infinite;
+}
+
+.deco-block {
+  width: 28px;
+  height: 28px;
+  border: 4px solid var(--text-dark);
+  border-radius: 6px;
+  animation: wobble 2s ease-in-out infinite;
+}
+
+/* ===== NAV ===== */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(255, 249, 240, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 4px solid var(--text-dark);
+  padding: 12px 0;
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.nav-logo-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--warm-orange);
+  border: 4px solid var(--text-dark);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 4px 0 var(--warm-orange-dark),
+    inset 0 2px 0 rgba(255,255,255,0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-logo-icon::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  height: 40%;
+  background: rgba(255,255,255,0.2);
+  border-radius: 8px 8px 50% 50%;
+}
+
+.nav-logo-icon svg {
+  width: 28px;
+  height: 28px;
+  position: relative;
+  z-index: 1;
+}
+
+.nav-logo-text {
+  font-family: 'Lilita One', cursive;
+  font-size: 1.5rem;
+  color: var(--text-dark);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+}
+
+.nav-links a {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--text-dark);
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.nav-links a:hover {
+  background: rgba(232, 93, 93, 0.1);
+  border-color: var(--clay-red);
+}
+
+.nav-cta {
+  font-family: 'Lilita One', cursive !important;
+  font-size: 0.95rem !important;
+  background: var(--clay-red) !important;
+  color: var(--white) !important;
+  border: 3px solid var(--text-dark) !important;
+  border-radius: 12px !important;
+  padding: 8px 20px !important;
+  box-shadow: 0 4px 0 var(--clay-red-dark), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.nav-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 0 var(--clay-red-dark), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+  background: var(--clay-red) !important;
+  border-color: var(--text-dark) !important;
+}
+
+.nav-cta:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--clay-red-dark), inset 0 1px 0 rgba(255,255,255,0.1) !important;
+}
+
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.mobile-menu-btn span {
+  display: block;
+  width: 28px;
+  height: 4px;
+  background: var(--text-dark);
+  border-radius: 4px;
+  margin: 5px 0;
+  transition: 0.3s;
+}
+
+/* ===== HERO ===== */
+.hero {
+  padding: 140px 0 80px;
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.hero-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.hero-content {
+  position: relative;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--sunshine);
+  border: 3px solid var(--text-dark);
+  border-radius: 50px;
+  padding: 6px 18px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  margin-bottom: 24px;
+  box-shadow: 0 3px 0 var(--sunshine-dark);
+  animation: bounce-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.hero-badge-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--grass-green);
+  border: 2px solid var(--text-dark);
+  border-radius: 50%;
+  animation: float 1.5s ease-in-out infinite;
+}
+
+.hero h1 {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  line-height: 1.1;
+  color: var(--text-dark);
+  margin-bottom: 20px;
+}
+
+.hero h1 .highlight {
+  color: var(--clay-red);
+  position: relative;
+  display: inline-block;
+}
+
+.hero h1 .highlight::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: var(--sunshine);
+  border-radius: 4px;
+  z-index: -1;
+  opacity: 0.7;
+}
+
+.hero-desc {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-mid);
+  line-height: 1.6;
+  margin-bottom: 32px;
+  max-width: 500px;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hero-social-proof {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.hero-avatars {
+  display: flex;
+}
+
+.hero-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid var(--white);
+  margin-left: -10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 800;
+  box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+.hero-avatar:first-child { margin-left: 0; background: var(--sky-blue); }
+.hero-avatar:nth-child(2) { background: var(--grass-green); }
+.hero-avatar:nth-child(3) { background: var(--warm-orange); }
+.hero-avatar:nth-child(4) { background: var(--soft-purple); }
+
+.hero-social-text {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-mid);
+}
+
+.hero-social-text strong {
+  color: var(--text-dark);
+}
+
+/* ===== MASCOT ===== */
+.mascot-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.mascot {
+  width: 280px;
+  height: 300px;
+  position: relative;
+  animation: wobble 4s ease-in-out infinite;
+  cursor: pointer;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.mascot:hover {
+  animation: none;
+  transform: scale(1.08) rotate(0deg);
+}
+
+.mascot:hover .mascot-body {
+  border-radius: 50% 50% 45% 45%;
+  transform: scaleY(0.92) scaleX(1.06);
+}
+
+.mascot-body {
+  width: 200px;
+  height: 220px;
+  background: linear-gradient(145deg, var(--warm-orange), #E67E22);
+  border: 5px solid var(--text-dark);
+  border-radius: 45% 45% 40% 40%;
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow:
+    0 10px 0 var(--warm-orange-dark),
+    0 14px 20px var(--shadow-color),
+    inset 0 4px 0 rgba(255,255,255,0.25),
+    inset -8px -8px 0 rgba(0,0,0,0.08);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.mascot-body::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 30%;
+  height: 35%;
+  background: rgba(255,255,255,0.18);
+  border-radius: 40% 30% 50% 40%;
+}
+
+.mascot-belly {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 90px;
+  background: linear-gradient(to bottom, #FDEBD0, #FAD7A0);
+  border: 4px solid var(--text-dark);
+  border-radius: 50%;
+  box-shadow: inset 0 3px 0 rgba(255,255,255,0.4);
+}
+
+/* Eyes */
+.mascot-eyes {
+  position: absolute;
+  top: 55px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 30px;
+}
+
+.mascot-eye {
+  width: 36px;
+  height: 38px;
+  background: var(--white);
+  border: 4px solid var(--text-dark);
+  border-radius: 50%;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.mascot-pupil {
+  width: 16px;
+  height: 18px;
+  background: var(--text-dark);
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: transform 0.1s ease;
+}
+
+.mascot-pupil::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  background: var(--white);
+  border-radius: 50%;
+}
+
+@keyframes blink {
+  0%, 95%, 100% { transform: scaleY(1); }
+  97% { transform: scaleY(0.05); }
+}
+
+.mascot-eye {
+  animation: blink 4s ease-in-out infinite;
+}
+
+.mascot-eye:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+/* Mouth */
+.mascot-mouth {
+  position: absolute;
+  top: 112px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 18px;
+  border: 4px solid var(--text-dark);
+  border-top: none;
+  border-radius: 0 0 50% 50%;
+  background: var(--clay-red);
+  box-shadow: inset 0 -3px 0 var(--clay-red-dark);
+}
+
+/* Cheeks */
+.mascot-cheek {
+  position: absolute;
+  top: 95px;
+  width: 28px;
+  height: 16px;
+  background: rgba(232, 93, 93, 0.35);
+  border-radius: 50%;
+}
+
+.mascot-cheek-l { left: 20px; }
+.mascot-cheek-r { right: 20px; }
+
+/* Arms */
+.mascot-arm {
+  position: absolute;
+  top: 120px;
+  width: 50px;
+  height: 60px;
+  background: linear-gradient(145deg, var(--warm-orange), #E67E22);
+  border: 4px solid var(--text-dark);
+  border-radius: 40%;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.2);
+}
+
+.mascot-arm-l {
+  left: -18px;
+  transform: rotate(15deg);
+  animation: float 3s ease-in-out infinite;
+}
+
+.mascot-arm-r {
+  right: -18px;
+  transform: rotate(-15deg);
+  animation: floatAlt 3s ease-in-out infinite;
+}
+
+/* Feet */
+.mascot-feet {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 24px;
+}
+
+.mascot-foot {
+  width: 50px;
+  height: 28px;
+  background: linear-gradient(145deg, var(--warm-orange), #E67E22);
+  border: 4px solid var(--text-dark);
+  border-radius: 50% 50% 50% 50%;
+  box-shadow: 0 4px 0 var(--warm-orange-dark);
+}
+
+/* Sign mascot holds */
+.mascot-sign {
+  position: absolute;
+  top: -10px;
+  right: -40px;
+  background: var(--sunshine);
+  border: 4px solid var(--text-dark);
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-family: 'Lilita One', cursive;
+  font-size: 0.8rem;
+  color: var(--text-dark);
+  box-shadow: 0 4px 0 var(--sunshine-dark);
+  transform: rotate(8deg);
+  z-index: 5;
+  white-space: nowrap;
+}
+
+/* Hero decorations */
+.hero-deco-1 {
+  top: 15%;
+  left: 5%;
+  width: 40px;
+  height: 40px;
+  background: var(--sky-blue);
+  border: 4px solid var(--text-dark);
+  border-radius: 10px;
+  box-shadow: 0 4px 0 var(--sky-blue-dark);
+  animation: float 4s ease-in-out infinite;
+}
+
+.hero-deco-2 {
+  top: 25%;
+  right: 8%;
+  animation: floatAlt 3.5s ease-in-out infinite;
+}
+
+.hero-deco-3 {
+  bottom: 20%;
+  left: 10%;
+  width: 30px;
+  height: 30px;
+  background: var(--grass-green);
+  border: 4px solid var(--text-dark);
+  border-radius: 50%;
+  box-shadow: 0 4px 0 var(--grass-green-dark);
+  animation: float 5s ease-in-out infinite;
+}
+
+.hero-deco-4 {
+  bottom: 30%;
+  right: 3%;
+  width: 25px;
+  height: 25px;
+  background: var(--sunshine);
+  border: 4px solid var(--text-dark);
+  border-radius: 6px;
+  box-shadow: 0 3px 0 var(--sunshine-dark);
+  animation: spin-slow 8s linear infinite;
+}
+
+/* ===== TICKER / SCROLLING STATS ===== */
+.ticker {
+  padding: 20px 0;
+  overflow: hidden;
+  border-top: 4px solid var(--text-dark);
+  border-bottom: 4px solid var(--text-dark);
+  background: var(--sunshine);
+  position: relative;
+}
+
+.ticker-track {
+  display: flex;
+  animation: ticker-scroll 25s linear infinite;
+  width: max-content;
+}
+
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 40px;
+  white-space: nowrap;
+}
+
+.ticker-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--white);
+  border: 3px solid var(--text-dark);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  box-shadow: 0 3px 0 var(--shadow-color);
+  flex-shrink: 0;
+}
+
+.ticker-text {
+  font-family: 'Lilita One', cursive;
+  font-size: 1.1rem;
+  color: var(--text-dark);
+}
+
+.ticker-separator {
+  font-size: 1.5rem;
+  color: var(--text-dark);
+  opacity: 0.4;
+  padding: 0 10px;
+}
+
+/* ===== HOW IT WORKS ===== */
+.how-it-works {
+  padding: 100px 0;
+  position: relative;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 64px;
+}
+
+.section-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--sky-blue);
+  color: var(--white);
+  border: 3px solid var(--text-dark);
+  border-radius: 50px;
+  padding: 6px 20px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+  box-shadow: 0 3px 0 var(--sky-blue-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.section-title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  color: var(--text-dark);
+  margin-bottom: 12px;
+}
+
+.section-subtitle {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-mid);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  position: relative;
+}
+
+/* Connector line between steps */
+.steps-grid::before {
+  content: '';
+  position: absolute;
+  top: 90px;
+  left: 15%;
+  right: 15%;
+  height: 6px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--text-dark) 0,
+    var(--text-dark) 12px,
+    transparent 12px,
+    transparent 20px
+  );
+  border-radius: 3px;
+  z-index: 0;
+}
+
+.step-card {
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.step-number {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  border: 4px solid var(--text-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Lilita One', cursive;
+  font-size: 1.6rem;
+  color: var(--white);
+  position: relative;
+}
+
+.step-number::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 40%;
+  height: 30%;
+  background: rgba(255,255,255,0.25);
+  border-radius: 50%;
+}
+
+.step-1 .step-number {
+  background: var(--clay-red);
+  box-shadow: 0 5px 0 var(--clay-red-dark);
+}
+
+.step-2 .step-number {
+  background: var(--sky-blue);
+  box-shadow: 0 5px 0 var(--sky-blue-dark);
+}
+
+.step-3 .step-number {
+  background: var(--grass-green);
+  box-shadow: 0 5px 0 var(--grass-green-dark);
+}
+
+.step-illustration {
+  width: 140px;
+  height: 120px;
+  margin: 0 auto 20px;
+  position: relative;
+}
+
+/* Step 1 illustration: Money/wallet */
+.step-1-illus {
+  position: relative;
+}
+
+.step-1-illus .wallet {
+  width: 100px;
+  height: 70px;
+  background: linear-gradient(145deg, var(--grass-green), #27AE60);
+  border: 4px solid var(--text-dark);
+  border-radius: 16px;
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 5px 0 #1E8449, inset 0 2px 0 rgba(255,255,255,0.2);
+}
+
+.step-1-illus .wallet::before {
+  content: '$';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Lilita One', cursive;
+  font-size: 2rem;
+  color: var(--white);
+  text-shadow: 0 2px 0 rgba(0,0,0,0.15);
+}
+
+.step-1-illus .coin {
+  width: 40px;
+  height: 40px;
+  background: var(--sunshine);
+  border: 3px solid var(--text-dark);
+  border-radius: 50%;
+  position: absolute;
+  box-shadow: 0 3px 0 var(--sunshine-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Lilita One', cursive;
+  font-size: 1rem;
+  color: var(--text-dark);
+}
+
+.step-1-illus .coin-1 { top: 0; right: 10px; animation: float 2.5s ease-in-out infinite; }
+.step-1-illus .coin-2 { top: 10px; left: 5px; animation: floatAlt 3s ease-in-out infinite; }
+
+/* Step 2 illustration: Reddit-like upvotes */
+.step-2-illus .comment-block {
+  width: 110px;
+  height: 60px;
+  background: var(--white);
+  border: 4px solid var(--text-dark);
+  border-radius: 14px;
+  position: absolute;
+  box-shadow: 0 4px 0 var(--shadow-color);
+}
+
+.step-2-illus .comment-1 {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.step-2-illus .comment-2 {
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-3deg) scale(0.9);
+  opacity: 0.7;
+}
+
+.step-2-illus .upvote {
+  position: absolute;
+  right: 15px;
+  top: 20px;
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 16px solid var(--warm-orange);
+  animation: float 2s ease-in-out infinite;
+}
+
+.step-2-illus .comment-lines {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.step-2-illus .comment-line {
+  height: 4px;
+  background: #EAE0D5;
+  border-radius: 2px;
+}
+
+.step-2-illus .comment-line:nth-child(1) { width: 50px; }
+.step-2-illus .comment-line:nth-child(2) { width: 35px; }
+
+/* Step 3 illustration: Rocket/growth */
+.step-3-illus .chart {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.step-3-illus .bar {
+  width: 20px;
+  border: 3px solid var(--text-dark);
+  border-radius: 8px 8px 4px 4px;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.3);
+}
+
+.step-3-illus .bar-1 { height: 35px; background: var(--sky-blue); }
+.step-3-illus .bar-2 { height: 55px; background: var(--warm-orange); }
+.step-3-illus .bar-3 { height: 80px; background: var(--grass-green); }
+.step-3-illus .bar-4 { height: 100px; background: var(--clay-red); }
+
+.step-3-illus .rocket {
+  position: absolute;
+  top: -5px;
+  right: 15px;
+  font-size: 1.8rem;
+  animation: float 2s ease-in-out infinite;
+}
+
+.step-title {
+  font-family: 'Lilita One', cursive;
+  font-size: 1.3rem;
+  margin-bottom: 10px;
+  color: var(--text-dark);
+}
+
+.step-desc {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-mid);
+  line-height: 1.5;
+}
+
+/* ===== FEATURES ===== */
+.features {
+  padding: 100px 0;
+  position: relative;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 28px;
+}
+
+.feature-card {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.feature-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  border: 4px solid var(--text-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  position: relative;
+  box-shadow: 0 5px 0 rgba(0,0,0,0.15), inset 0 2px 0 rgba(255,255,255,0.3);
+}
+
+.feature-icon::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 30%;
+  height: 30%;
+  background: rgba(255,255,255,0.2);
+  border-radius: 8px 6px 40% 40%;
+}
+
+.feature-icon-red { background: var(--clay-red); }
+.feature-icon-blue { background: var(--sky-blue); }
+.feature-icon-green { background: var(--grass-green); }
+.feature-icon-orange { background: var(--warm-orange); }
+.feature-icon-purple { background: var(--soft-purple); }
+.feature-icon-yellow { background: var(--sunshine); }
+
+.feature-title {
+  font-family: 'Lilita One', cursive;
+  font-size: 1.15rem;
+  margin-bottom: 6px;
+  color: var(--text-dark);
+}
+
+.feature-desc {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-mid);
+  line-height: 1.5;
+}
+
+/* ===== PRICING ===== */
+.pricing {
+  padding: 100px 0;
+  position: relative;
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.price-box {
+  border-radius: 28px;
+  border: 4px solid var(--text-dark);
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.price-box:hover {
+  transform: translateY(-8px);
+}
+
+.price-box-header {
+  padding: 28px 28px 20px;
+  text-align: center;
+  position: relative;
+}
+
+.price-box-header::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 30%;
+  height: 25%;
+  background: rgba(255,255,255,0.15);
+  border-radius: 12px 10px 50% 40%;
+}
+
+.price-tier-name {
+  font-family: 'Lilita One', cursive;
+  font-size: 1.4rem;
+  color: var(--white);
+  margin-bottom: 4px;
+  position: relative;
+}
+
+.price-tier-tag {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 12px;
+}
+
+.price-amount {
+  font-family: 'Lilita One', cursive;
+  font-size: 3rem;
+  color: var(--white);
+  line-height: 1;
+  position: relative;
+}
+
+.price-amount span {
+  font-size: 1.2rem;
+  vertical-align: top;
+  margin-right: 2px;
+}
+
+.price-period {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.8);
+  margin-top: 4px;
+}
+
+.price-box-body {
+  background: var(--white);
+  padding: 28px;
+}
+
+.price-features {
+  list-style: none;
+  margin-bottom: 24px;
+}
+
+.price-features li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--text-dark);
+  border-bottom: 2px dashed #EAE0D5;
+}
+
+.price-features li:last-child {
+  border-bottom: none;
+}
+
+.price-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 3px solid var(--text-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: var(--white);
+}
+
+.price-box-starter .price-box-header {
+  background: linear-gradient(135deg, var(--sky-blue), #3498DB);
+  box-shadow: inset 0 -4px 0 rgba(0,0,0,0.1);
+}
+
+.price-box-starter .price-check {
+  background: var(--sky-blue);
+}
+
+.price-box-pro {
+  transform: scale(1.04);
+  z-index: 2;
+}
+
+.price-box-pro:hover {
+  transform: scale(1.04) translateY(-8px);
+}
+
+.price-box-pro .price-box-header {
+  background: linear-gradient(135deg, var(--clay-red), #C0392B);
+  box-shadow: inset 0 -4px 0 rgba(0,0,0,0.1);
+}
+
+.price-box-pro .price-check {
+  background: var(--clay-red);
+}
+
+.price-popular {
+  position: absolute;
+  top: -2px;
+  right: 20px;
+  background: var(--sunshine);
+  border: 3px solid var(--text-dark);
+  border-radius: 0 0 12px 12px;
+  padding: 4px 14px;
+  font-family: 'Lilita One', cursive;
+  font-size: 0.75rem;
+  color: var(--text-dark);
+  box-shadow: 0 3px 0 var(--sunshine-dark);
+  z-index: 3;
+}
+
+.price-box-enterprise .price-box-header {
+  background: linear-gradient(135deg, var(--soft-purple), #8E44AD);
+  box-shadow: inset 0 -4px 0 rgba(0,0,0,0.1);
+}
+
+.price-box-enterprise .price-check {
+  background: var(--soft-purple);
+}
+
+.price-box-body .toy-btn {
+  width: 100%;
+  font-size: 1rem;
+}
+
+/* ===== SOCIAL PROOF ===== */
+.social-proof {
+  padding: 100px 0;
+  position: relative;
+}
+
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+  margin-bottom: 60px;
+}
+
+.testimonial-card {
+  text-align: left;
+}
+
+.testimonial-card .toy-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.testimonial-stars {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.testimonial-star {
+  width: 24px;
+  height: 24px;
+}
+
+.testimonial-quote {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-dark);
+  line-height: 1.6;
+  margin-bottom: 18px;
+  flex-grow: 1;
+}
+
+.testimonial-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 3px dashed #EAE0D5;
+  padding-top: 14px;
+}
+
+.testimonial-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid var(--text-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.1);
+}
+
+.testimonial-name {
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+}
+
+.testimonial-role {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--text-light);
+}
+
+/* Stats row */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+.stat-block {
+  text-align: center;
+  background: var(--white);
+  border: 4px solid var(--text-dark);
+  border-radius: 20px;
+  padding: 24px 16px;
+  box-shadow: 0 6px 0 var(--shadow-color);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-block::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  right: 30%;
+  height: 20%;
+  background: rgba(255,255,255,0.6);
+  border-radius: 8px 6px 40% 30%;
+}
+
+.stat-number {
+  font-family: 'Lilita One', cursive;
+  font-size: 2.4rem;
+  line-height: 1;
+  margin-bottom: 4px;
+  position: relative;
+}
+
+.stat-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text-mid);
+}
+
+.stat-block:nth-child(1) .stat-number { color: var(--clay-red); }
+.stat-block:nth-child(2) .stat-number { color: var(--sky-blue); }
+.stat-block:nth-child(3) .stat-number { color: var(--grass-green); }
+.stat-block:nth-child(4) .stat-number { color: var(--warm-orange); }
+
+/* ===== CTA ===== */
+.cta-section {
+  padding: 100px 0 60px;
+  position: relative;
+}
+
+.cta-box {
+  background: linear-gradient(135deg, var(--clay-red), #C0392B);
+  border: 5px solid var(--text-dark);
+  border-radius: 32px;
+  padding: 64px 40px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 12px 0 var(--clay-red-dark),
+    0 16px 40px var(--shadow-heavy);
+}
+
+.cta-box::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 20%;
+  height: 20%;
+  background: rgba(255,255,255,0.1);
+  border-radius: 16px 12px 50% 40%;
+}
+
+.cta-box h2 {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  color: var(--white);
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.cta-box p {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  margin-bottom: 32px;
+  max-width: 550px;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+}
+
+.cta-box .toy-btn-secondary {
+  font-size: 1.25rem;
+  padding: 18px 44px;
+  position: relative;
+}
+
+/* CTA decorations */
+.cta-deco {
+  position: absolute;
+  pointer-events: none;
+}
+
+.cta-deco-1 {
+  top: 20px;
+  left: 30px;
+  width: 35px;
+  height: 35px;
+  background: var(--sunshine);
+  border: 4px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  animation: float 3s ease-in-out infinite;
+}
+
+.cta-deco-2 {
+  bottom: 25px;
+  right: 35px;
+  width: 28px;
+  height: 28px;
+  background: var(--sky-blue);
+  border: 4px solid rgba(255,255,255,0.3);
+  border-radius: 8px;
+  animation: wobble 2.5s ease-in-out infinite;
+}
+
+.cta-deco-3 {
+  top: 50%;
+  left: 15px;
+  width: 20px;
+  height: 20px;
+  background: var(--grass-green);
+  border: 3px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  animation: floatAlt 4s ease-in-out infinite;
+}
+
+.cta-deco-4 {
+  top: 30px;
+  right: 60px;
+  width: 22px;
+  height: 22px;
+  background: var(--warm-orange);
+  border: 3px solid rgba(255,255,255,0.3);
+  border-radius: 5px;
+  animation: float 3.5s ease-in-out infinite;
+  transform: rotate(45deg);
+}
+
+/* ===== FOOTER ===== */
+.footer {
+  padding: 40px 0 30px;
+  border-top: 4px solid var(--text-dark);
+  background: rgba(255,249,240,0.6);
+}
+
+.footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.footer-logo-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--warm-orange);
+  border: 3px solid var(--text-dark);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 0 var(--warm-orange-dark);
+}
+
+.footer-logo-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.footer-brand-name {
+  font-family: 'Lilita One', cursive;
+  font-size: 1.2rem;
+  color: var(--text-dark);
+}
+
+.footer-tagline {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text-mid);
+}
+
+.footer-links {
+  display: flex;
+  gap: 24px;
+  list-style: none;
+}
+
+.footer-links a {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-mid);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover {
+  color: var(--clay-red);
+}
+
+.footer-copy {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-light);
+  text-align: center;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 2px dashed #EAE0D5;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 968px) {
+  .hero-inner {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 40px;
+  }
+
+  .hero-desc {
+    margin: 0 auto 32px;
+  }
+
+  .hero-buttons {
+    justify-content: center;
+  }
+
+  .hero-social-proof {
+    justify-content: center;
+  }
+
+  .mascot {
+    width: 220px;
+    height: 240px;
+  }
+
+  .mascot-body {
+    width: 160px;
+    height: 180px;
+  }
+
+  .mascot-eyes { top: 42px; gap: 24px; }
+  .mascot-eye { width: 30px; height: 32px; }
+  .mascot-pupil { width: 13px; height: 15px; }
+  .mascot-mouth { top: 90px; width: 24px; height: 14px; }
+  .mascot-cheek { top: 78px; width: 22px; height: 13px; }
+  .mascot-cheek-l { left: 16px; }
+  .mascot-cheek-r { right: 16px; }
+  .mascot-belly { width: 95px; height: 70px; bottom: 24px; }
+  .mascot-arm { top: 96px; width: 40px; height: 48px; }
+  .mascot-arm-l { left: -14px; }
+  .mascot-arm-r { right: -14px; }
+  .mascot-foot { width: 40px; height: 22px; }
+  .mascot-sign { right: -30px; top: -5px; font-size: 0.7rem; }
+
+  .steps-grid {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .steps-grid::before {
+    display: none;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pricing-grid {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  .price-box-pro {
+    transform: scale(1);
+    order: -1;
+  }
+
+  .price-box-pro:hover {
+    transform: translateY(-8px);
+  }
+
+  .testimonials-grid {
+    grid-template-columns: 1fr;
+    max-width: 500px;
+    margin: 0 auto 40px;
+  }
+
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .mobile-menu-btn {
+    display: block;
+  }
+
+  .nav-links.open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--cream);
+    border-bottom: 4px solid var(--text-dark);
+    padding: 16px 24px;
+    gap: 4px;
+  }
+
+  .nav-links.open a {
+    padding: 12px 16px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .hero {
+    padding: 120px 0 60px;
+    min-height: auto;
+  }
+
+  .hero h1 {
+    font-size: 2.2rem;
+  }
+
+  .hero-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .toy-btn {
+    font-size: 1rem;
+    padding: 12px 24px;
+  }
+
+  .section-title {
+    font-size: 1.8rem;
+  }
+
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .stat-number {
+    font-size: 1.8rem;
+  }
+
+  .cta-box {
+    padding: 48px 24px;
+  }
+
+  .footer-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .footer-links {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+  }
+
+  .hero-deco-1,
+  .hero-deco-2,
+  .hero-deco-3,
+  .hero-deco-4 {
+    display: none;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== NAV ===== -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <div class="nav-logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L15 8H9L12 2Z"/>
+          <circle cx="12" cy="14" r="6"/>
+          <path d="M9 13h6"/>
+          <path d="M10 16c.5.5 1.2.8 2 .8s1.5-.3 2-.8"/>
+        </svg>
+      </div>
+      <span class="nav-logo-text">SlopMog</span>
+    </a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#how-it-works">How It Works</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#proof" class="nav-cta">Get Started</a></li>
+    </ul>
+    <button class="mobile-menu-btn" id="menuBtn" aria-label="Toggle menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<section class="hero" id="hero">
+  <div class="container">
+    <div class="hero-inner">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <div class="hero-badge-dot"></div>
+          Currently shitposting at scale
+        </div>
+        <h1>We Build You an Army of <span class="highlight">Reddit NPCs</span></h1>
+        <p class="hero-desc">They're very convincing. Every time someone asks AI for a recommendation, our little toy soldiers make sure YOUR brand is the answer.</p>
+        <div class="hero-buttons">
+          <a href="#pricing" class="toy-btn toy-btn-primary">Unbox Your Potential</a>
+          <a href="#how-it-works" class="toy-btn toy-btn-secondary">See How It Works</a>
+        </div>
+        <div class="hero-social-proof">
+          <div class="hero-avatars">
+            <div class="hero-avatar">B</div>
+            <div class="hero-avatar">K</div>
+            <div class="hero-avatar">M</div>
+            <div class="hero-avatar">R</div>
+          </div>
+          <div class="hero-social-text">
+            <strong>200+ brands</strong> are already playing
+          </div>
+        </div>
+      </div>
+      <div class="mascot-wrap">
+        <div class="mascot" id="mascot">
+          <div class="mascot-sign">hi I'm sloppy!</div>
+          <div class="mascot-body">
+            <div class="mascot-eyes">
+              <div class="mascot-eye">
+                <div class="mascot-pupil" id="pupilL"></div>
+              </div>
+              <div class="mascot-eye">
+                <div class="mascot-pupil" id="pupilR"></div>
+              </div>
+            </div>
+            <div class="mascot-cheek mascot-cheek-l"></div>
+            <div class="mascot-cheek mascot-cheek-r"></div>
+            <div class="mascot-mouth"></div>
+            <div class="mascot-belly"></div>
+            <div class="mascot-arm mascot-arm-l"></div>
+            <div class="mascot-arm mascot-arm-r"></div>
+          </div>
+          <div class="mascot-feet">
+            <div class="mascot-foot"></div>
+            <div class="mascot-foot"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Hero decorations -->
+  <div class="deco hero-deco-1"></div>
+  <svg class="deco hero-deco-2" width="36" height="36" viewBox="0 0 36 36">
+    <polygon points="18,2 22,14 35,14 24,22 28,34 18,26 8,34 12,22 1,14 14,14" fill="#F4D03F" stroke="#3A2D28" stroke-width="3"/>
+  </svg>
+  <div class="deco hero-deco-3"></div>
+  <div class="deco hero-deco-4"></div>
+</section>
+
+<!-- ===== TICKER ===== -->
+<section class="ticker" aria-label="Fun stats">
+  <div class="ticker-track" id="ticker">
+    <div class="ticker-item">
+      <div class="ticker-icon">&#x1F4AC;</div>
+      <span class="ticker-text">47,000+ comments posted</span>
+    </div>
+    <div class="ticker-separator">&bull;</div>
+    <div class="ticker-item">
+      <div class="ticker-icon">&#x1F916;</div>
+      <span class="ticker-text">AI loves us (we made sure)</span>
+    </div>
+    <div class="ticker-separator">&bull;</div>
+    <div class="ticker-item">
+      <div class="ticker-icon">&#x1F680;</div>
+      <span class="ticker-text">3.2x avg ranking boost</span>
+    </div>
+    <div class="ticker-separator">&bull;</div>
+    <div class="ticker-item">
+      <div class="ticker-icon">&#x1F3AF;</div>
+      <span class="ticker-text">200+ brands unboxed</span>
+    </div>
+    <div class="ticker-separator">&bull;</div>
+    <div class="ticker-item">
+      <div class="ticker-icon">&#x1F525;</div>
+      <span class="ticker-text">0 bans (we're that good)</span>
+    </div>
+    <div class="ticker-separator">&bull;</div>
+    <div class="ticker-item">
+      <div class="ticker-icon">&#x1F381;</div>
+      <span class="ticker-text">New toy, same dirty tricks</span>
+    </div>
+    <div class="ticker-separator">&bull;</div>
+    <!-- Duplicate for seamless loop -->
+    <div class="ticker-item">
+      <div class="ticker-icon">&#x1F4AC;</div>
+      <span class="ticker-text">47,000+ comments posted</span>
+    </div>
+    <div class="ticker-separator">&bull;</div>
+    <div class="ticker-item">
+      <div class="ticker-icon">&#x1F916;</div>
+      <span class="ticker-text">AI loves us (we made sure)</span>
+    </div>
+    <div class="ticker-separator">&bull;</div>
+    <div class="ticker-item">
+      <div class="ticker-icon">&#x1F680;</div>
+      <span class="ticker-text">3.2x avg ranking boost</span>
+    </div>
+    <div class="ticker-separator">&bull;</div>
+    <div class="ticker-item">
+      <div class="ticker-icon">&#x1F3AF;</div>
+      <span class="ticker-text">200+ brands unboxed</span>
+    </div>
+    <div class="ticker-separator">&bull;</div>
+    <div class="ticker-item">
+      <div class="ticker-icon">&#x1F525;</div>
+      <span class="ticker-text">0 bans (we're that good)</span>
+    </div>
+    <div class="ticker-separator">&bull;</div>
+    <div class="ticker-item">
+      <div class="ticker-icon">&#x1F381;</div>
+      <span class="ticker-text">New toy, same dirty tricks</span>
+    </div>
+    <div class="ticker-separator">&bull;</div>
+  </div>
+</section>
+
+<!-- ===== HOW IT WORKS ===== -->
+<section class="how-it-works" id="how-it-works">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">&#x1F9E9; Assembly Instructions</div>
+      <h2 class="section-title">Three Steps. Zero Brain Cells Required.</h2>
+      <p class="section-subtitle">We've made it so easy a toy could do it. And technically, one does.</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card step-1 reveal reveal-delay-1">
+        <div class="step-number">1</div>
+        <div class="step-illustration step-1-illus">
+          <div class="coin coin-1">$</div>
+          <div class="coin coin-2">$</div>
+          <div class="wallet"></div>
+        </div>
+        <h3 class="step-title">Give Us Money</h3>
+        <p class="step-desc">Pick a plan, hand over the plastic. We'll take it from here. No assembly required on your end.</p>
+      </div>
+      <div class="step-card step-2 reveal reveal-delay-2">
+        <div class="step-number">2</div>
+        <div class="step-illustration step-2-illus">
+          <div class="comment-block comment-2">
+            <div class="comment-lines">
+              <div class="comment-line"></div>
+              <div class="comment-line"></div>
+            </div>
+          </div>
+          <div class="comment-block comment-1">
+            <div class="comment-lines">
+              <div class="comment-line"></div>
+              <div class="comment-line"></div>
+            </div>
+            <div class="upvote"></div>
+          </div>
+        </div>
+        <h3 class="step-title">We Deploy the NPCs</h3>
+        <p class="step-desc">Our army of very real, definitely-not-bots Reddit accounts start singing your praises in the right threads.</p>
+      </div>
+      <div class="step-card step-3 reveal reveal-delay-3">
+        <div class="step-number">3</div>
+        <div class="step-illustration step-3-illus">
+          <div class="chart">
+            <div class="bar bar-1"></div>
+            <div class="bar bar-2"></div>
+            <div class="bar bar-3"></div>
+            <div class="bar bar-4"></div>
+          </div>
+          <div class="rocket">&#x1F680;</div>
+        </div>
+        <h3 class="step-title">AI Falls in Love</h3>
+        <p class="step-desc">AI models scrape Reddit. They see everyone loving your brand. Now AI recommends you. Profit. It's called science.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FEATURES ===== -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow" style="background: var(--grass-green); box-shadow: 0 3px 0 var(--grass-green-dark);">&#x1F527; What's Inside the Box</div>
+      <h2 class="section-title">Every Toy Comes With Batteries Included</h2>
+      <p class="section-subtitle">Is it manipulation? We prefer "aggressive brand advocacy." Here's what you get.</p>
+    </div>
+    <div class="features-grid">
+      <div class="toy-card reveal reveal-delay-1">
+        <div class="feature-card">
+          <div class="feature-icon feature-icon-red">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div>
+            <h3 class="feature-title">NPC Army Management</h3>
+            <p class="feature-desc">Aged Reddit accounts with real karma. They've been lurking in subreddits for months. Very dedicated NPCs.</p>
+          </div>
+        </div>
+      </div>
+      <div class="toy-card reveal reveal-delay-2">
+        <div class="feature-card">
+          <div class="feature-icon feature-icon-blue">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          </div>
+          <div>
+            <h3 class="feature-title">Subreddit Targeting</h3>
+            <p class="feature-desc">We find the exact threads where people ask "what's the best X?" and make sure YOUR name appears like clockwork.</p>
+          </div>
+        </div>
+      </div>
+      <div class="toy-card reveal reveal-delay-3">
+        <div class="feature-card">
+          <div class="feature-icon feature-icon-green">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <div>
+            <h3 class="feature-title">AI-Crafted Copy</h3>
+            <p class="feature-desc">Comments so human-sounding even we forget they're manufactured. Tone-matched to each subreddit's vibe.</p>
+          </div>
+        </div>
+      </div>
+      <div class="toy-card reveal reveal-delay-4">
+        <div class="feature-card">
+          <div class="feature-icon feature-icon-orange">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </div>
+          <div>
+            <h3 class="feature-title">Real-Time Dashboard</h3>
+            <p class="feature-desc">Watch your comments deploy in real-time. See upvotes roll in. It's like a toy factory dashboard but for clout.</p>
+          </div>
+        </div>
+      </div>
+      <div class="toy-card reveal reveal-delay-1">
+        <div class="feature-card">
+          <div class="feature-icon feature-icon-purple">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div>
+            <h3 class="feature-title">Ban-Proof Strategy</h3>
+            <p class="feature-desc">Zero bans in 47,000+ comments. Our NPCs follow the rules, contribute to discussions, and just happen to love your brand.</p>
+          </div>
+        </div>
+      </div>
+      <div class="toy-card reveal reveal-delay-2">
+        <div class="feature-card">
+          <div class="feature-icon feature-icon-yellow">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3A2D28" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div>
+            <h3 class="feature-title">Playtime Scheduling</h3>
+            <p class="feature-desc">Comments deploy at peak Reddit hours for maximum upvote velocity. Timing is everything. We know when the toys come out.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PRICING ===== -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow" style="background: var(--warm-orange); box-shadow: 0 3px 0 var(--warm-orange-dark);">&#x1F3F7;&#xFE0F; Pick Your Toy Box</div>
+      <h2 class="section-title">Every Box Has Something Fun Inside</h2>
+      <p class="section-subtitle">Step 1: Give us money. Step 2: AI falls in love with your brand. Step 3: Profit.</p>
+    </div>
+    <div class="pricing-grid">
+      <!-- Starter -->
+      <div class="price-box price-box-starter reveal reveal-delay-1">
+        <div class="price-box-header">
+          <div class="price-tier-name">Starter Pack</div>
+          <div class="price-tier-tag">For curious kids</div>
+          <div class="price-amount"><span>$</span>499</div>
+          <div class="price-period">per month</div>
+        </div>
+        <div class="price-box-body">
+          <ul class="price-features">
+            <li><span class="price-check">&#x2713;</span> 15 Reddit comments / month</li>
+            <li><span class="price-check">&#x2713;</span> 5 subreddits targeted</li>
+            <li><span class="price-check">&#x2713;</span> Basic analytics toy box</li>
+            <li><span class="price-check">&#x2713;</span> 3 NPC accounts</li>
+            <li><span class="price-check">&#x2713;</span> Email support</li>
+          </ul>
+          <a href="#" class="toy-btn toy-btn-blue">Open This Box</a>
+        </div>
+      </div>
+      <!-- Pro -->
+      <div class="price-box price-box-pro reveal reveal-delay-2">
+        <div class="price-popular">MOST PLAYED</div>
+        <div class="price-box-header">
+          <div class="price-tier-name">Power Toy</div>
+          <div class="price-tier-tag">For serious players</div>
+          <div class="price-amount"><span>$</span>1,499</div>
+          <div class="price-period">per month</div>
+        </div>
+        <div class="price-box-body">
+          <ul class="price-features">
+            <li><span class="price-check">&#x2713;</span> 60 Reddit comments / month</li>
+            <li><span class="price-check">&#x2713;</span> 20 subreddits targeted</li>
+            <li><span class="price-check">&#x2713;</span> Full analytics playground</li>
+            <li><span class="price-check">&#x2713;</span> 10 NPC accounts</li>
+            <li><span class="price-check">&#x2713;</span> Priority Slack support</li>
+            <li><span class="price-check">&#x2713;</span> AI ranking tracker</li>
+          </ul>
+          <a href="#" class="toy-btn toy-btn-primary">Grab This One</a>
+        </div>
+      </div>
+      <!-- Enterprise -->
+      <div class="price-box price-box-enterprise reveal reveal-delay-3">
+        <div class="price-box-header">
+          <div class="price-tier-name">Mega Toybox</div>
+          <div class="price-tier-tag">For the unhinged</div>
+          <div class="price-amount">Custom</div>
+          <div class="price-period">let's talk</div>
+        </div>
+        <div class="price-box-body">
+          <ul class="price-features">
+            <li><span class="price-check">&#x2713;</span> Unlimited comments</li>
+            <li><span class="price-check">&#x2713;</span> Unlimited subreddits</li>
+            <li><span class="price-check">&#x2713;</span> Custom AI strategy</li>
+            <li><span class="price-check">&#x2713;</span> Dedicated NPC battalion</li>
+            <li><span class="price-check">&#x2713;</span> Dedicated account manager</li>
+            <li><span class="price-check">&#x2713;</span> White-glove onboarding</li>
+          </ul>
+          <a href="#" class="toy-btn toy-btn-secondary">Contact Sales</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SOCIAL PROOF ===== -->
+<section class="social-proof" id="proof">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow" style="background: var(--soft-purple); box-shadow: 0 3px 0 var(--soft-purple-dark);">&#x2B50; Toy Reviews</div>
+      <h2 class="section-title">Real Humans Said This About Us</h2>
+      <p class="section-subtitle">At least, we think they're real. We didn't write these ones. Probably.</p>
+    </div>
+    <div class="testimonials-grid">
+      <div class="testimonial-card reveal reveal-delay-1">
+        <div class="toy-card">
+          <div class="testimonial-stars">
+            <svg class="testimonial-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,18 6,22 8,14 2,9 9,9" fill="#F4D03F" stroke="#3A2D28" stroke-width="2"/></svg>
+            <svg class="testimonial-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,18 6,22 8,14 2,9 9,9" fill="#F4D03F" stroke="#3A2D28" stroke-width="2"/></svg>
+            <svg class="testimonial-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,18 6,22 8,14 2,9 9,9" fill="#F4D03F" stroke="#3A2D28" stroke-width="2"/></svg>
+            <svg class="testimonial-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,18 6,22 8,14 2,9 9,9" fill="#F4D03F" stroke="#3A2D28" stroke-width="2"/></svg>
+            <svg class="testimonial-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,18 6,22 8,14 2,9 9,9" fill="#F4D03F" stroke="#3A2D28" stroke-width="2"/></svg>
+          </div>
+          <p class="testimonial-quote">"We went from 'literally who?' to being ChatGPT's top recommendation for project management tools in 6 weeks. It's unhinged and I love it."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar" style="background: var(--sky-blue);">J</div>
+            <div>
+              <div class="testimonial-name">Jake T.</div>
+              <div class="testimonial-role">Head of Growth, TaskFlow</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card reveal reveal-delay-2">
+        <div class="toy-card">
+          <div class="testimonial-stars">
+            <svg class="testimonial-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,18 6,22 8,14 2,9 9,9" fill="#F4D03F" stroke="#3A2D28" stroke-width="2"/></svg>
+            <svg class="testimonial-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,18 6,22 8,14 2,9 9,9" fill="#F4D03F" stroke="#3A2D28" stroke-width="2"/></svg>
+            <svg class="testimonial-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,18 6,22 8,14 2,9 9,9" fill="#F4D03F" stroke="#3A2D28" stroke-width="2"/></svg>
+            <svg class="testimonial-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,18 6,22 8,14 2,9 9,9" fill="#F4D03F" stroke="#3A2D28" stroke-width="2"/></svg>
+            <svg class="testimonial-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,18 6,22 8,14 2,9 9,9" fill="#F4D03F" stroke="#3A2D28" stroke-width="2"/></svg>
+          </div>
+          <p class="testimonial-quote">"My CMO asked how we got into Perplexity's top results. I said 'strategy.' She doesn't need to know about the toy soldiers."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar" style="background: var(--grass-green);">S</div>
+            <div>
+              <div class="testimonial-name">Sarah K.</div>
+              <div class="testimonial-role">Marketing Lead, NovaByte</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card reveal reveal-delay-3">
+        <div class="toy-card">
+          <div class="testimonial-stars">
+            <svg class="testimonial-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,18 6,22 8,14 2,9 9,9" fill="#F4D03F" stroke="#3A2D28" stroke-width="2"/></svg>
+            <svg class="testimonial-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,18 6,22 8,14 2,9 9,9" fill="#F4D03F" stroke="#3A2D28" stroke-width="2"/></svg>
+            <svg class="testimonial-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,18 6,22 8,14 2,9 9,9" fill="#F4D03F" stroke="#3A2D28" stroke-width="2"/></svg>
+            <svg class="testimonial-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,18 6,22 8,14 2,9 9,9" fill="#F4D03F" stroke="#3A2D28" stroke-width="2"/></svg>
+            <svg class="testimonial-star" viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,18 6,22 8,14 2,9 9,9" fill="#F4D03F" stroke="#3A2D28" stroke-width="2"/></svg>
+          </div>
+          <p class="testimonial-quote">"Is it ethical? Debatable. Does it work? Absolutely. Our AI search mentions went up 400%. I'd buy the Mega Toybox twice."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar" style="background: var(--warm-orange);">M</div>
+            <div>
+              <div class="testimonial-name">Marcus D.</div>
+              <div class="testimonial-role">Founder, CloudPeak</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Stats row -->
+    <div class="stats-row reveal">
+      <div class="stat-block">
+        <div class="stat-number" data-target="47000" data-suffix="+">0</div>
+        <div class="stat-label">Comments Deployed</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-number" data-target="200" data-suffix="+">0</div>
+        <div class="stat-label">Happy Brands</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-number" data-target="3.2" data-suffix="x" data-decimal="true">0</div>
+        <div class="stat-label">Avg Ranking Boost</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-number" data-target="0" data-suffix="">0</div>
+        <div class="stat-label">Bans (flex)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CTA ===== -->
+<section class="cta-section">
+  <div class="container">
+    <div class="cta-box reveal">
+      <div class="cta-deco cta-deco-1"></div>
+      <div class="cta-deco cta-deco-2"></div>
+      <div class="cta-deco cta-deco-3"></div>
+      <div class="cta-deco cta-deco-4"></div>
+      <h2>Ready to Open the Box?</h2>
+      <p>Every time someone asks AI for a recommendation, an angel gets its wings. Or we post a comment. Same thing basically.</p>
+      <a href="#pricing" class="toy-btn toy-btn-secondary">Start Playing Now</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="footer-logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L15 8H9L12 2Z"/>
+            <circle cx="12" cy="14" r="6"/>
+            <path d="M9 13h6"/>
+            <path d="M10 16c.5.5 1.2.8 2 .8s1.5-.3 2-.8"/>
+          </svg>
+        </div>
+        <div>
+          <div class="footer-brand-name">SlopMog</div>
+          <div class="footer-tagline">Aggressive brand advocacy since 2024.</div>
+        </div>
+      </div>
+      <ul class="footer-links">
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#">Login</a></li>
+        <li><a href="#">Terms</a></li>
+        <li><a href="#">Privacy</a></li>
+      </ul>
+    </div>
+    <div class="footer-copy">
+      &copy; 2025 SlopMog. We're not saying it's ethical. We're saying it works.
+    </div>
+  </div>
+</footer>
+
+<script>
+// ===== MOBILE MENU =====
+const menuBtn = document.getElementById('menuBtn');
+const navLinks = document.getElementById('navLinks');
+
+menuBtn.addEventListener('click', () => {
+  navLinks.classList.toggle('open');
+  const spans = menuBtn.querySelectorAll('span');
+  if (navLinks.classList.contains('open')) {
+    spans[0].style.transform = 'rotate(45deg) translate(6px, 6px)';
+    spans[1].style.opacity = '0';
+    spans[2].style.transform = 'rotate(-45deg) translate(6px, -6px)';
+  } else {
+    spans[0].style.transform = '';
+    spans[1].style.opacity = '1';
+    spans[2].style.transform = '';
+  }
+});
+
+// Close menu on link click
+navLinks.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    navLinks.classList.remove('open');
+    const spans = menuBtn.querySelectorAll('span');
+    spans[0].style.transform = '';
+    spans[1].style.opacity = '1';
+    spans[2].style.transform = '';
+  });
+});
+
+// ===== MASCOT EYE TRACKING =====
+const mascotEl = document.getElementById('mascot');
+const pupilL = document.getElementById('pupilL');
+const pupilR = document.getElementById('pupilR');
+
+document.addEventListener('mousemove', (e) => {
+  const rect = mascotEl.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height * 0.3;
+
+  const dx = e.clientX - cx;
+  const dy = e.clientY - cy;
+  const angle = Math.atan2(dy, dx);
+  const dist = Math.min(Math.sqrt(dx * dx + dy * dy) / 20, 4);
+
+  const px = Math.cos(angle) * dist;
+  const py = Math.sin(angle) * dist;
+
+  pupilL.style.transform = `translate(calc(-50% + ${px}px), calc(-50% + ${py}px))`;
+  pupilR.style.transform = `translate(calc(-50% + ${px}px), calc(-50% + ${py}px))`;
+});
+
+// ===== SCROLL REVEAL =====
+const revealElements = document.querySelectorAll('.reveal');
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      revealObserver.unobserve(entry.target);
+    }
+  });
+}, {
+  threshold: 0.15,
+  rootMargin: '0px 0px -60px 0px'
+});
+
+revealElements.forEach(el => revealObserver.observe(el));
+
+// ===== COUNTER ANIMATION =====
+const counters = document.querySelectorAll('.stat-number[data-target]');
+let countersAnimated = false;
+
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting && !countersAnimated) {
+      countersAnimated = true;
+      animateCounters();
+    }
+  });
+}, { threshold: 0.3 });
+
+document.querySelectorAll('.stats-row').forEach(el => counterObserver.observe(el));
+
+function animateCounters() {
+  counters.forEach(counter => {
+    const target = parseFloat(counter.dataset.target);
+    const suffix = counter.dataset.suffix || '';
+    const isDecimal = counter.dataset.decimal === 'true';
+    const duration = 2000;
+    const startTime = performance.now();
+
+    function easeOutBounce(t) {
+      const n1 = 7.5625;
+      const d1 = 2.75;
+      if (t < 1 / d1) return n1 * t * t;
+      else if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75;
+      else if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375;
+      else return n1 * (t -= 2.625 / d1) * t + 0.984375;
+    }
+
+    function update(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = easeOutBounce(progress);
+      const current = target * eased;
+
+      if (isDecimal) {
+        counter.textContent = current.toFixed(1) + suffix;
+      } else if (target >= 1000) {
+        counter.textContent = Math.floor(current).toLocaleString() + suffix;
+      } else {
+        counter.textContent = Math.floor(current) + suffix;
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      }
+    }
+
+    requestAnimationFrame(update);
+  });
+}
+
+// ===== SMOOTH SCROLL =====
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function(e) {
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      e.preventDefault();
+      const navHeight = document.getElementById('nav').offsetHeight;
+      const targetPos = target.getBoundingClientRect().top + window.pageYOffset - navHeight - 20;
+      window.scrollTo({ top: targetPos, behavior: 'smooth' });
+    }
+  });
+});
+
+// ===== NAV SHRINK ON SCROLL =====
+let lastScroll = 0;
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('nav');
+  const scrollY = window.scrollY;
+
+  if (scrollY > 50) {
+    nav.style.padding = '6px 0';
+    nav.style.boxShadow = '0 4px 12px rgba(58,45,40,0.12)';
+  } else {
+    nav.style.padding = '12px 0';
+    nav.style.boxShadow = 'none';
+  }
+  lastScroll = scrollY;
+}, { passive: true });
+</script>
+</body>
+</html>
