@@ -81,6 +81,7 @@ This is a Next.js application with a tRPC backend for SlopMog - a service that c
 - Use Lucide for icons and Sonner for toast
 - Implement responsive design with Tailwind CSS; use a mobile-first approach
 - Setup empty states for anything that a user can "create"
+- **Always use Tailwind classes instead of custom CSS.** Only use custom CSS in `globals.css` for complex animations (multi-step keyframes, pseudo-element animations, morphing shapes). Simple animations (hover transitions, fades, slides) should use Tailwind's built-in transition/animate utilities.
 
 ### Brand & Design Vibe
 
@@ -90,7 +91,7 @@ See `DESIGN.md` for the full design system. Key points:
 - **Fonts:** Quicksand (headings), Nunito (body) — loaded via `_document.tsx`
 - **Colors:** Warm cream bg (`#FFF8F0`), teal primary (`#2EC4B6`), coral actions (`#FF6B6B`), yellow accents (`#FFD93D`), lavender decorative (`#B197FC`), charcoal text (`#2D3047`). Brand tokens are in both CSS variables and `tailwind.config.js`.
 - **Mascot:** A coral blob character with antenna, eyes, and arms. Reuse the `MascotBlob` component at different sizes via parent CSS context classes.
-- **Landing page CSS** lives in `globals.css` (custom animations, mascot, sections) — not Tailwind utilities — because of heavy animation/pseudo-element usage.
+- **Landing page** uses Tailwind classes inline. Only complex animations (mascot bounce, eye-look, sparkle rotate, ticker scroll) and pseudo-element styles remain in `globals.css`.
 - **Buttons** are pill-shaped (border-radius 50px). Coral = primary action, teal outline = secondary.
 - **Cards** use soft shadows, subtle borders, and lift on hover.
 

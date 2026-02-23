@@ -24,106 +24,87 @@ export type Plan = {
 };
 
 const baseFeatures = [
-  { feature: "AI-Generated Comments", available: true },
-  { feature: "Keyword Targeting", available: true },
+  { feature: "AI writes comments that sound human", available: true },
+  { feature: "Posted on aged Reddit accounts", available: true },
 ];
 
 export const planList: Plan[] = [
   {
-    plan: "basic",
-    plan_name: "Basic",
-    credits_per_month: 300,
-    description: "For trying things out",
-    price: {
-      monthly: 14,
-      yearly: 92.4,
-      yearlyDiscount: 45,
-    },
-    popular: false,
-    features: [
-      {
-        feature: "{{credits}} credits/month",
-        values: { credits: 300 },
-        available: true,
-      },
-      ...baseFeatures,
-      { feature: "Basic Analytics", available: true },
-      { feature: "Priority Support", available: false },
-    ],
-    monthlyPriceId: "", // TODO: Set after running stripe:products
-    yearlyPriceId: "",
-    id: "basic",
-  },
-  {
     plan: "starter",
     plan_name: "Starter",
-    credits_per_month: 1000,
-    description: "For small brands getting started",
-    price: {
-      monthly: 29,
-      yearly: 208.8,
-      yearlyDiscount: 40,
-    },
-    popular: true,
-    features: [
-      {
-        feature: "{{credits}} credits/month",
-        values: { credits: 1000 },
-        available: true,
-      },
-      ...baseFeatures,
-      { feature: "Advanced Analytics", available: true },
-      { feature: "Priority Support", available: false },
-    ],
-    monthlyPriceId: "",
-    yearlyPriceId: "",
-    id: "starter",
-  },
-  {
-    plan: "hobby",
-    plan_name: "Hobby",
-    credits_per_month: 2200,
-    description: "For growing brands",
+    credits_per_month: 15,
+    description: "Dip your toes in",
     price: {
       monthly: 49,
-      yearly: 411.6,
-      yearlyDiscount: 30,
-    },
-    popular: false,
-    features: [
-      {
-        feature: "{{credits}} credits/month",
-        values: { credits: 2200 },
-        available: true,
-      },
-      ...baseFeatures,
-      { feature: "Advanced Analytics", available: true },
-      { feature: "Priority Support", available: true },
-    ],
-    monthlyPriceId: "",
-    yearlyPriceId: "",
-    id: "hobby",
-  },
-  {
-    plan: "pro",
-    plan_name: "Pro",
-    credits_per_month: 4000,
-    description: "For serious operations",
-    price: {
-      monthly: 99,
-      yearly: 950.4,
+      yearly: 470.4,
       yearlyDiscount: 20,
     },
     popular: false,
     features: [
       {
-        feature: "{{credits}} credits/month",
-        values: { credits: 4000 },
+        feature: "{{credits}} comments posted/month",
+        values: { credits: 15 },
         available: true,
       },
       ...baseFeatures,
-      { feature: "Advanced Analytics", available: true },
-      { feature: "Priority Support", available: true },
+      { feature: "Target up to 3 keywords", available: true },
+      { feature: "See which comments are live", available: true },
+      { feature: "AI mention tracking", available: false },
+      { feature: "Priority support", available: false },
+    ],
+    monthlyPriceId: "", // TODO: Set after running stripe:products
+    yearlyPriceId: "",
+    id: "starter",
+  },
+  {
+    plan: "growth",
+    plan_name: "Growth",
+    credits_per_month: 40,
+    description: "For brands ready to show up",
+    price: {
+      monthly: 99,
+      yearly: 950.4,
+      yearlyDiscount: 20,
+    },
+    popular: true,
+    features: [
+      {
+        feature: "{{credits}} comments posted/month",
+        values: { credits: 40 },
+        available: true,
+      },
+      ...baseFeatures,
+      { feature: "Target up to 10 keywords", available: true },
+      { feature: "Track when AI chatbots mention you", available: true },
+      { feature: "Weekly performance reports", available: true },
+      { feature: "Priority support", available: true },
+    ],
+    monthlyPriceId: "",
+    yearlyPriceId: "",
+    id: "growth",
+  },
+  {
+    plan: "pro",
+    plan_name: "Pro",
+    credits_per_month: 100,
+    description: "For serious brand domination",
+    price: {
+      monthly: 199,
+      yearly: 1910.4,
+      yearlyDiscount: 20,
+    },
+    popular: false,
+    features: [
+      {
+        feature: "{{credits}} comments posted/month",
+        values: { credits: 100 },
+        available: true,
+      },
+      ...baseFeatures,
+      { feature: "Unlimited keyword targeting", available: true },
+      { feature: "Full analytics dashboard", available: true },
+      { feature: "Track when AI chatbots mention you", available: true },
+      { feature: "Priority support + monthly strategy call", available: true },
     ],
     monthlyPriceId: "",
     yearlyPriceId: "",
@@ -132,13 +113,13 @@ export const planList: Plan[] = [
 ];
 
 export const CREDIT_PRICES = {
-  200: { price: 999 },
-  500: { price: 1799 },
-  1500: { price: 4999 },
-  4000: { price: 9999 },
+  5: { price: 1900 },
+  15: { price: 4900 },
+  40: { price: 11900 },
+  100: { price: 24900 },
 };
 
-export const FREE_CREDITS = 20;
+export const FREE_CREDITS = 3;
 
 export function getCreditsForPlan(planName: string | null): number {
   if (!planName || planName === "FREE") return 0;
