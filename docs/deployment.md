@@ -16,6 +16,23 @@ This covers deploying a Next.js + Prisma app behind the shared admakeai Traefik 
 
 ---
 
+## Production Files Overview
+
+These files power the production deployment:
+
+| File | Purpose |
+|------|---------|
+| `production.yml` | Docker Compose for production (postgres, redis, frontend, prisma studio) |
+| `compose/production/app/Dockerfile` | Multi-stage Next.js build (standalone output) |
+| `compose/production/prisma_studio/Dockerfile` | Prisma Studio for DB management |
+| `compose/production/postgres/Dockerfile` | PostgreSQL 15 |
+| `deploy.sh` | Zero-downtime rolling deploy helper (source in `~/.bashrc`) |
+| `.dockerignore` | Keeps Docker context lean |
+| `.env.production.example` | Template for production env vars |
+| `next.config.js` | Must have `output: "standalone"` for Docker |
+
+---
+
 ## 1. Traefik Config (admakeai — one-time per new project)
 
 The traefik routes are already added in `admakeai/compose/production/traefik/traefik.yml`.
@@ -177,7 +194,7 @@ Make sure `STRIPE_WEBHOOK_SECRET` in `.env.production` matches the signing secre
 
 To add a new project to this server:
 
-1. Copy `production.yml`, `compose/production/`, `.dockerignore`, `.env.production.example` from this repo
+1. Copy `production.yml`, `compose/production/`, `deploy.sh`, `.dockerignore`, `.env.production.example` from this repo
 2. Find-replace `slopmog` → `yourproject`
 3. Add `output: "standalone"` to `next.config.js`
 4. Add `"db:deploy": "prisma migrate deploy"` to `package.json` scripts

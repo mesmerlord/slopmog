@@ -1,0 +1,71 @@
+version: "3"
+
+networks:
+  admakeai_traefik_network:
+    external: true
+
+volumes:
+  production_postgres_data: {}
+  production_postgres_data_backups: {}
+  production_redis_data: {}
+
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: ./compose/production/postgres/Dockerfile
+    image: slopmog_production_postgres
+    volumes:
+      - production_postgres_data:/var/lib/postgresql/data
+      - production_postgres_data_backups:/backups
+    env_file:
+      - ./.env.production
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - production_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  slopmog_frontend:
+    build:
+      context: .
+      dockerfile: ./compose/production/app/Dockerfile
+    image: slopmog_production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2
+    env_file:
+      - ./.env.production
+    networks:
+      - default
+      - admakeai_traefik_network
+
+  slopmog_prisma_studio:
+    build:
+      context: .
+      dockerfile: ./compose/production/prisma_studio/Dockerfile
+    image: slopmog_prisma_studio
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ./.env.production
+    restart: unless-stopped
+    networks:
+      - default
+      - admakeai_traefik_network
