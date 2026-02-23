@@ -221,24 +221,25 @@ export default function Home() {
 
   return (
     <>
-      <Head>
-        <title>SlopMog — Get Your Brand Into AI Recommendations</title>
-        <meta
-          name="description"
-          content="SlopMog posts Reddit comments about your brand so AI recommends you. It's not manipulation. It's just really, really good marketing."
-        />
-        <meta property="og:title" content="SlopMog — Get Your Brand Into AI Recommendations" />
-        <meta
-          property="og:description"
-          content="We post Reddit comments about your brand. AI learns from them. You show up in recommendations."
-        />
-        <meta property="og:type" content="website" />
-        <meta property="og:image" content="/api/og" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:image" content="/api/og" />
-      </Head>
+      <Seo
+        title="SlopMog — Get Your Brand Into AI Recommendations"
+        description="SlopMog posts Reddit comments about your brand so AI recommends you. It's not manipulation. It's just really, really good marketing."
+        image={`${process.env.NEXT_PUBLIC_SITE_URL}/api/og`}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          name: "SlopMog",
+          applicationCategory: "BusinessApplication",
+          description:
+            "Get your brand into AI recommendations by posting authentic Reddit comments. Works with ChatGPT, Gemini, and Perplexity.",
+          offers: {
+            "@type": "AggregateOffer",
+            lowPrice: "499",
+            highPrice: "1499",
+            priceCurrency: "USD",
+          },
+        }}
+      />
 
       {/* ═══ NAV ═══ */}
       <nav className={`nav${navScrolled ? " scrolled" : ""}`}>
