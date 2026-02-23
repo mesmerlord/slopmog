@@ -750,29 +750,35 @@ img { max-width: 100%; display: block; }
   box-shadow: 0 2px 10px rgba(46,196,182,0.3);
 }
 .demo-cards-container {
-  position: relative;
-  min-height: 320px;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
 }
 .demo-card {
+  grid-column: 1;
+  grid-row: 1;
   background: var(--white);
   border-radius: var(--radius);
   padding: 32px;
   box-shadow: var(--shadow-md);
   text-align: left;
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
   opacity: 0;
-  transform: translateY(12px);
+  transform: translateY(8px);
   transition: opacity 0.4s, transform 0.4s;
   pointer-events: none;
+  visibility: hidden;
 }
 .demo-card.active {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
-  position: relative;
+  visibility: visible;
+}
+
+/* After card gets a teal glow + border to make the win feel obvious */
+.demo-card-after.active {
+  border: 2px solid var(--teal);
+  box-shadow: var(--shadow-md), 0 0 30px rgba(46,196,182,0.15), 0 0 60px rgba(46,196,182,0.06);
 }
 .demo-card-header {
   display: flex;
@@ -791,7 +797,10 @@ img { max-width: 100%; display: block; }
   justify-content: center;
 }
 .demo-card-before .demo-card-ai-icon { background: #f0f0f0; }
-.demo-card-after .demo-card-ai-icon { background: var(--teal-light); }
+.demo-card-before { background: #fafafa; }
+.demo-card-after .demo-card-ai-icon { background: var(--teal); }
+.demo-card-after .demo-card-ai-icon svg rect { fill: var(--teal); }
+.demo-card-after .demo-card-header-text strong { color: var(--teal-dark); }
 .demo-card-header-text {
   font-size: 0.8rem;
   color: var(--charcoal-light);
@@ -831,31 +840,63 @@ img { max-width: 100%; display: block; }
   background: rgba(45,48,71,0.06);
   color: var(--charcoal-light);
 }
+.demo-result-you {
+  background: var(--teal-light);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin: 0 -16px;
+  border-bottom: none;
+  position: relative;
+}
 .demo-result-you .demo-result-rank {
   background: var(--teal);
   color: var(--white);
+  width: 28px;
+  height: 28px;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 8px rgba(46,196,182,0.3);
 }
 .demo-result-name {
   font-weight: 700;
   font-size: 0.95rem;
   color: var(--charcoal);
 }
-.demo-result-you .demo-result-name { color: var(--teal); }
+.demo-result-you .demo-result-name {
+  color: var(--teal-dark);
+  font-size: 1.05rem;
+}
 .demo-result-desc {
   font-size: 0.82rem;
   color: var(--charcoal-light);
   margin-top: 2px;
 }
+.demo-result-you .demo-result-desc {
+  color: var(--charcoal);
+  font-weight: 500;
+}
 .demo-result-badge {
   display: inline-block;
-  background: var(--teal-light);
-  color: var(--teal);
+  background: var(--teal);
+  color: var(--white);
   font-size: 0.7rem;
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 50px;
   margin-left: 6px;
 }
+
+.demo-after-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(46,196,182,0.15);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--teal-dark);
+}
+.demo-after-summary svg { flex-shrink: 0; }
 
 /* Demo mascot — small coral mascot */
 .demo-mascot {

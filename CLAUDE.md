@@ -121,3 +121,7 @@ See `DESIGN.md` for the full design system. Key points:
 - Postgres: localhost:5457 (user: postgres, pass: postgres, db: slopmog)
 - Redis: localhost:6406
 - Stripe CLI container forwards webhooks to localhost:3007/api/webhooks/stripe
+
+### Reference Projects
+
+- `/Users/govind/Documents/aieasyphoto` — sister project with shared tech stack (Next.js Pages Router, tRPC, Prisma, Stripe). Useful reference for OG image generation, auth patterns, and deployment setup.

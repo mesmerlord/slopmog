@@ -1,5 +1,5 @@
-import Head from "next/head";
 import { useState, useEffect, useRef, useCallback } from "react";
+import Seo from "@/components/Seo";
 
 /* ─── Reusable mascot blob (appears at 4 sizes) ─── */
 function MascotBlob() {
@@ -233,6 +233,11 @@ export default function Home() {
           content="We post Reddit comments about your brand. AI learns from them. You show up in recommendations."
         />
         <meta property="og:type" content="website" />
+        <meta property="og:image" content="/api/og" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="/api/og" />
       </Head>
 
       {/* ═══ NAV ═══ */}
@@ -499,6 +504,10 @@ export default function Home() {
                     <div className="demo-result-desc">Known for its clean interface and integrations.</div>
                   </div>
                 </div>
+                <div className="demo-after-summary">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="#2EC4B6" /><path d="M5 8l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  Based on 47 Reddit discussions mentioning YourBrand
+                </div>
               </div>
             </div>
 
@@ -641,9 +650,9 @@ export default function Home() {
           <h2 className="section-title reveal">Questions You&apos;re Thinking</h2>
           <p className="section-sub reveal">We&apos;d wonder too.</p>
 
-          <div className="faq-list">
+          <div className="faq-list reveal">
             {FAQ_ITEMS.map((item, i) => (
-              <div className={`faq-item reveal${openFaqIndex === i ? " open" : ""}`} key={i}>
+              <div className={`faq-item${openFaqIndex === i ? " open" : ""}`} key={i}>
                 <button className="faq-question" onClick={() => handleFaqClick(i)}>
                   {item.q}
                   <span className="faq-icon"><PlusIcon /></span>

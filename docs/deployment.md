@@ -22,14 +22,16 @@ These files power the production deployment:
 
 | File | Purpose |
 |------|---------|
-| `production.yml` | Docker Compose for production (postgres, redis, frontend, prisma studio) |
+| `production.yml` | Docker Compose for production (postgres, redis, frontend, queue worker, prisma studio) |
 | `compose/production/app/Dockerfile` | Multi-stage Next.js build (standalone output) |
+| `compose/production/frontend_queue/Dockerfile` | BullMQ queue worker (ts-node, non-root) |
 | `compose/production/prisma_studio/Dockerfile` | Prisma Studio for DB management |
 | `compose/production/postgres/Dockerfile` | PostgreSQL 15 |
 | `deploy.sh` | Zero-downtime rolling deploy helper (source in `~/.bashrc`) |
 | `.dockerignore` | Keeps Docker context lean |
 | `.env.production.example` | Template for production env vars |
 | `next.config.js` | Must have `output: "standalone"` for Docker |
+| `tsconfig.worker.json` | CommonJS tsconfig for ts-node worker process |
 
 ---
 
@@ -127,7 +129,7 @@ SSL/TLS encryption mode: **Full** (not Strict).
 ```bash
 cd ~/slopmog
 git pull
-deploy production.yml slopmog_frontend slopmog_prisma_studio
+deploy production.yml slopmog_frontend slopmog_queue slopmog_prisma_studio
 ```
 
 If schema changed, run migrations after deploy:
@@ -149,12 +151,16 @@ Internet → Cloudflare → Server:443
                           ↓ (default network)
                     postgres:5432
                     redis:6379
+                          ↑
+              slopmog_queue (BullMQ worker)
 ```
 
 - Traefik lives in the `admakeai` compose stack and owns ports 80/443
 - Each project joins `admakeai_traefik_network` (external) so Traefik can route to it
 - Each project has its own internal `default` network for postgres/redis isolation
 - The frontend service name (e.g. `slopmog_frontend`) must match what's in traefik.yml
+- The queue worker (`slopmog_queue`) runs on the default network only — no external access needed
+- Bull Board admin UI is at `/api/admin` (requires auth) for monitoring queues
 
 ---
 
@@ -185,6 +191,13 @@ Docker deployment requires `output: "standalone"` in `next.config.js`. Without i
 ### `postinstall` removed for production
 If `postinstall: "prisma generate"` causes issues, remove it from `package.json` and rely on the explicit `RUN npx prisma generate` in the Dockerfile builder stage instead.
 
+### Queue worker not processing jobs
+Check the worker container logs:
+```bash
+docker compose -f production.yml logs -f slopmog_queue
+```
+Verify Redis is healthy and `REDIS_URL` is set to `redis://redis:6379` in `.env.production`.
+
 ### Stripe webhook not receiving events
 Make sure `STRIPE_WEBHOOK_SECRET` in `.env.production` matches the signing secret from the Stripe dashboard for the production webhook endpoint (`https://slopmog.com/api/webhooks/stripe`).
 
@@ -202,4 +215,4 @@ To add a new project to this server:
 6. Add DNS records in Cloudflare
 7. First deploy: `docker compose -f production.yml build && docker compose -f production.yml up -d`
 8. Run migrations
-9. Subsequent deploys: `deploy production.yml yourproject_frontend yourproject_prisma_studio`
+9. Subsequent deploys: `deploy production.yml yourproject_frontend yourproject_queue yourproject_prisma_studio`
