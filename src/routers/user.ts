@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { router, protectedProcedure, publicProcedure } from "@/server/trpc";
+import { router, protectedProcedure } from "@/server/trpc";
 import Stripe from "stripe";
 import { CREDIT_PRICES } from "@/constants/pricing";
+import type { PrismaClient } from "@prisma/client";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("STRIPE_SECRET_KEY is not set");
@@ -10,6 +11,56 @@ if (!process.env.STRIPE_SECRET_KEY) {
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2025-12-15.clover",
 });
+
+/** Resolve or create a Stripe customer, ensuring DB records are in sync. */
+async function resolveStripeCustomer(
+  prisma: PrismaClient,
+  userId: string,
+  email: string,
+  existingStripeCustomerId: string | null | undefined,
+): Promise<Stripe.Customer> {
+  // If we already have a customer ID, retrieve and verify it's not deleted
+  if (existingStripeCustomerId) {
+    const existing = await stripe.customers.retrieve(existingStripeCustomerId);
+    if (!existing.deleted) return existing as Stripe.Customer;
+    // Customer was deleted in Stripe — fall through to create a new one
+  }
+
+  // Look up by email in Stripe
+  const customers = await stripe.customers.list({ email, limit: 1 });
+  let customer: Stripe.Customer;
+
+  if (customers.data.length > 0) {
+    customer = customers.data[0];
+  } else {
+    customer = await stripe.customers.create({
+      email,
+      metadata: { userId },
+    });
+  }
+
+  // Ensure DB records are in sync
+  await prisma.$transaction([
+    prisma.stripeCustomer.upsert({
+      where: { id: customer.id },
+      create: { id: customer.id, email, userId },
+      update: { email, userId },
+    }),
+    prisma.user.update({
+      where: { id: userId },
+      data: { stripeCustomerId: customer.id },
+    }),
+  ]);
+
+  // Update Stripe metadata if missing
+  if (!customer.metadata?.userId) {
+    await stripe.customers.update(customer.id, {
+      metadata: { userId },
+    });
+  }
+
+  return customer;
+}
 
 export const userRouter = router({
   getCredits: protectedProcedure.query(async ({ ctx }) => {
@@ -87,6 +138,21 @@ export const userRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { planName, interval } = input;
 
+      // Check for existing active subscription
+      const existingSubscription =
+        await ctx.prisma.stripeSubscription.findFirst({
+          where: {
+            customer: { userId: ctx.session.user.id },
+            status: { in: ["active", "trialing"] },
+          },
+        });
+
+      if (existingSubscription) {
+        throw new Error(
+          "You already have an active subscription. Use the billing portal to change plans.",
+        );
+      }
+
       const product = await ctx.prisma.stripeProduct.findFirst({
         where: { name: planName, active: true },
         include: {
@@ -105,45 +171,12 @@ export const userRouter = router({
 
       const price = product.prices[0];
 
-      let customer;
-      if (ctx.session.user.stripeCustomerId) {
-        customer = await stripe.customers.retrieve(
-          ctx.session.user.stripeCustomerId,
-        );
-      } else {
-        const customers = await stripe.customers.list({
-          email: ctx.session.user.email!,
-          limit: 1,
-        });
-
-        if (customers.data.length > 0) {
-          customer = customers.data[0];
-        } else {
-          customer = await stripe.customers.create({
-            email: ctx.session.user.email!,
-            metadata: { userId: ctx.session.user.id },
-          });
-        }
-
-        await ctx.prisma.$transaction([
-          ctx.prisma.stripeCustomer.upsert({
-            where: { id: customer.id },
-            create: {
-              id: customer.id,
-              email: ctx.session.user.email!,
-              userId: ctx.session.user.id,
-            },
-            update: {
-              email: ctx.session.user.email!,
-              userId: ctx.session.user.id,
-            },
-          }),
-          ctx.prisma.user.update({
-            where: { id: ctx.session.user.id },
-            data: { stripeCustomerId: customer.id },
-          }),
-        ]);
-      }
+      const customer = await resolveStripeCustomer(
+        ctx.prisma,
+        ctx.session.user.id,
+        ctx.session.user.email!,
+        ctx.session.user.stripeCustomerId,
+      );
 
       const checkoutSession = await stripe.checkout.sessions.create({
         customer: customer.id,
@@ -176,45 +209,12 @@ export const userRouter = router({
         throw new Error("Invalid credit amount");
       }
 
-      let customer;
-      if (ctx.session.user.stripeCustomerId) {
-        customer = await stripe.customers.retrieve(
-          ctx.session.user.stripeCustomerId,
-        );
-      } else {
-        const customers = await stripe.customers.list({
-          email: ctx.session.user.email!,
-          limit: 1,
-        });
-
-        if (customers.data.length > 0) {
-          customer = customers.data[0];
-        } else {
-          customer = await stripe.customers.create({
-            email: ctx.session.user.email!,
-            metadata: { userId: ctx.session.user.id },
-          });
-        }
-
-        await ctx.prisma.$transaction([
-          ctx.prisma.stripeCustomer.upsert({
-            where: { id: customer.id },
-            create: {
-              id: customer.id,
-              email: ctx.session.user.email!,
-              userId: ctx.session.user.id,
-            },
-            update: {
-              email: ctx.session.user.email!,
-              userId: ctx.session.user.id,
-            },
-          }),
-          ctx.prisma.user.update({
-            where: { id: ctx.session.user.id },
-            data: { stripeCustomerId: customer.id },
-          }),
-        ]);
-      }
+      const customer = await resolveStripeCustomer(
+        ctx.prisma,
+        ctx.session.user.id,
+        ctx.session.user.email!,
+        ctx.session.user.stripeCustomerId,
+      );
 
       const checkoutSession = await stripe.checkout.sessions.create({
         customer: customer.id,

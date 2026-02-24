@@ -138,6 +138,8 @@ model StripeSubscription {
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
+  @@index([customerId])
+  @@index([status])
   @@map("stripe_subscriptions")
 }
 
@@ -156,6 +158,14 @@ model StripeCharge {
   updatedAt     DateTime       @updatedAt
 
   @@map("stripe_charges")
+}
+
+model StripeProcessedEvent {
+  id        String   @id // Stripe event ID (evt_xxx)
+  type      String // Event type (e.g., "checkout.session.completed")
+  createdAt DateTime @default(now())
+
+  @@map("stripe_processed_events")
 }
 
 // ─── Credits ───────────────────────────────────────────────────

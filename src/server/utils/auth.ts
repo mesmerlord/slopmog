@@ -65,13 +65,25 @@ export const authOptions: NextAuthOptions = {
   ],
   events: {
     async createUser({ user }) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          credits: FREE_CREDITS,
-          emailVerified: new Date(),
-        },
-      });
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: user.id },
+          data: {
+            credits: FREE_CREDITS,
+            emailVerified: new Date(),
+          },
+        }),
+        prisma.userCreditHistory.create({
+          data: {
+            userId: user.id,
+            credits: FREE_CREDITS,
+            previousCredits: 0,
+            newCredits: FREE_CREDITS,
+            reason: "REGISTRATION_BONUS",
+            reasonExtra: "Free credits on sign up",
+          },
+        }),
+      ]);
     },
   },
   callbacks: {
