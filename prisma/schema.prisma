@@ -206,19 +206,38 @@ enum CampaignStatus {
   FAILED
 }
 
+enum AutomationMode {
+  FULL_MANUAL // Approve opportunity + review comment
+  SEMI_AUTO   // Approve opportunity, auto-post comment
+  AUTOPILOT   // Fully automated
+}
+
 model Campaign {
-  id          String         @id @default(cuid())
-  name        String
-  description String?        @db.Text
-  status      CampaignStatus @default(DRAFT)
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-  keywords    CampaignKeyword[]
-  posts       CampaignPost[]
-  creditsUsed Int            @default(0)
-  metadata    Json?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id                  String         @id @default(cuid())
+  name                String
+  description         String?        @db.Text
+  status              CampaignStatus @default(DRAFT)
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId              String
+  keywords            CampaignKeyword[]
+  posts               CampaignPost[]
+  subreddits          CampaignSubreddit[]
+  opportunities       Opportunity[]
+  creditsUsed         Int            @default(0)
+  metadata            Json?
+
+  // Site analysis fields
+  websiteUrl          String?
+  businessName        String?
+  businessDescription String?        @db.Text
+  valueProps          Json?          // string[]
+  targetAudience      String?
+  brandTone           String?        // "professional" | "casual" | "technical" | "friendly"
+  automationMode      AutomationMode @default(SEMI_AUTO)
+  siteAnalysisData    Json?          // Full analysis result cached
+
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -232,6 +251,20 @@ model CampaignKeyword {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  @@index([campaignId])
+}
+
+model CampaignSubreddit {
+  id           String   @id @default(cuid())
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId   String
+  subreddit    String   // e.g. "startups"
+  memberCount  Int?
+  expectedTone String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([campaignId, subreddit])
   @@index([campaignId])
 }
 
@@ -258,4 +291,68 @@ model CampaignPost {
 
   @@index([campaignId])
   @@index([status])
+}
+
+// ─── Opportunity (Discovered Reddit Threads) ─────────────────
+
+enum DiscoverySource {
+  SCOUT // Active monitoring
+  MINER // Historical search
+}
+
+enum OpportunityStatus {
+  DISCOVERED
+  PENDING_REVIEW
+  APPROVED
+  GENERATING
+  READY_FOR_REVIEW
+  POSTING
+  POSTED
+  REJECTED
+  SKIPPED
+  FAILED
+  EXPIRED
+}
+
+model Opportunity {
+  id               String            @id @default(cuid())
+  campaign         Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId       String
+  redditPostId     String
+  redditUrl        String
+  title            String
+  subreddit        String
+  postBody         String?           @db.Text
+  score            Int               @default(0)
+  numComments      Int               @default(0)
+  matchedKeyword   String
+  discoverySource  DiscoverySource
+  relevanceScore   Float             @default(0)
+  status           OpportunityStatus @default(DISCOVERED)
+  isArchived       Boolean           @default(false)
+
+  // Reply target — null means top-level comment on the post
+  parentCommentId     String?        // Reddit comment ID we're replying to
+  parentCommentBody   String?        @db.Text
+  parentCommentAuthor String?
+
+  // Comment generation
+  generatedComment String?           @db.Text
+  commentVersion   Int               @default(0)
+
+  // Posting result
+  postedCommentId  String?
+  postedCommentUrl String?
+  providerUsed     String?
+  postedAt         DateTime?
+
+  metadata         Json?
+  discoveredAt     DateTime          @default(now())
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  // Dedup: same campaign can't target the same post+comment combo
+  @@unique([campaignId, redditPostId, parentCommentId])
+  @@index([campaignId, status])
+  @@index([subreddit])
 }

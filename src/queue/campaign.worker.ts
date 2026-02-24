@@ -1,17 +1,48 @@
 import { Worker, Job } from "bullmq";
 import { redisConnection } from "@/server/utils/redis";
-import { CampaignJobData } from "./queues";
+import { prisma } from "@/server/utils/db";
+import { addToSiteAnalysisQueue, addToDiscoveryQueue } from "./queues";
+import type { CampaignJobData } from "./queues";
 
-async function processCampaignJob(job: Job<CampaignJobData>) {
+const processCampaignJob = async (job: Job<CampaignJobData>) => {
   const { campaignId } = job.data;
   console.log(`[campaign] Processing campaign ${campaignId}`);
 
-  // TODO: Implement campaign processing logic
-  // 1. Fetch campaign + keywords from DB
-  // 2. Find relevant Reddit threads
-  // 3. Generate posts via AI
-  // 4. Create CampaignPost records and enqueue post-generation jobs
-}
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    include: { keywords: true, subreddits: true },
+  });
+
+  if (!campaign) {
+    console.log(`[campaign] Campaign ${campaignId} not found`);
+    return;
+  }
+
+  // Queue site analysis if no analysis data
+  if (!campaign.siteAnalysisData && campaign.websiteUrl) {
+    await addToSiteAnalysisQueue({
+      url: campaign.websiteUrl,
+      campaignId,
+      userId: campaign.userId,
+    });
+  }
+
+  // Queue one-time miner sweep
+  await addToDiscoveryQueue({ campaignId, mode: "miner" });
+
+  // Queue repeatable scout (every 30 minutes)
+  await addToDiscoveryQueue(
+    { campaignId, mode: "scout" },
+    {
+      repeat: {
+        every: 30 * 60 * 1000, // 30 minutes
+      },
+      jobId: `scout-${campaignId}`,
+    },
+  );
+
+  console.log(`[campaign] Started discovery pipeline for campaign ${campaignId}`);
+};
 
 const worker = new Worker("campaign", processCampaignJob, {
   connection: redisConnection,

@@ -35,7 +35,7 @@ export default function Nav({ variant = "app", onScrollTo }: NavProps) {
     if (onScrollTo) onScrollTo(id);
   };
 
-  const navLinks = isLanding
+  const navLinks: { label: string; href: string; onClick?: (e: React.MouseEvent) => void }[] = isLanding
     ? [
         { label: "How It Works", href: "#how", onClick: handleNavClick("how") },
         { label: "Demo", href: "#demo", onClick: handleNavClick("demo") },

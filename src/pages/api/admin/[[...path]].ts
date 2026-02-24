@@ -1,7 +1,11 @@
 import {
   campaignQueue,
+  siteAnalysisQueue,
+  discoveryQueue,
+  scoringQueue,
   postGenerationQueue,
   postingQueue,
+  trackingQueue,
 } from "@/queue/queues";
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
@@ -22,8 +26,12 @@ const queueAdapter = (queue: ConstructorParameters<typeof BullMQAdapter>[0]) =>
 createBullBoard({
   queues: [
     queueAdapter(campaignQueue),
+    queueAdapter(siteAnalysisQueue),
+    queueAdapter(discoveryQueue),
+    queueAdapter(scoringQueue),
     queueAdapter(postGenerationQueue),
     queueAdapter(postingQueue),
+    queueAdapter(trackingQueue),
   ],
   // @ts-ignore
   serverAdapter: serverAdapter,

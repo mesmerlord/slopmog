@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import Seo from "@/components/Seo";
 import LogoBlob from "@/components/LogoBlob";
-import MascotBlob from "@/components/MascotBlob";
+import AuthIllustration from "@/components/AuthIllustration";
 import { trpc } from "@/utils/trpc";
 
 interface AuthForm {
@@ -265,41 +265,8 @@ export default function LoginPage() {
         </div>
 
         {/* Right: Illustration — hidden on mobile */}
-        <div className="hidden lg:flex flex-1 items-center justify-center bg-gradient-to-br from-teal-bg via-bg to-teal-light/30 relative overflow-hidden">
-          {/* Decorative elements */}
-          <svg className="absolute top-20 left-[10%] w-16 h-16 opacity-10 pointer-events-none" viewBox="0 0 60 60" fill="none">
-            <circle cx="30" cy="30" r="28" stroke="#2EC4B6" strokeWidth="2" strokeDasharray="6 6" />
-          </svg>
-          <svg className="absolute bottom-32 right-[12%] w-10 h-10 opacity-10 pointer-events-none" viewBox="0 0 40 40" fill="none">
-            <path d="M20 2l4 12h12l-10 7 4 12-10-7-10 7 4-12L4 14h12z" fill="#FFD93D" />
-          </svg>
-          <svg className="absolute top-[40%] right-[8%] w-8 h-8 opacity-10 pointer-events-none" viewBox="0 0 32 32" fill="none">
-            <rect x="4" y="4" width="24" height="24" rx="6" stroke="#B197FC" strokeWidth="2" />
-          </svg>
-
-          {/* Mascot scene */}
-          <div className="relative w-[300px] h-[300px]">
-            <div className="sparkle absolute top-2 left-6 text-sunny text-xl z-[1]">&#10024;</div>
-            <div className="sparkle absolute bottom-8 right-6 text-sunny text-lg z-[1]" style={{ animationDelay: "1s" }}>&#10024;</div>
-            <div className="sparkle absolute top-1/2 right-2 text-sunny text-2xl z-[1]" style={{ animationDelay: "2s" }}>&#11088;</div>
-
-            <div className="mascot-chat-bubble absolute top-2 right-0 bg-white px-4 py-3 rounded-[18px_18px_18px_4px] text-[0.8rem] font-bold text-charcoal shadow-[0_4px_15px_rgba(45,48,71,0.1)] border-2 border-[rgb(245,237,224)] whitespace-nowrap z-[2]">
-              &ldquo;Best tool ever!&rdquo;
-            </div>
-            <div
-              className="mascot-chat-bubble absolute bottom-12 left-0 bg-white px-4 py-3 rounded-[18px_18px_4px_18px] text-[0.8rem] font-bold text-charcoal shadow-[0_4px_15px_rgba(45,48,71,0.1)] border-2 border-[rgb(245,237,224)] whitespace-nowrap z-[2]"
-              style={{ animationDelay: "1.5s" }}
-            >
-              &ldquo;10/10 recommend&rdquo;
-            </div>
-
-            <MascotBlob />
-          </div>
-
-          {/* Brand tagline */}
-          <p className="absolute bottom-12 text-center text-charcoal-light/60 text-sm font-medium px-8">
-            The name is ridiculous. The results aren&apos;t.
-          </p>
+        <div className="hidden lg:block flex-1 relative">
+          <AuthIllustration />
         </div>
       </div>
     </>
