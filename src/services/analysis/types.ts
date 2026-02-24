@@ -10,6 +10,7 @@ export const siteAnalysisSchema = z.object({
   primaryKeywords: z.array(z.string()),
   problemKeywords: z.array(z.string()),
   competitorKeywords: z.array(z.string()),
+  brandKeywords: z.array(z.string()),
   longTailKeywords: z.array(z.string()),
   suggestedSubreddits: z.array(
     z.object({

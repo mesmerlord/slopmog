@@ -2,9 +2,10 @@ import { Worker, Job } from "bullmq";
 import { redisConnection } from "@/server/utils/redis";
 import { prisma } from "@/server/utils/db";
 import { addToPostGenerationQueue } from "./queues";
+import { scoreWithLLM } from "@/services/scoring/llm-scorer";
 import type { ScoringJobData } from "./queues";
 
-const SCORE_THRESHOLD = 0.35;
+const SCORE_THRESHOLD = 0.4;
 
 const processScoring = async (job: Job<ScoringJobData>) => {
   const { opportunityId } = job.data;
@@ -18,35 +19,56 @@ const processScoring = async (job: Job<ScoringJobData>) => {
     return;
   }
 
-  // Relevance score was already computed during discovery
-  const score = opportunity.relevanceScore;
+  // Score with LLM
+  const { relevance, reasoning } = await scoreWithLLM({
+    postTitle: opportunity.title,
+    postBody: opportunity.postBody,
+    subreddit: opportunity.subreddit,
+    matchedKeyword: opportunity.matchedKeyword,
+    businessName: opportunity.campaign.businessName ?? "Unknown",
+    businessDescription: opportunity.campaign.businessDescription ?? "",
+    valueProps: (opportunity.campaign.valueProps as string[]) ?? [],
+  });
 
-  if (score < SCORE_THRESHOLD) {
+  console.log(`[scoring] Opportunity ${opportunityId} scored ${relevance.toFixed(2)} — ${reasoning.slice(0, 80)}`);
+
+  if (relevance < SCORE_THRESHOLD) {
     await prisma.opportunity.update({
       where: { id: opportunityId },
-      data: { status: "SKIPPED" },
+      data: {
+        relevanceScore: relevance,
+        relevanceReasoning: reasoning,
+        scoredAt: new Date(),
+        status: "SKIPPED",
+      },
     });
-    console.log(`[scoring] Opportunity ${opportunityId} scored ${score.toFixed(2)} — below threshold, skipped`);
     return;
   }
 
   const automationMode = opportunity.campaign.automationMode;
 
   if (automationMode === "AUTOPILOT") {
-    // Auto-approve and enqueue generation
     await prisma.opportunity.update({
       where: { id: opportunityId },
-      data: { status: "APPROVED" },
+      data: {
+        relevanceScore: relevance,
+        relevanceReasoning: reasoning,
+        scoredAt: new Date(),
+        status: "APPROVED",
+      },
     });
     await addToPostGenerationQueue({ opportunityId });
     console.log(`[scoring] Opportunity ${opportunityId} auto-approved (autopilot)`);
   } else {
-    // SEMI_AUTO or FULL_MANUAL: wait for user approval
     await prisma.opportunity.update({
       where: { id: opportunityId },
-      data: { status: "PENDING_REVIEW" },
+      data: {
+        relevanceScore: relevance,
+        relevanceReasoning: reasoning,
+        scoredAt: new Date(),
+        status: "PENDING_REVIEW",
+      },
     });
-    console.log(`[scoring] Opportunity ${opportunityId} pending review (score: ${score.toFixed(2)})`);
   }
 };
 

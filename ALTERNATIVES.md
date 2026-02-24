@@ -287,7 +287,7 @@ Emphasize these across all alternative pages:
 2. **Low barrier to entry** — $49/mo starter vs competitors' $200 minimums
 3. **Keyword targeting** — We target specific keywords, not just random threads
 4. **AI recommendation tracking** — Track when ChatGPT, Gemini, Perplexity mention your brand
-5. **Human-written comments** — No AI slop (ironic given our name, and yes, we're aware)
+5. **AI-generated comments** — Natural-sounding AI drafts you approve, or write your own
 6. **Weekly performance reports** — Know exactly what's happening
 7. **Full transparency** — See every comment, every metric, every subreddit
 

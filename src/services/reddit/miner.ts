@@ -1,123 +1,39 @@
 import { redis } from "@/server/utils/redis";
-import {
-  searchReddit,
-  searchSubreddit,
-} from "./client";
-import type {
-  RedditPost,
-  DiscoveredThread,
-} from "./types";
+import { searchReddit } from "./client";
+import { pMap } from "@/services/shared/parallel";
+import type { RedditPost, DiscoveredThread } from "./types";
 
 // ─── Constants ───────────────────────────────────────────────
 
 const SEEN_SET_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
-const RELEVANCE_THRESHOLD = 0.35;
-
-const QUESTION_STARTERS = [
-  "how",
-  "what",
-  "which",
-  "best",
-  "recommend",
-  "looking for",
-  "alternative",
-];
+const API_CONCURRENCY = 5;
 
 // ─── Helpers ─────────────────────────────────────────────────
 
-function seenKey(campaignId: string): string {
-  return `scout:seen:${campaignId}`;
-}
+const seenKey = (campaignId: string) => `scout:seen:${campaignId}`;
 
-function isQuestionPost(title: string): boolean {
-  const lower = title.toLowerCase().trim();
-  if (lower.includes("?")) return true;
-  return QUESTION_STARTERS.some((starter) => lower.startsWith(starter));
-}
-
-function keywordMatchesText(keyword: string, text: string): boolean {
-  return text.toLowerCase().includes(keyword.toLowerCase());
-}
-
-function computeRelevanceScore(
-  post: RedditPost,
-  keyword: string,
-): number {
-  let score = 0;
-  const now = Date.now() / 1000;
-  const ageSeconds = now - post.createdUtc;
-  const ageHours = ageSeconds / 3600;
-
-  // Keyword match in title: +0.3
-  if (keywordMatchesText(keyword, post.title)) {
-    score += 0.3;
-  }
-
-  // Keyword match in body: +0.2
-  if (keywordMatchesText(keyword, post.selftext)) {
-    score += 0.2;
-  }
-
-  // Question post: +0.2
-  if (isQuestionPost(post.title)) {
-    score += 0.2;
-  }
-
-  // Recency bonus
-  if (ageHours < 1) {
-    score += 0.15;
-  } else if (ageHours < 6) {
-    score += 0.1;
-  } else if (ageHours < 24) {
-    score += 0.05;
-  }
-
-  // Low comment count (<10): +0.1
-  if (post.numComments < 10) {
-    score += 0.1;
-  }
-
-  // Moderate engagement (score 5-100): +0.05
-  if (post.score >= 5 && post.score <= 100) {
-    score += 0.05;
-  }
-
-  // Penalties
-  if (post.isArchived) score -= 0.5;
-  if (post.isLocked) score -= 0.5;
-
-  // Very old (>7 days)
-  if (ageHours > 7 * 24) {
-    score -= 0.2;
-  }
-
-  // Very high comments (>50)
-  if (post.numComments > 50) {
-    score -= 0.1;
-  }
-
-  return Math.max(0, Math.round(score * 100) / 100);
-}
-
-// ─── Dedup ───────────────────────────────────────────────────
+// ─── Batched Redis dedup ─────────────────────────────────────
 
 async function filterSeenPosts(
   campaignId: string,
   posts: RedditPost[],
-): Promise<RedditPost[]> {
-  if (posts.length === 0) return [];
+): Promise<Set<string>> {
+  if (posts.length === 0) return new Set();
 
   const key = seenKey(campaignId);
-  const unseen: RedditPost[] = [];
-
+  const pipeline = redis.pipeline();
   for (const post of posts) {
-    const alreadySeen = await redis.sismember(key, post.id);
-    if (!alreadySeen) {
-      unseen.push(post);
+    pipeline.sismember(key, post.id);
+  }
+  const results = await pipeline.exec();
+
+  const unseenIds = new Set<string>();
+  for (let i = 0; i < posts.length; i++) {
+    if (results?.[i]?.[1] === 0) {
+      unseenIds.add(posts[i].id);
     }
   }
-
-  return unseen;
+  return unseenIds;
 }
 
 async function markPostsSeen(
@@ -125,7 +41,6 @@ async function markPostsSeen(
   postIds: string[],
 ): Promise<void> {
   if (postIds.length === 0) return;
-
   const key = seenKey(campaignId);
   await redis.sadd(key, ...postIds);
   await redis.expire(key, SEEN_SET_TTL_SECONDS);
@@ -143,131 +58,117 @@ function buildCompetitorQueries(competitors: string[]): string[] {
   return queries;
 }
 
-// ─── Collect results ─────────────────────────────────────────
+// ─── Log helper ─────────────────────────────────────────────
 
-async function collectResults(
-  searches: Array<{ searchFn: () => Promise<RedditPost[]>; keyword: string }>,
-  allPosts: Map<string, { post: RedditPost; keyword: string }>,
-): Promise<void> {
-  for (const search of searches) {
-    const results = await search.searchFn();
-    for (const post of results) {
-      if (!allPosts.has(post.id)) {
-        allPosts.set(post.id, { post, keyword: search.keyword });
-      }
-    }
-  }
+type LogFn = (msg: string) => Promise<void>;
+const noop: LogFn = async () => {};
+
+// ─── Search task type ────────────────────────────────────────
+
+interface SearchTask {
+  query: string;
+  keyword: string;
+  label: string;
 }
 
 // ─── Main mine function ──────────────────────────────────────
 
 /**
- * Performs a one-time deep sweep across Reddit for historical opportunities.
- * Searches using multiple keyword strategies:
- *   - Primary keywords within targeted subreddits
- *   - Problem/long-tail keywords Reddit-wide
- *   - Competitor keywords with "alternative to" / "vs" / "switch from" patterns
+ * One-time deep sweep: all keywords search Reddit-wide in parallel.
+ * No keyword × subreddit cross-product — that's too slow and expensive.
+ * Returns unseen, non-archived threads with relevanceScore 0 for LLM scoring.
  */
 export async function mineOpportunities(params: {
   campaignId: string;
   subreddits: string[];
-  keywords: string[];
-  problemKeywords: string[];
-  longTailKeywords: string[];
+  featureKeywords: string[];
+  brandKeywords: string[];
   competitorKeywords: string[];
+  log?: LogFn;
 }): Promise<DiscoveredThread[]> {
   const {
     campaignId,
-    subreddits,
-    keywords,
-    problemKeywords,
-    longTailKeywords,
+    featureKeywords,
+    brandKeywords,
     competitorKeywords,
+    log = noop,
   } = params;
 
-  const allPosts = new Map<string, { post: RedditPost; keyword: string }>();
+  // Build all search tasks upfront
+  const searches: SearchTask[] = [];
 
-  // 1. Problem keywords — search Reddit-wide
-  const problemSearches = problemKeywords.map((kw) => ({
-    searchFn: () => searchReddit(kw),
-    keyword: kw,
-  }));
-  await collectResults(problemSearches, allPosts);
-
-  // 2. Long-tail keywords — search Reddit-wide
-  const longTailSearches = longTailKeywords.map((kw) => ({
-    searchFn: () => searchReddit(kw),
-    keyword: kw,
-  }));
-  await collectResults(longTailSearches, allPosts);
-
-  // 3. Competitor keywords — search Reddit-wide with variant queries
-  const competitorQueries = buildCompetitorQueries(competitorKeywords);
-  const competitorSearches = competitorQueries.map((query) => {
-    // Find the original competitor keyword for this query
-    const matchedCompetitor =
-      competitorKeywords.find((ck) =>
-        query.toLowerCase().includes(ck.toLowerCase()),
-      ) ?? query;
-
-    return {
-      searchFn: () => searchReddit(query),
-      keyword: matchedCompetitor,
-    };
-  });
-  await collectResults(competitorSearches, allPosts);
-
-  // 4. Primary keywords — search within each targeted subreddit
-  const subredditSearches: Array<{
-    searchFn: () => Promise<RedditPost[]>;
-    keyword: string;
-  }> = [];
-  for (const sub of subreddits) {
-    for (const kw of keywords) {
-      subredditSearches.push({
-        searchFn: () => searchSubreddit(sub, kw),
-        keyword: kw,
-      });
-    }
+  for (const kw of brandKeywords) {
+    searches.push({ query: kw, keyword: kw, label: `brand: "${kw}"` });
   }
-  await collectResults(subredditSearches, allPosts);
+  for (const kw of featureKeywords) {
+    searches.push({ query: kw, keyword: kw, label: `feature: "${kw}"` });
+  }
+  for (const query of buildCompetitorQueries(competitorKeywords)) {
+    const matched = competitorKeywords.find((ck) =>
+      query.toLowerCase().includes(ck.toLowerCase()),
+    ) ?? query;
+    searches.push({ query, keyword: matched, label: `competitor: "${query}"` });
+  }
 
-  // Dedup against previously seen posts
+  await log(`Mining: ${searches.length} Reddit-wide searches (${brandKeywords.length} brand, ${featureKeywords.length} feature, ${competitorKeywords.length} competitor) — ${API_CONCURRENCY} parallel`);
+
+  // Run all searches in parallel with concurrency limit
+  const allPosts = new Map<string, { post: RedditPost; keyword: string }>();
+  let completed = 0;
+
+  await pMap(
+    searches,
+    async (search) => {
+      const results = await searchReddit(search.query);
+      let added = 0;
+      for (const post of results) {
+        if (!allPosts.has(post.id)) {
+          allPosts.set(post.id, { post, keyword: search.keyword });
+          added++;
+        }
+      }
+      completed++;
+      await log(`  [${completed}/${searches.length}] ${search.label} → ${results.length} results, ${added} new`);
+    },
+    API_CONCURRENCY,
+  );
+
+  await log(`All searches done: ${allPosts.size} unique posts`);
+
+  // Batched Redis dedup
   const candidatePosts = Array.from(allPosts.values());
-  const unseenPosts = await filterSeenPosts(
+  const unseenIds = await filterSeenPosts(
     campaignId,
     candidatePosts.map((c) => c.post),
   );
-  const unseenIds = new Set(unseenPosts.map((p) => p.id));
+  await log(`Dedup: ${unseenIds.size} unseen out of ${candidatePosts.length} total`);
 
-  // Score, filter out archived/locked, and apply threshold
+  // Filter archived/locked
   const threads: DiscoveredThread[] = [];
+  let archivedCount = 0;
 
   for (const candidate of candidatePosts) {
     if (!unseenIds.has(candidate.post.id)) continue;
-    if (candidate.post.isArchived || candidate.post.isLocked) continue;
-
-    const relevanceScore = computeRelevanceScore(
-      candidate.post,
-      candidate.keyword,
-    );
-    if (relevanceScore < RELEVANCE_THRESHOLD) continue;
-
+    if (candidate.post.isArchived || candidate.post.isLocked) {
+      archivedCount++;
+      continue;
+    }
     threads.push({
       post: candidate.post,
       matchedKeyword: candidate.keyword,
-      relevanceScore,
+      relevanceScore: 0,
     });
   }
 
-  // Sort by relevance descending
-  threads.sort((a, b) => b.relevanceScore - a.relevanceScore);
+  if (archivedCount > 0) {
+    await log(`Filtered: ${archivedCount} archived/locked removed`);
+  }
 
-  // Mark all returned posts as seen
   await markPostsSeen(
     campaignId,
     threads.map((t) => t.post.id),
   );
 
+  await log(`Done: ${threads.length} threads for LLM scoring`);
   return threads;
 }

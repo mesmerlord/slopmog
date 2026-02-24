@@ -18,6 +18,8 @@ import {
   Send,
   ChevronUp,
   CornerDownRight,
+  Brain,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import Seo from "@/components/Seo";
@@ -33,10 +35,11 @@ import { getServerAuthSession } from "@/server/utils/auth";
 // Types & constants
 // ---------------------------------------------------------------------------
 
-type StatusFilter = "PENDING_REVIEW" | "READY_FOR_REVIEW" | "APPROVED" | "POSTED" | "ALL";
+type StatusFilter = "DISCOVERED" | "PENDING_REVIEW" | "READY_FOR_REVIEW" | "APPROVED" | "POSTED" | "ALL";
 type SortOption = "newest" | "relevance" | "upvotes";
 
 const STATUS_TABS: { label: string; value: StatusFilter }[] = [
+  { label: "Scoring", value: "DISCOVERED" },
   { label: "Pending", value: "PENDING_REVIEW" },
   { label: "Ready", value: "READY_FOR_REVIEW" },
   { label: "Approved", value: "APPROVED" },
@@ -51,6 +54,7 @@ const SORT_OPTIONS: { label: string; value: SortOption }[] = [
 ];
 
 const STATUS_BADGE: Record<string, { bg: string; text: string; label: string }> = {
+  DISCOVERED: { bg: "bg-lavender/10", text: "text-lavender-dark", label: "Scoring" },
   PENDING_REVIEW: { bg: "bg-sunny/20", text: "text-charcoal", label: "Pending" },
   READY_FOR_REVIEW: { bg: "bg-teal/10", text: "text-teal-dark", label: "Ready" },
   APPROVED: { bg: "bg-teal/20", text: "text-teal-dark", label: "Approved" },
@@ -58,6 +62,7 @@ const STATUS_BADGE: Record<string, { bg: string; text: string; label: string }> 
   POSTING: { bg: "bg-lavender/15", text: "text-lavender-dark", label: "Posting" },
   POSTED: { bg: "bg-teal/10", text: "text-teal-dark", label: "Posted" },
   REJECTED: { bg: "bg-coral/10", text: "text-coral-dark", label: "Rejected" },
+  SKIPPED: { bg: "bg-charcoal/10", text: "text-charcoal-light", label: "Skipped" },
 };
 
 const FUN_LOADING_TEXTS = [
@@ -137,6 +142,10 @@ export default function QueuePage() {
   }, []);
 
   // ---- Data fetching ----
+  const planQuery = trpc.user.getPlanInfo.useQuery();
+  const userPlan = planQuery.data;
+  const isFreeUser = userPlan ? !userPlan.canPost : false;
+
   const campaignsQuery = trpc.campaign.list.useQuery();
   const campaigns = campaignsQuery.data ?? [];
 
@@ -357,8 +366,10 @@ export default function QueuePage() {
   // ---- Render helpers ----
   const renderStatusBadge = (status: string) => {
     const badge = STATUS_BADGE[status] ?? { bg: "bg-charcoal/10", text: "text-charcoal-light", label: status };
+    const isScoring = status === "DISCOVERED";
     return (
-      <span className={`inline-flex items-center text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${badge.bg} ${badge.text}`}>
+      <span className={`inline-flex items-center gap-1 text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${badge.bg} ${badge.text}`}>
+        {isScoring && <Loader2 size={10} className="animate-spin" />}
         {badge.label}
       </span>
     );
@@ -500,10 +511,10 @@ export default function QueuePage() {
       ) : (
         <>
           {/* Split pane layout */}
-          <div className="flex gap-0 bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] overflow-hidden" style={{ minHeight: "65vh" }}>
+          <div className="flex gap-0 bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] overflow-hidden" style={{ height: "calc(100vh - 220px)" }}>
 
             {/* Left: Opportunity list */}
-            <div className={`w-full lg:w-[45%] border-r border-charcoal/[0.06] overflow-y-auto ${mobileDetailOpen ? "hidden lg:block" : "block"}`} style={{ maxHeight: "70vh" }}>
+            <div className={`w-full lg:w-[45%] border-r border-charcoal/[0.06] overflow-y-auto h-full ${mobileDetailOpen ? "hidden lg:block" : "block"}`}>
               {allItems.map((item) => {
                 const isSelected = selectedId === item.id;
                 const isChecked = selectedIds.has(item.id);
@@ -511,7 +522,7 @@ export default function QueuePage() {
                 return (
                   <div
                     key={item.id}
-                    className={`relative flex items-start gap-3 px-4 py-3.5 border-b border-charcoal/[0.04] cursor-pointer transition-all hover:bg-charcoal/[0.02] ${
+                    className={`relative flex items-start gap-2.5 px-4 py-2.5 border-b border-charcoal/[0.04] cursor-pointer transition-all hover:bg-charcoal/[0.02] ${
                       isSelected ? "bg-teal/[0.04] border-l-[3px] border-l-teal" : "border-l-[3px] border-l-transparent"
                     }`}
                     onClick={() => handleSelect(item.id)}
@@ -519,53 +530,41 @@ export default function QueuePage() {
                     {/* Checkbox */}
                     <button
                       onClick={(e) => { e.stopPropagation(); handleCheckboxToggle(item.id); }}
-                      className={`mt-0.5 shrink-0 w-4.5 h-4.5 rounded border-2 flex items-center justify-center transition-all ${
+                      className={`mt-1 shrink-0 rounded border-2 flex items-center justify-center transition-all ${
                         isChecked
                           ? "bg-teal border-teal text-white"
                           : "border-charcoal/20 hover:border-teal/50"
                       }`}
-                      style={{ width: 18, height: 18 }}
+                      style={{ width: 16, height: 16 }}
                     >
-                      {isChecked && <Check size={12} strokeWidth={3} />}
+                      {isChecked && <Check size={10} strokeWidth={3} />}
                     </button>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      {/* Title */}
-                      <p className="font-semibold text-sm text-charcoal leading-snug line-clamp-2">
-                        {item.title}
-                      </p>
+                      {/* Row 1: Title + status badge */}
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-sm text-charcoal leading-snug truncate">
+                          {item.title}
+                        </p>
+                        <span className="shrink-0">{renderStatusBadge(item.status)}</span>
+                      </div>
 
-                      {/* Badges row */}
-                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                        {/* Subreddit */}
-                        <span className="inline-flex items-center text-[0.65rem] font-bold px-2 py-0.5 rounded-full bg-lavender/10 text-lavender-dark">
+                      {/* Row 2: Compact meta */}
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="inline-flex items-center text-[0.6rem] font-bold px-1.5 py-0 rounded-full bg-lavender/10 text-lavender-dark">
                           r/{item.subreddit}
                         </span>
-
-                        {/* Relevance */}
                         {renderRelevanceBadge(item.relevanceScore)}
-
-                        {/* Matched keyword */}
                         {item.matchedKeyword && (
-                          <span className="inline-flex items-center text-[0.65rem] font-medium px-2 py-0.5 rounded-full bg-teal/[0.08] text-teal-dark">
+                          <span className="inline-flex items-center text-[0.6rem] font-medium px-1.5 py-0 rounded-full bg-teal/[0.08] text-teal-dark truncate max-w-[100px]">
                             {item.matchedKeyword}
                           </span>
                         )}
-
-                        {/* Reply indicator */}
                         {item.parentCommentId && (
-                          <span className="inline-flex items-center gap-0.5 text-[0.65rem] font-medium text-charcoal-light">
-                            <Reply size={10} />
-                            Reply
-                          </span>
+                          <Reply size={10} className="text-charcoal-light shrink-0" />
                         )}
-                      </div>
-
-                      {/* Bottom meta row */}
-                      <div className="flex items-center gap-2 mt-1.5">
-                        {renderStatusBadge(item.status)}
-                        <span className="text-[0.65rem] text-charcoal-light">
+                        <span className="text-[0.6rem] text-charcoal-light ml-auto shrink-0">
                           {timeAgo(item.discoveredAt)}
                         </span>
                       </div>
@@ -596,7 +595,7 @@ export default function QueuePage() {
             </div>
 
             {/* Right: Detail pane */}
-            <div className={`w-full lg:w-[55%] overflow-y-auto ${mobileDetailOpen ? "block" : "hidden lg:block"}`} style={{ maxHeight: "70vh" }}>
+            <div className={`w-full lg:w-[55%] overflow-y-auto h-full ${mobileDetailOpen ? "block" : "hidden lg:block"}`}>
               {!detail ? (
                 <div className="flex flex-col items-center justify-center h-full py-20 text-center px-6">
                   <div className="flex items-center justify-center w-14 h-14 rounded-full bg-charcoal/[0.04] mb-4">
@@ -652,96 +651,103 @@ export default function QueuePage() {
                     </span>
                   </div>
 
-                  {/* Matched keyword */}
-                  {detail.matchedKeyword && (
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="text-xs font-semibold text-charcoal-light">Matched keyword:</span>
-                      <span className="inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full bg-teal/[0.08] text-teal-dark">
-                        {detail.matchedKeyword}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Campaign info */}
-                  {detail.campaign && (
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="text-xs font-semibold text-charcoal-light">Campaign:</span>
-                      <span className="text-xs font-medium text-charcoal">{detail.campaign.name}</span>
-                      {detail.campaign.automationMode && (
-                        <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded-full bg-sunny/20 text-charcoal">
-                          {detail.campaign.automationMode}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Post body */}
-                  {detail.postBody && (
-                    <div className="mb-5 bg-charcoal/[0.02] rounded-brand-sm border border-charcoal/[0.06] p-4">
-                      <p className={`text-sm text-charcoal-light leading-relaxed whitespace-pre-wrap ${showFullBody ? "" : "line-clamp-4"}`}>
-                        {detail.postBody}
-                      </p>
-                      {detail.postBody.length > 300 && (
-                        <button
-                          onClick={() => setShowFullBody(!showFullBody)}
-                          className="mt-2 text-xs font-semibold text-teal hover:text-teal-dark transition-colors"
-                        >
-                          {showFullBody ? "Show less" : "Show more"}
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Parent comment context */}
-                  {detail.parentCommentId && detail.parentCommentBody && (
-                    <div className="mb-5 border-l-[3px] border-lavender/40 pl-4 py-2 bg-lavender/[0.04] rounded-r-brand-sm">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <CornerDownRight size={13} className="text-lavender" />
-                        <span className="text-xs font-semibold text-lavender-dark">
-                          Replying to u/{detail.parentCommentAuthor}
-                        </span>
-                      </div>
-                      <p className="text-sm text-charcoal-light leading-relaxed whitespace-pre-wrap line-clamp-4">
-                        {detail.parentCommentBody}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Divider */}
-                  <hr className="border-charcoal/[0.06] mb-5" />
-
-                  {/* ---- Action area based on status ---- */}
+                  {/* ---- Action area (MOVED UP — visible immediately) ---- */}
 
                   {/* PENDING_REVIEW */}
                   {detail.status === "PENDING_REVIEW" && (
-                    <div className="space-y-3">
-                      <p className="text-sm text-charcoal-light">
-                        This opportunity is waiting for your review. Approve it to generate a comment, or reject it.
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => approveMutation.mutate({ id: detail.id })}
-                          disabled={approveMutation.isPending}
-                          className="inline-flex items-center gap-1.5 bg-teal text-white px-5 py-2 rounded-full font-bold text-sm hover:bg-teal-dark hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-50"
-                        >
-                          <CheckCircle2 size={15} />
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => rejectMutation.mutate({ id: detail.id })}
-                          disabled={rejectMutation.isPending}
-                          className="inline-flex items-center gap-1.5 border border-charcoal/[0.15] text-charcoal-light px-5 py-2 rounded-full font-bold text-sm hover:bg-charcoal/[0.04] hover:text-charcoal transition-all disabled:opacity-50"
-                        >
-                          <XCircle size={15} />
-                          Reject
-                        </button>
-                      </div>
+                    <div className="space-y-3 mb-5">
+                      {isFreeUser ? (
+                        <div className="bg-coral/[0.06] border border-coral/20 rounded-brand-sm p-4 text-center">
+                          <Zap size={20} className="text-coral mx-auto mb-2" />
+                          <p className="text-sm font-bold text-charcoal mb-1">
+                            Upgrade to post comments
+                          </p>
+                          <p className="text-[0.82rem] text-charcoal-light mb-3">
+                            You can see opportunities for free, but you need a paid plan to actually post comments. Pretty sneaky, huh?
+                          </p>
+                          <a
+                            href={routes.pricing}
+                            className="inline-flex items-center gap-1.5 bg-coral text-white px-5 py-2 rounded-full font-bold text-sm hover:bg-coral-dark transition-all"
+                          >
+                            View Plans
+                          </a>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-sm text-charcoal-light">
+                            This opportunity is waiting for your review. Approve it to generate a comment, or reject it.
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => approveMutation.mutate({ id: detail.id })}
+                              disabled={approveMutation.isPending}
+                              className="inline-flex items-center gap-1.5 bg-teal text-white px-5 py-2 rounded-full font-bold text-sm hover:bg-teal-dark hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-50"
+                            >
+                              <CheckCircle2 size={15} />
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => rejectMutation.mutate({ id: detail.id })}
+                              disabled={rejectMutation.isPending}
+                              className="inline-flex items-center gap-1.5 border border-charcoal/[0.15] text-charcoal-light px-5 py-2 rounded-full font-bold text-sm hover:bg-charcoal/[0.04] hover:text-charcoal transition-all disabled:opacity-50"
+                            >
+                              <XCircle size={15} />
+                              Reject
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
 
                   {/* READY_FOR_REVIEW */}
                   {detail.status === "READY_FOR_REVIEW" && (
-                    <div className="space-y-3">
+                    <div className="space-y-3 mb-5">
+                      {/* Sticky action buttons */}
+                      <div className="sticky top-0 z-10 bg-white pt-1 pb-3 border-b border-charcoal/[0.04] -mx-5 px-5 lg:-mx-6 lg:px-6">
+                        {isFreeUser ? (
+                          <div className="bg-coral/[0.06] border border-coral/20 rounded-brand-sm p-4 text-center">
+                            <Zap size={20} className="text-coral mx-auto mb-2" />
+                            <p className="text-sm font-bold text-charcoal mb-1">Upgrade to post</p>
+                            <p className="text-[0.82rem] text-charcoal-light mb-3">
+                              The comment is ready, but you need a paid plan to post it.
+                            </p>
+                            <a
+                              href={routes.pricing}
+                              className="inline-flex items-center gap-1.5 bg-coral text-white px-5 py-2 rounded-full font-bold text-sm hover:bg-coral-dark transition-all"
+                            >
+                              View Plans
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              onClick={handleApproveComment}
+                              disabled={approveCommentMutation.isPending}
+                              className="inline-flex items-center gap-1.5 bg-coral text-white px-5 py-2 rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-50"
+                            >
+                              <Send size={14} />
+                              {approveCommentMutation.isPending ? "Posting..." : "Approve & Post"}
+                            </button>
+                            <button
+                              onClick={() => regenerateMutation.mutate({ id: detail.id })}
+                              disabled={regenerateMutation.isPending}
+                              className="inline-flex items-center gap-1.5 border border-teal/30 text-teal px-5 py-2 rounded-full font-bold text-sm hover:bg-teal/[0.06] transition-all disabled:opacity-50"
+                            >
+                              <RefreshCw size={14} className={regenerateMutation.isPending ? "animate-spin" : ""} />
+                              Regenerate
+                            </button>
+                            <button
+                              onClick={() => rejectMutation.mutate({ id: detail.id })}
+                              disabled={rejectMutation.isPending}
+                              className="text-sm font-semibold text-charcoal-light hover:text-coral transition-colors disabled:opacity-50"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Sparkles size={16} className="text-teal" />
@@ -780,39 +786,12 @@ export default function QueuePage() {
                           </div>
                         )}
                       </div>
-
-                      {/* Action buttons */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          onClick={handleApproveComment}
-                          disabled={approveCommentMutation.isPending}
-                          className="inline-flex items-center gap-1.5 bg-coral text-white px-5 py-2 rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-50"
-                        >
-                          <Send size={14} />
-                          {approveCommentMutation.isPending ? "Posting..." : "Approve & Post"}
-                        </button>
-                        <button
-                          onClick={() => regenerateMutation.mutate({ id: detail.id })}
-                          disabled={regenerateMutation.isPending}
-                          className="inline-flex items-center gap-1.5 border border-teal/30 text-teal px-5 py-2 rounded-full font-bold text-sm hover:bg-teal/[0.06] transition-all disabled:opacity-50"
-                        >
-                          <RefreshCw size={14} className={regenerateMutation.isPending ? "animate-spin" : ""} />
-                          Regenerate
-                        </button>
-                        <button
-                          onClick={() => rejectMutation.mutate({ id: detail.id })}
-                          disabled={rejectMutation.isPending}
-                          className="text-sm font-semibold text-charcoal-light hover:text-coral transition-colors disabled:opacity-50"
-                        >
-                          Reject
-                        </button>
-                      </div>
                     </div>
                   )}
 
                   {/* GENERATING / POSTING */}
                   {(detail.status === "GENERATING" || detail.status === "POSTING") && (
-                    <div className="flex flex-col items-center py-8 text-center">
+                    <div className="flex flex-col items-center py-8 text-center mb-5">
                       <Loader2 size={32} className="text-teal animate-spin mb-3" />
                       <p className="font-heading font-bold text-charcoal mb-1">
                         {detail.status === "GENERATING" ? "Generating comment..." : "Posting comment..."}
@@ -825,7 +804,7 @@ export default function QueuePage() {
 
                   {/* APPROVED */}
                   {detail.status === "APPROVED" && (
-                    <div className="space-y-3">
+                    <div className="space-y-3 mb-5">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 size={16} className="text-teal" />
                         <span className="text-sm font-semibold text-charcoal">Approved</span>
@@ -845,7 +824,7 @@ export default function QueuePage() {
 
                   {/* POSTED */}
                   {detail.status === "POSTED" && (
-                    <div className="space-y-3">
+                    <div className="space-y-3 mb-5">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 size={16} className="text-teal" />
                         <span className="text-sm font-semibold text-teal-dark">Posted</span>
@@ -880,9 +859,77 @@ export default function QueuePage() {
 
                   {/* REJECTED */}
                   {detail.status === "REJECTED" && (
-                    <div className="flex items-center gap-2 py-4">
+                    <div className="flex items-center gap-2 py-4 mb-5">
                       <XCircle size={16} className="text-coral" />
                       <span className="text-sm font-semibold text-charcoal-light">This opportunity was rejected.</span>
+                    </div>
+                  )}
+
+                  {/* ---- Secondary info (context) ---- */}
+                  <hr className="border-charcoal/[0.06] mb-4" />
+
+                  {/* Keyword + Campaign inline */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 text-xs">
+                    {detail.matchedKeyword && (
+                      <span className="flex items-center gap-1.5">
+                        <span className="font-semibold text-charcoal-light">Keyword:</span>
+                        <span className="font-medium px-2 py-0.5 rounded-full bg-teal/[0.08] text-teal-dark">
+                          {detail.matchedKeyword}
+                        </span>
+                      </span>
+                    )}
+                    {detail.campaign && (
+                      <span className="flex items-center gap-1.5">
+                        <span className="font-semibold text-charcoal-light">Campaign:</span>
+                        <span className="font-medium text-charcoal">{detail.campaign.name}</span>
+                        {detail.campaign.automationMode && (
+                          <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded-full bg-sunny/20 text-charcoal">
+                            {detail.campaign.automationMode}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Relevance reasoning from LLM */}
+                  {"relevanceReasoning" in detail && detail.relevanceReasoning && (
+                    <div className="flex items-start gap-2 mb-4 bg-charcoal/[0.02] rounded-brand-sm border border-charcoal/[0.06] p-3">
+                      <Brain size={14} className="text-charcoal-light shrink-0 mt-0.5" />
+                      <p className="text-[0.78rem] text-charcoal-light leading-relaxed">
+                        {String(detail.relevanceReasoning)}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Post body */}
+                  {detail.postBody && (
+                    <div className="mb-4 bg-charcoal/[0.02] rounded-brand-sm border border-charcoal/[0.06] p-4">
+                      <p className={`text-sm text-charcoal-light leading-relaxed whitespace-pre-wrap ${showFullBody ? "" : "line-clamp-4"}`}>
+                        {detail.postBody}
+                      </p>
+                      {detail.postBody.length > 300 && (
+                        <button
+                          onClick={() => setShowFullBody(!showFullBody)}
+                          className="mt-2 text-xs font-semibold text-teal hover:text-teal-dark transition-colors"
+                        >
+                          {showFullBody ? "Show less" : "Show more"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Parent comment context */}
+                  {detail.parentCommentId && detail.parentCommentBody && (
+                    <div className="mb-4 border-l-[3px] border-lavender/40 pl-4 py-2 bg-lavender/[0.04] rounded-r-brand-sm">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <CornerDownRight size={13} className="text-lavender" />
+                        <span className="text-xs font-semibold text-lavender-dark">
+                          Replying to u/{detail.parentCommentAuthor}
+                        </span>
+                      </div>
+                      <p className="text-sm text-charcoal-light leading-relaxed whitespace-pre-wrap line-clamp-4">
+                        {detail.parentCommentBody}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -896,14 +943,24 @@ export default function QueuePage() {
               <span className="text-sm font-bold text-charcoal">
                 {selectedIds.size} selected
               </span>
-              <button
-                onClick={handleBulkApprove}
-                disabled={bulkApproveMutation.isPending}
-                className="inline-flex items-center gap-1.5 bg-teal text-white px-4 py-1.5 rounded-full font-bold text-sm hover:bg-teal-dark transition-all disabled:opacity-50"
-              >
-                <Check size={14} />
-                Approve {selectedIds.size}
-              </button>
+              {isFreeUser ? (
+                <a
+                  href={routes.pricing}
+                  className="inline-flex items-center gap-1.5 bg-coral text-white px-4 py-1.5 rounded-full font-bold text-sm hover:bg-coral-dark transition-all"
+                >
+                  <Zap size={14} />
+                  Upgrade to approve
+                </a>
+              ) : (
+                <button
+                  onClick={handleBulkApprove}
+                  disabled={bulkApproveMutation.isPending}
+                  className="inline-flex items-center gap-1.5 bg-teal text-white px-4 py-1.5 rounded-full font-bold text-sm hover:bg-teal-dark transition-all disabled:opacity-50"
+                >
+                  <Check size={14} />
+                  Approve {selectedIds.size}
+                </button>
+              )}
               <button
                 onClick={handleBulkReject}
                 disabled={bulkRejectMutation.isPending}

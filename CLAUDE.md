@@ -123,6 +123,16 @@ See `DESIGN.md` for the full design system. Key points:
 - Redis: localhost:6406
 - Stripe CLI container forwards webhooks to localhost:3007/api/webhooks/stripe
 
+### SVG Animations & Illustrations
+
+When you need animated SVGs, illustrations, or complex visual components, **use OpenCode with Gemini** instead of generating them yourself. Gemini is significantly better at SVG/animation work.
+
+```bash
+opencode run -m openrouter/google/gemini-3.1-pro-preview "Generate a self-contained React component that renders an animated SVG for [description]. Use inline styles or CSS-in-JS. The animation should [describe motion]. Brand colors: teal #2EC4B6, coral #FF6B6B, sunny #FFD93D, lavender #B197FC, charcoal #2D3047. Export as default function component."
+```
+
+Save generated components to `src/components/illustrations/` and import them where needed. Each component should be fully self-contained (no external CSS dependencies).
+
 ### Reference Projects
 
 - `/Users/govind/Documents/aieasyphoto` — sister project with shared tech stack (Next.js Pages Router, tRPC, Prisma, Stripe). Useful reference for OG image generation, auth patterns, and deployment setup.

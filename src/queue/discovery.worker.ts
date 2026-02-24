@@ -1,15 +1,75 @@
 import { Worker, Job } from "bullmq";
-import { redisConnection } from "@/server/utils/redis";
+import { redisConnection, redis } from "@/server/utils/redis";
 import { prisma } from "@/server/utils/db";
 import { scoutSubreddits } from "@/services/reddit/scout";
 import { mineOpportunities } from "@/services/reddit/miner";
 import { addToScoringQueue } from "./queues";
+import { getUserPlan } from "@/server/utils/plan";
 import type { DiscoveryJobData } from "./queues";
 import type { DiscoveredThread } from "@/services/reddit/types";
 
+// ─── Progress helpers ────────────────────────────────────────
+
+const PROGRESS_TTL = 300; // 5 minutes
+
+interface DiscoveryProgress {
+  stage: "starting" | "scanning" | "scoring" | "complete" | "error";
+  message: string;
+  currentSubreddit?: string;
+  threadsFound: number;
+  threadsScored: number;
+  opportunitiesCreated: number;
+  startedAt: string;
+  updatedAt: string;
+}
+
+const progressKey = (campaignId: string) => `discovery:progress:${campaignId}`;
+
+const writeProgress = async (campaignId: string, progress: Partial<DiscoveryProgress> & { stage: string }) => {
+  const key = progressKey(campaignId);
+  const existing = await redis.get(key);
+  const prev: DiscoveryProgress = existing
+    ? JSON.parse(existing)
+    : { stage: "starting", message: "", threadsFound: 0, threadsScored: 0, opportunitiesCreated: 0, startedAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+
+  const updated = { ...prev, ...progress, updatedAt: new Date().toISOString() };
+  await redis.setex(key, PROGRESS_TTL, JSON.stringify(updated));
+};
+
+// ─── Fun messages ────────────────────────────────────────────
+
+const SCANNING_MESSAGES = [
+  "Warming up the search engines...",
+  "Scanning the depths of Reddit...",
+  "Looking for where your people hang out...",
+  "Digging through threads...",
+  "Hunting for golden opportunities...",
+];
+
+const SCORING_MESSAGES = [
+  "Ranking what we found...",
+  "Separating the wheat from the chaff...",
+  "Figuring out which threads are actually worth it...",
+];
+
+const pickRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+
+// ─── Main processor ──────────────────────────────────────────
+
 const processDiscovery = async (job: Job<DiscoveryJobData>) => {
   const { campaignId, mode } = job.data;
-  console.log(`[discovery] Running ${mode} for campaign ${campaignId}`);
+  const log = async (msg: string) => {
+    console.log(`[discovery:${mode}] ${msg}`);
+    await job.log(msg);
+  };
+
+  await writeProgress(campaignId, {
+    stage: "starting",
+    message: "Warming up...",
+    startedAt: new Date().toISOString(),
+  });
+
+  await log(`Starting ${mode} discovery for campaign ${campaignId}`);
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
@@ -17,38 +77,86 @@ const processDiscovery = async (job: Job<DiscoveryJobData>) => {
   });
 
   if (!campaign || campaign.status !== "ACTIVE") {
-    console.log(`[discovery] Campaign ${campaignId} not active, skipping`);
+    await log(`Campaign ${campaignId} not active (status: ${campaign?.status ?? "not found"}), skipping`);
+    await writeProgress(campaignId, { stage: "complete", message: "Campaign not active" });
     return;
   }
 
-  const keywords = campaign.keywords.map((k) => k.keyword);
+  // Group keywords by strategy, respecting enabled toggles
+  const featureKws = campaign.keywords
+    .filter((k) => k.strategy === "FEATURE" && campaign.featureStrategyEnabled)
+    .map((k) => k.keyword);
+  const brandKws = campaign.keywords
+    .filter((k) => k.strategy === "BRAND" && campaign.brandStrategyEnabled)
+    .map((k) => k.keyword);
+  const competitorKws = campaign.keywords
+    .filter((k) => k.strategy === "COMPETITOR" && campaign.competitorStrategyEnabled)
+    .map((k) => k.keyword);
+
+  // Free tier keyword cap
+  const plan = await getUserPlan(campaign.userId);
+  const allKws = [...featureKws, ...brandKws, ...competitorKws];
+  if (!plan.isPaid && allKws.length > plan.maxKeywords) {
+    // Slice across all strategies to respect cap
+    const capped = allKws.slice(0, plan.maxKeywords);
+    featureKws.length = 0;
+    brandKws.length = 0;
+    competitorKws.length = 0;
+    for (const kw of capped) {
+      const original = campaign.keywords.find((k) => k.keyword === kw);
+      if (original?.strategy === "BRAND") brandKws.push(kw);
+      else if (original?.strategy === "COMPETITOR") competitorKws.push(kw);
+      else featureKws.push(kw);
+    }
+    await log(`Free tier: capped keywords to ${plan.maxKeywords}`);
+  }
+
   const subreddits = campaign.subreddits.map((s) => s.subreddit);
 
-  if (keywords.length === 0 || subreddits.length === 0) {
-    console.log(`[discovery] Campaign ${campaignId} has no keywords or subreddits`);
+  await log(`Campaign "${campaign.name}": ${featureKws.length} feature, ${brandKws.length} brand, ${competitorKws.length} competitor keywords, ${subreddits.length} subreddits`);
+
+  const totalKws = featureKws.length + brandKws.length + competitorKws.length;
+  if (totalKws === 0 || subreddits.length === 0) {
+    await log("No keywords or subreddits configured, skipping");
+    await writeProgress(campaignId, { stage: "complete", message: "No keywords or subreddits configured" });
     return;
   }
+
+  await writeProgress(campaignId, {
+    stage: "scanning",
+    message: pickRandom(SCANNING_MESSAGES),
+  });
 
   let threads: DiscoveredThread[];
 
   if (mode === "scout") {
-    threads = await scoutSubreddits({ campaignId, subreddits, keywords });
+    // Scout uses all enabled keywords combined
+    const allKeywords = [...featureKws, ...brandKws, ...competitorKws];
+    threads = await scoutSubreddits({ campaignId, subreddits, keywords: allKeywords, log });
   } else {
-    // Parse keyword categories from siteAnalysisData
-    const analysis = campaign.siteAnalysisData as Record<string, unknown> | null;
     threads = await mineOpportunities({
       campaignId,
       subreddits,
-      keywords,
-      problemKeywords: (analysis?.problemKeywords as string[]) ?? [],
-      longTailKeywords: (analysis?.longTailKeywords as string[]) ?? [],
-      competitorKeywords: (analysis?.competitorKeywords as string[]) ?? [],
+      featureKeywords: featureKws,
+      brandKeywords: brandKws,
+      competitorKeywords: competitorKws,
+      log,
     });
   }
 
-  console.log(`[discovery] Found ${threads.length} threads for campaign ${campaignId}`);
+  await writeProgress(campaignId, {
+    stage: "scoring",
+    message: pickRandom(SCORING_MESSAGES),
+    threadsFound: threads.length,
+  });
+
+  await log(`Discovery complete: ${threads.length} threads found`);
 
   // Create Opportunity records
+  let created = 0;
+  let duplicates = 0;
+  let errors = 0;
+
   for (const thread of threads) {
     try {
       const opportunity = await prisma.opportunity.create({
@@ -65,28 +173,46 @@ const processDiscovery = async (job: Job<DiscoveryJobData>) => {
           discoverySource: mode === "scout" ? "SCOUT" : "MINER",
           relevanceScore: thread.relevanceScore,
           status: "DISCOVERED",
-          // If the thread has a suggested reply target, store it
           parentCommentId: thread.suggestedReplyTarget?.commentId ?? null,
           parentCommentBody: thread.suggestedReplyTarget?.commentBody ?? null,
           parentCommentAuthor: thread.suggestedReplyTarget?.commentAuthor ?? null,
         },
       });
 
-      // Enqueue scoring
       await addToScoringQueue({ opportunityId: opportunity.id });
+      created++;
+
+      // Update progress with each new opportunity
+      await writeProgress(campaignId, {
+        stage: "scoring",
+        message: `Found ${created} opportunities, scoring...`,
+        opportunitiesCreated: created,
+      });
     } catch (error) {
-      // Unique constraint violation = already discovered, skip
       if (
         error instanceof Error &&
         error.message.includes("Unique constraint")
       ) {
+        duplicates++;
         continue;
       }
+      errors++;
       console.error(`[discovery] Failed to create opportunity:`, error);
     }
   }
 
-  return { threadsFound: threads.length };
+  await log(`Opportunities: ${created} created, ${duplicates} duplicates skipped, ${errors} errors`);
+
+  await writeProgress(campaignId, {
+    stage: "complete",
+    message: created > 0
+      ? `Done! ${created} opportunities found`
+      : "Done! No new opportunities this time",
+    opportunitiesCreated: created,
+    threadsFound: threads.length,
+  });
+
+  return { threadsFound: threads.length, created, duplicates, errors };
 };
 
 const worker = new Worker("discovery", processDiscovery, {

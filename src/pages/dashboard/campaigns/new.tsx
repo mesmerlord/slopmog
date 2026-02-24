@@ -18,6 +18,8 @@ import {
   Search,
   Hash,
   Users,
+  Shield,
+  Swords,
 } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -43,7 +45,12 @@ interface WizardForm {
   businessDescription: string;
   valueProps: { value: string }[];
   targetAudience: string;
-  keywords: { value: string }[];
+  featureKeywords: { value: string }[];
+  brandKeywords: { value: string }[];
+  competitorKeywords: { value: string }[];
+  featureStrategyEnabled: boolean;
+  brandStrategyEnabled: boolean;
+  competitorStrategyEnabled: boolean;
   subreddits: SubredditEntry[];
   automationMode: "FULL_MANUAL" | "SEMI_AUTO" | "AUTOPILOT";
 }
@@ -126,7 +133,12 @@ export default function NewCampaignPage() {
     businessDescription: "",
     valueProps: [],
     targetAudience: "",
-    keywords: [],
+    featureKeywords: [],
+    brandKeywords: [],
+    competitorKeywords: [],
+    featureStrategyEnabled: true,
+    brandStrategyEnabled: true,
+    competitorStrategyEnabled: true,
     subreddits: [],
     automationMode: "SEMI_AUTO",
   };
@@ -142,7 +154,9 @@ export default function NewCampaignPage() {
   const { control, register, watch, setValue, getValues, handleSubmit } = form;
 
   const valuePropFields = useFieldArray({ control, name: "valueProps" });
-  const keywordFields = useFieldArray({ control, name: "keywords" });
+  const featureKeywordFields = useFieldArray({ control, name: "featureKeywords" });
+  const brandKeywordFields = useFieldArray({ control, name: "brandKeywords" });
+  const competitorKeywordFields = useFieldArray({ control, name: "competitorKeywords" });
   const subredditFields = useFieldArray({ control, name: "subreddits" });
 
   // Persist to session storage on change
@@ -155,7 +169,7 @@ export default function NewCampaignPage() {
   useEffect(() => {
     if (saved && saved.businessName) {
       // User has past the analysis step -- figure out what step they were on
-      const kw = saved.keywords ?? [];
+      const kw = [...(saved.featureKeywords ?? []), ...(saved.brandKeywords ?? []), ...(saved.competitorKeywords ?? [])];
       const sr = saved.subreddits ?? [];
       if (kw.length > 0 && sr.length > 0) {
         setStep(4);
@@ -225,22 +239,23 @@ export default function NewCampaignPage() {
       );
       setValue("targetAudience", result.targetAudience || "");
 
-      // Primary + problem keywords go into the active keywords list
-      const activeKw = [
+      // Feature keywords: primary + problem + long-tail
+      const featureKw = [
         ...(result.primaryKeywords || []),
         ...(result.problemKeywords || []),
-      ];
-      setValue(
-        "keywords",
-        activeKw.map((k) => ({ value: k }))
-      );
-
-      // Competitor + long-tail go into suggestions
-      const suggested = [
-        ...(result.competitorKeywords || []),
         ...(result.longTailKeywords || []),
       ];
-      setSuggestedKeywords(suggested);
+      setValue("featureKeywords", featureKw.map((k) => ({ value: k })));
+
+      // Brand keywords
+      const brandKw = result.brandKeywords || [];
+      setValue("brandKeywords", brandKw.map((k) => ({ value: k })));
+
+      // Competitor keywords
+      const compKw = result.competitorKeywords || [];
+      setValue("competitorKeywords", compKw.map((k) => ({ value: k })));
+
+      setSuggestedKeywords([]); // No longer needed — all keywords go directly to buckets
 
       // Subreddits
       const subs = (result.suggestedSubreddits || []).map((s) => ({
@@ -269,7 +284,10 @@ export default function NewCampaignPage() {
   const canProceed = useCallback(
     (fromStep: number): boolean => {
       const vals = getValues();
-      if (fromStep === 2) return vals.keywords.length >= 1;
+      if (fromStep === 2) {
+        const totalKw = vals.featureKeywords.length + vals.brandKeywords.length + vals.competitorKeywords.length;
+        return totalKw >= 1;
+      }
       if (fromStep === 3) return vals.subreddits.length >= 1;
       return true;
     },
@@ -303,6 +321,12 @@ export default function NewCampaignPage() {
 
   const onLaunch = useCallback(() => {
     const vals = getValues();
+    const allKeywords = [
+      ...vals.featureKeywords.map((k) => ({ keyword: k.value, strategy: "FEATURE" as const })),
+      ...vals.brandKeywords.map((k) => ({ keyword: k.value, strategy: "BRAND" as const })),
+      ...vals.competitorKeywords.map((k) => ({ keyword: k.value, strategy: "COMPETITOR" as const })),
+    ].filter((k) => k.keyword);
+
     createCampaign.mutate({
       name: vals.businessName || "Untitled Campaign",
       description: vals.businessDescription,
@@ -312,8 +336,11 @@ export default function NewCampaignPage() {
       valueProps: vals.valueProps.map((v) => v.value).filter(Boolean),
       targetAudience: vals.targetAudience || undefined,
       automationMode: vals.automationMode,
+      featureStrategyEnabled: vals.featureStrategyEnabled,
+      brandStrategyEnabled: vals.brandStrategyEnabled,
+      competitorStrategyEnabled: vals.competitorStrategyEnabled,
       siteAnalysisData: analysisRaw ?? undefined,
-      keywords: vals.keywords.map((k) => k.value).filter(Boolean),
+      keywords: allKeywords,
       subreddits: vals.subreddits
         .filter((s) => s.name)
         .map((s) => ({
@@ -328,19 +355,43 @@ export default function NewCampaignPage() {
   // Tag input helpers
   // -------------------------------------------------------------------------
 
-  const [newKeywordInput, setNewKeywordInput] = useState("");
+  const [newFeatureKwInput, setNewFeatureKwInput] = useState("");
+  const [newBrandKwInput, setNewBrandKwInput] = useState("");
+  const [newCompetitorKwInput, setNewCompetitorKwInput] = useState("");
   const [newSubredditInput, setNewSubredditInput] = useState("");
   const [newValuePropInput, setNewValuePropInput] = useState("");
 
-  const addKeyword = useCallback(
+  const addFeatureKeyword = useCallback(
     (kw: string) => {
       const trimmed = kw.trim().toLowerCase();
       if (!trimmed) return;
-      const existing = getValues("keywords").map((k) => k.value.toLowerCase());
+      const existing = getValues("featureKeywords").map((k) => k.value.toLowerCase());
       if (existing.includes(trimmed)) return;
-      keywordFields.append({ value: trimmed });
+      featureKeywordFields.append({ value: trimmed });
     },
-    [getValues, keywordFields]
+    [getValues, featureKeywordFields]
+  );
+
+  const addBrandKeyword = useCallback(
+    (kw: string) => {
+      const trimmed = kw.trim().toLowerCase();
+      if (!trimmed) return;
+      const existing = getValues("brandKeywords").map((k) => k.value.toLowerCase());
+      if (existing.includes(trimmed)) return;
+      brandKeywordFields.append({ value: trimmed });
+    },
+    [getValues, brandKeywordFields]
+  );
+
+  const addCompetitorKeyword = useCallback(
+    (kw: string) => {
+      const trimmed = kw.trim().toLowerCase();
+      if (!trimmed) return;
+      const existing = getValues("competitorKeywords").map((k) => k.value.toLowerCase());
+      if (existing.includes(trimmed)) return;
+      competitorKeywordFields.append({ value: trimmed });
+    },
+    [getValues, competitorKeywordFields]
   );
 
   const addSubreddit = useCallback(
@@ -359,16 +410,17 @@ export default function NewCampaignPage() {
   // -------------------------------------------------------------------------
 
   const urlValue = watch("url");
-  const keywordsValue = watch("keywords");
+  const featureKeywordsValue = watch("featureKeywords");
+  const brandKeywordsValue = watch("brandKeywords");
+  const competitorKeywordsValue = watch("competitorKeywords");
+  const featureStrategyEnabled = watch("featureStrategyEnabled");
+  const brandStrategyEnabled = watch("brandStrategyEnabled");
+  const competitorStrategyEnabled = watch("competitorStrategyEnabled");
   const subredditsValue = watch("subreddits");
   const automationMode = watch("automationMode");
   const valuePropsValue = watch("valueProps");
 
-  // Filter suggested keywords by what's already active
-  const filteredSuggestedKeywords = useMemo(() => {
-    const active = new Set(keywordsValue.map((k) => k.value.toLowerCase()));
-    return suggestedKeywords.filter((s) => !active.has(s.toLowerCase()));
-  }, [keywordsValue, suggestedKeywords]);
+  const totalKeywords = featureKeywordsValue.length + brandKeywordsValue.length + competitorKeywordsValue.length;
 
   // Filter suggested subreddits by what's already active
   const filteredSuggestedSubreddits = useMemo(() => {
@@ -614,111 +666,75 @@ export default function NewCampaignPage() {
       )}
 
       {/* ============================================================= */}
-      {/* STEP 2: Keywords */}
+      {/* STEP 2: Keywords (Strategy Buckets) */}
       {/* ============================================================= */}
       {step === 2 && (
         <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Active keywords */}
-            <div className="bg-white rounded-brand-lg shadow-brand-sm border border-charcoal/[0.06] p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Hash size={18} className="text-teal" />
-                <h3 className="font-heading font-bold text-charcoal">
-                  Your Keywords
-                </h3>
-                <span className="ml-auto text-[0.75rem] font-bold bg-teal/10 text-teal px-2 py-0.5 rounded-full">
-                  {keywordsValue.length}
-                </span>
-              </div>
+          <h2 className="font-heading font-bold text-lg text-charcoal text-center mb-2">
+            Discovery Strategies
+          </h2>
+          <p className="text-sm text-charcoal-light text-center mb-6">
+            We search Reddit using 3 different strategies. Toggle them on or off and edit the keywords for each.
+          </p>
 
-              <div className="flex flex-wrap gap-2 mb-4 min-h-[80px]">
-                {keywordsValue.length === 0 && (
-                  <p className="text-sm text-charcoal-light/60 italic">
-                    No keywords yet. Add some below or pick from suggestions.
-                  </p>
-                )}
-                {keywordsValue.map((kw, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center gap-1 bg-teal/10 text-teal-dark text-[0.82rem] font-semibold px-3 py-1.5 rounded-full"
-                  >
-                    {kw.value}
-                    <button
-                      type="button"
-                      onClick={() => keywordFields.remove(idx)}
-                      className="hover:text-coral transition-colors ml-0.5"
-                    >
-                      <X size={13} />
-                    </button>
-                  </span>
-                ))}
-              </div>
+          <div className="space-y-4">
+            {/* Feature Strategy Bucket */}
+            <StrategyBucket
+              icon={<Sparkles size={18} className="text-teal" />}
+              label="Feature Keywords"
+              description="What your product does — problems it solves, features it offers. Searched Reddit-wide and in your subreddits."
+              color="teal"
+              enabled={featureStrategyEnabled}
+              onToggle={() => setValue("featureStrategyEnabled", !featureStrategyEnabled)}
+              keywords={featureKeywordsValue}
+              onRemove={(idx) => featureKeywordFields.remove(idx)}
+              inputValue={newFeatureKwInput}
+              onInputChange={setNewFeatureKwInput}
+              onAdd={(kw) => { addFeatureKeyword(kw); setNewFeatureKwInput(""); }}
+              placeholder="e.g. project management tool"
+            />
 
-              {/* Add input */}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  className="flex-1 px-4 py-2.5 bg-white border-2 border-charcoal/[0.08] rounded-brand-sm text-sm text-charcoal placeholder:text-charcoal-light/50 focus:outline-none focus:border-teal transition-colors"
-                  placeholder="Type a keyword and press Enter"
-                  value={newKeywordInput}
-                  onChange={(e) => setNewKeywordInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addKeyword(newKeywordInput);
-                      setNewKeywordInput("");
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    addKeyword(newKeywordInput);
-                    setNewKeywordInput("");
-                  }}
-                  className="px-4 py-2.5 bg-teal/10 text-teal font-bold text-sm rounded-brand-sm hover:bg-teal/20 transition-colors"
-                >
-                  Add
-                </button>
-              </div>
-            </div>
+            {/* Brand Strategy Bucket */}
+            <StrategyBucket
+              icon={<Shield size={18} className="text-coral" />}
+              label="Brand Keywords"
+              description="Your brand name, product name, URLs, and common misspellings. Finds threads where people mention you directly."
+              color="coral"
+              enabled={brandStrategyEnabled}
+              onToggle={() => setValue("brandStrategyEnabled", !brandStrategyEnabled)}
+              keywords={brandKeywordsValue}
+              onRemove={(idx) => brandKeywordFields.remove(idx)}
+              inputValue={newBrandKwInput}
+              onInputChange={setNewBrandKwInput}
+              onAdd={(kw) => { addBrandKeyword(kw); setNewBrandKwInput(""); }}
+              placeholder="e.g. your product name"
+            />
 
-            {/* Suggested keywords */}
-            <div className="bg-white rounded-brand-lg shadow-brand-sm border border-charcoal/[0.06] p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles size={18} className="text-sunny-dark" />
-                <h3 className="font-heading font-bold text-charcoal">
-                  Suggested
-                </h3>
-              </div>
-
-              {filteredSuggestedKeywords.length === 0 ? (
-                <p className="text-sm text-charcoal-light/60 italic">
-                  {suggestedKeywords.length > 0
-                    ? "You've added all the suggestions. Nice!"
-                    : "Run site analysis to get keyword suggestions."}
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {filteredSuggestedKeywords.map((kw) => (
-                    <button
-                      key={kw}
-                      type="button"
-                      onClick={() => addKeyword(kw)}
-                      className="inline-flex items-center gap-1 bg-charcoal/[0.04] text-charcoal text-[0.82rem] font-medium px-3 py-1.5 rounded-full hover:bg-teal/10 hover:text-teal transition-colors"
-                    >
-                      <Plus size={13} />
-                      {kw}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Competitor Strategy Bucket */}
+            <StrategyBucket
+              icon={<Swords size={18} className="text-lavender" />}
+              label="Competitor Keywords"
+              description="Competitor names and products. We search for 'alternative to X', 'X vs', and 'switch from X' patterns."
+              color="lavender"
+              enabled={competitorStrategyEnabled}
+              onToggle={() => setValue("competitorStrategyEnabled", !competitorStrategyEnabled)}
+              keywords={competitorKeywordsValue}
+              onRemove={(idx) => competitorKeywordFields.remove(idx)}
+              inputValue={newCompetitorKwInput}
+              onInputChange={setNewCompetitorKwInput}
+              onAdd={(kw) => { addCompetitorKeyword(kw); setNewCompetitorKwInput(""); }}
+              placeholder="e.g. competitor name"
+            />
           </div>
 
-          {/* Minimum notice */}
-          {keywordsValue.length === 0 && (
-            <p className="text-center text-[0.82rem] text-coral font-medium mt-4">
+          {/* Total count + minimum notice */}
+          <div className="text-center mt-4">
+            <span className="text-[0.82rem] font-semibold text-charcoal-light">
+              {totalKeywords} total keyword{totalKeywords !== 1 ? "s" : ""}
+            </span>
+          </div>
+          {totalKeywords === 0 && (
+            <p className="text-center text-[0.82rem] text-coral font-medium mt-1">
               You need at least 1 keyword to continue.
             </p>
           )}
@@ -736,7 +752,7 @@ export default function NewCampaignPage() {
             <button
               type="button"
               onClick={goNext}
-              disabled={keywordsValue.length === 0}
+              disabled={totalKeywords === 0}
               className="inline-flex items-center gap-1.5 bg-teal text-white px-6 py-2.5 rounded-full font-bold text-sm hover:bg-teal-dark hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-40 disabled:hover:translate-y-0"
             >
               Next
@@ -1069,18 +1085,37 @@ export default function NewCampaignPage() {
 
           {/* Keywords */}
           <ReviewCard
-            title={`Keywords (${keywordsValue.length})`}
+            title={`Keywords (${totalKeywords})`}
             onEdit={() => setStep(2)}
           >
-            <div className="flex flex-wrap gap-1.5">
-              {keywordsValue.map((kw, idx) => (
-                <span
-                  key={idx}
-                  className="bg-teal/10 text-teal-dark text-[0.78rem] font-semibold px-2.5 py-1 rounded-full"
-                >
-                  {kw.value}
-                </span>
-              ))}
+            <div className="space-y-2">
+              {featureKeywordsValue.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {featureKeywordsValue.map((kw, idx) => (
+                    <span key={idx} className="bg-teal/10 text-teal-dark text-[0.78rem] font-semibold px-2.5 py-1 rounded-full">
+                      {kw.value}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {brandKeywordsValue.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {brandKeywordsValue.map((kw, idx) => (
+                    <span key={idx} className="bg-coral/10 text-coral-dark text-[0.78rem] font-semibold px-2.5 py-1 rounded-full">
+                      {kw.value}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {competitorKeywordsValue.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {competitorKeywordsValue.map((kw, idx) => (
+                    <span key={idx} className="bg-lavender/10 text-lavender text-[0.78rem] font-semibold px-2.5 py-1 rounded-full">
+                      {kw.value}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </ReviewCard>
 
@@ -1175,6 +1210,111 @@ const ReviewCard = ({
       </button>
     </div>
     {children}
+  </div>
+);
+
+const STRATEGY_BORDER_COLORS: Record<string, string> = {
+  teal: "border-teal/20",
+  coral: "border-coral/20",
+  lavender: "border-lavender/20",
+};
+
+const STRATEGY_CHIP_COLORS: Record<string, string> = {
+  teal: "bg-teal/10 text-teal-dark",
+  coral: "bg-coral/10 text-coral-dark",
+  lavender: "bg-lavender/10 text-lavender",
+};
+
+const StrategyBucket = ({
+  icon,
+  label,
+  description,
+  color,
+  enabled,
+  onToggle,
+  keywords,
+  onRemove,
+  inputValue,
+  onInputChange,
+  onAdd,
+  placeholder,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  description: string;
+  color: string;
+  enabled: boolean;
+  onToggle: () => void;
+  keywords: { value: string }[];
+  onRemove: (idx: number) => void;
+  inputValue: string;
+  onInputChange: (val: string) => void;
+  onAdd: (val: string) => void;
+  placeholder: string;
+}) => (
+  <div className={`bg-white rounded-brand-lg shadow-brand-sm border-2 p-5 transition-all ${
+    enabled ? (STRATEGY_BORDER_COLORS[color] ?? "border-charcoal/[0.06]") : "border-charcoal/[0.06] opacity-60"
+  }`}>
+    <div className="flex items-center gap-3 mb-3">
+      {icon}
+      <div className="flex-1">
+        <h3 className="font-heading font-bold text-charcoal text-sm">{label}</h3>
+        <p className="text-[0.75rem] text-charcoal-light leading-snug">{description}</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-[0.72rem] font-bold text-charcoal-light">{keywords.length}</span>
+        <button
+          type="button"
+          onClick={onToggle}
+          className={`relative w-10 h-5 rounded-full transition-colors ${enabled ? "bg-teal" : "bg-charcoal/20"}`}
+        >
+          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${enabled ? "left-[22px]" : "left-0.5"}`} />
+        </button>
+      </div>
+    </div>
+
+    {enabled && (
+      <>
+        <div className="flex flex-wrap gap-1.5 mb-3 min-h-[32px]">
+          {keywords.length === 0 && (
+            <p className="text-[0.78rem] text-charcoal-light/50 italic">No keywords yet</p>
+          )}
+          {keywords.map((kw, idx) => (
+            <span
+              key={idx}
+              className={`inline-flex items-center gap-1 text-[0.78rem] font-semibold px-2.5 py-1 rounded-full ${STRATEGY_CHIP_COLORS[color] ?? "bg-charcoal/10 text-charcoal"}`}
+            >
+              {kw.value}
+              <button type="button" onClick={() => onRemove(idx)} className="hover:text-coral transition-colors ml-0.5">
+                <X size={12} />
+              </button>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            className="flex-1 px-3 py-2 bg-white border-2 border-charcoal/[0.08] rounded-brand-sm text-sm text-charcoal placeholder:text-charcoal-light/50 focus:outline-none focus:border-teal transition-colors"
+            placeholder={placeholder}
+            value={inputValue}
+            onChange={(e) => onInputChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                onAdd(inputValue);
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => onAdd(inputValue)}
+            className="px-3 py-2 bg-charcoal/[0.04] text-charcoal font-bold text-sm rounded-brand-sm hover:bg-charcoal/[0.08] transition-colors"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+      </>
+    )}
   </div>
 );
 

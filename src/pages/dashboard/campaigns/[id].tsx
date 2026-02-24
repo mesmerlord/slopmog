@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -15,12 +15,17 @@ import {
   ArrowRight,
   ExternalLink,
   SlidersHorizontal,
+  Loader2,
+  Sparkles,
+  Shield,
+  Swords,
 } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
 import StatsCard from "@/components/shared/StatsCard";
 import LoadingState from "@/components/shared/LoadingState";
+import DiscoveryProgressCard from "@/components/dashboard/DiscoveryProgressCard";
 import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
 import { getServerAuthSession } from "@/server/utils/auth";
@@ -53,19 +58,35 @@ const AUTOMATION_LABELS: Record<string, string> = {
   AUTOPILOT: "Autopilot",
 };
 
+const STRATEGY_STYLES: Record<string, { bg: string; icon: typeof Sparkles }> = {
+  FEATURE: { bg: "bg-teal/10 text-teal-dark", icon: Sparkles },
+  BRAND: { bg: "bg-coral/10 text-coral-dark", icon: Shield },
+  COMPETITOR: { bg: "bg-lavender/10 text-lavender", icon: Swords },
+};
+
 export default function CampaignDetailPage() {
   const router = useRouter();
   const id = router.query.id as string;
 
   const utils = trpc.useUtils();
 
+  // Poll campaign data when active
   const campaignQuery = trpc.campaign.getById.useQuery(
     { id },
-    { enabled: !!id }
+    { enabled: !!id, refetchInterval: 3000 }
   );
   const statsQuery = trpc.campaign.getStats.useQuery(
     { id },
     { enabled: !!id }
+  );
+
+  // Poll discovery progress when campaign is active
+  const progressQuery = trpc.campaign.getDiscoveryProgress.useQuery(
+    { campaignId: id },
+    {
+      enabled: !!id && campaignQuery.data?.status === "ACTIVE",
+      refetchInterval: 2500,
+    }
   );
 
   const activateMutation = trpc.campaign.activate.useMutation({
@@ -90,6 +111,7 @@ export default function CampaignDetailPage() {
 
   const campaign = campaignQuery.data;
   const stats = statsQuery.data;
+  const progress = progressQuery.data;
   const isLoading = campaignQuery.isLoading;
 
   const handleToggleStatus = useCallback(() => {
@@ -102,6 +124,18 @@ export default function CampaignDetailPage() {
   }, [campaign, id, activateMutation, pauseMutation]);
 
   const isToggling = activateMutation.isPending || pauseMutation.isPending;
+
+  // Group keywords by strategy
+  const keywordsByStrategy = useMemo(() => {
+    if (!campaign) return { FEATURE: [], BRAND: [], COMPETITOR: [] };
+    const grouped: Record<string, typeof campaign.keywords> = { FEATURE: [], BRAND: [], COMPETITOR: [] };
+    for (const kw of campaign.keywords) {
+      const strategy = kw.strategy ?? "FEATURE";
+      if (!grouped[strategy]) grouped[strategy] = [];
+      grouped[strategy].push(kw);
+    }
+    return grouped;
+  }, [campaign]);
 
   if (isLoading || !id) {
     return (
@@ -182,6 +216,9 @@ export default function CampaignDetailPage() {
         )}
       </div>
 
+      {/* Discovery progress card */}
+      {progress && <DiscoveryProgressCard progress={progress} />}
+
       {/* Stats row */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -209,7 +246,7 @@ export default function CampaignDetailPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Keywords section */}
+        {/* Keywords section — grouped by strategy */}
         <div className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-5">
           <div className="flex items-center gap-2 mb-4">
             <Hash size={16} className="text-teal" />
@@ -225,15 +262,32 @@ export default function CampaignDetailPage() {
               No keywords configured.
             </p>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {campaign.keywords.map((kw) => (
-                <span
-                  key={kw.id}
-                  className="inline-block bg-teal/10 text-teal-dark text-[0.82rem] font-semibold px-3 py-1.5 rounded-full"
-                >
-                  {kw.keyword}
-                </span>
-              ))}
+            <div className="space-y-3">
+              {(["FEATURE", "BRAND", "COMPETITOR"] as const).map((strategy) => {
+                const kws = keywordsByStrategy[strategy] ?? [];
+                if (kws.length === 0) return null;
+                const style = STRATEGY_STYLES[strategy];
+                return (
+                  <div key={strategy}>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <style.icon size={12} className="text-charcoal-light" />
+                      <span className="text-[0.72rem] font-bold text-charcoal-light uppercase tracking-wide">
+                        {strategy}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {kws.map((kw) => (
+                        <span
+                          key={kw.id}
+                          className={`inline-block text-[0.82rem] font-semibold px-3 py-1.5 rounded-full ${style.bg}`}
+                        >
+                          {kw.keyword}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -289,40 +343,50 @@ export default function CampaignDetailPage() {
           </p>
         ) : (
           <div className="space-y-2">
-            {campaign.opportunities.slice(0, 10).map((opp) => (
-              <div
-                key={opp.id}
-                className="flex items-start gap-3 py-3 border-b border-charcoal/[0.04] last:border-0"
-              >
-                <div className="flex-1 min-w-0">
-                  <a
-                    href={opp.redditUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[0.88rem] font-semibold text-charcoal hover:text-teal transition-colors line-clamp-1"
-                  >
-                    {opp.title}
-                  </a>
-                  <div className="flex items-center gap-2 mt-1 text-[0.75rem] text-charcoal-light">
-                    <span>r/{opp.subreddit}</span>
-                    <span>
-                      {new Date(opp.discoveredAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </span>
-                  </div>
-                </div>
-                <span
-                  className={`shrink-0 text-[0.68rem] font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap ${
-                    OPPORTUNITY_STATUS_COLORS[opp.status] ??
-                    "bg-charcoal/[0.06] text-charcoal-light"
-                  }`}
+            {campaign.opportunities.slice(0, 10).map((opp) => {
+              const isScoring = opp.status === "DISCOVERED" && !opp.scoredAt;
+              return (
+                <div
+                  key={opp.id}
+                  className="flex items-start gap-3 py-3 border-b border-charcoal/[0.04] last:border-0"
                 >
-                  {opp.status.replace(/_/g, " ")}
-                </span>
-              </div>
-            ))}
+                  <div className="flex-1 min-w-0">
+                    <a
+                      href={opp.redditUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[0.88rem] font-semibold text-charcoal hover:text-teal transition-colors line-clamp-1"
+                    >
+                      {opp.title}
+                    </a>
+                    <div className="flex items-center gap-2 mt-1 text-[0.75rem] text-charcoal-light">
+                      <span>r/{opp.subreddit}</span>
+                      <span>
+                        {new Date(opp.discoveredAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                  {isScoring ? (
+                    <span className="shrink-0 inline-flex items-center gap-1 text-[0.68rem] font-bold px-2.5 py-0.5 rounded-full bg-lavender/10 text-lavender whitespace-nowrap">
+                      <Loader2 size={10} className="animate-spin" />
+                      Scoring...
+                    </span>
+                  ) : (
+                    <span
+                      className={`shrink-0 text-[0.68rem] font-bold px-2.5 py-0.5 rounded-full whitespace-nowrap ${
+                        OPPORTUNITY_STATUS_COLORS[opp.status] ??
+                        "bg-charcoal/[0.06] text-charcoal-light"
+                      }`}
+                    >
+                      {opp.status.replace(/_/g, " ")}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

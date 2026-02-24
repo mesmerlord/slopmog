@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { router, publicProcedure, protectedProcedure } from "@/server/trpc";
 import Stripe from "stripe";
 import { CREDIT_PRICES, FREE_CREDITS } from "@/constants/pricing";
+import { getUserPlan } from "@/server/utils/plan";
 import type { PrismaClient } from "@prisma/client";
 
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -318,5 +319,9 @@ export const userRouter = router({
     });
 
     return { url: portalSession.url };
+  }),
+
+  getPlanInfo: protectedProcedure.query(async ({ ctx }) => {
+    return getUserPlan(ctx.session.user.id);
   }),
 });

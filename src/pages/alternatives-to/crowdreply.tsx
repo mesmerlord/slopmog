@@ -17,11 +17,15 @@ import Seo from "@/components/Seo";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import MascotBlob from "@/components/MascotBlob";
+import PricingAnimation from "@/components/illustrations/PricingAnimation";
+import KeywordTargetAnimation from "@/components/illustrations/KeywordTargetAnimation";
+import AITrackingAnimation from "@/components/illustrations/AITrackingAnimation";
+import HumanWritingAnimation from "@/components/illustrations/HumanWritingAnimation";
 import { ALTERNATIVES } from "@/lib/constants";
 
 /* ─── Data ─── */
 
-const FEATURE_COMPARISON = [
+const FEATURE_COMPARISON: { feature: string; competitor: string; slopmog: string; winner: "slopmog" | "competitor" | "tie" }[] = [
   {
     feature: "Monthly pricing",
     competitor: "$99/mo PRO (includes $100 credits)",
@@ -61,8 +65,8 @@ const FEATURE_COMPARISON = [
   {
     feature: "Upvote boosting",
     competitor: "Drip-feed upvotes at $0.10/each",
-    slopmog: "Not offered (comments stand on their own)",
-    winner: "competitor" as const,
+    slopmog: "Available as add-on across all plans",
+    winner: "tie" as const,
   },
   {
     feature: "AI recommendation tracking",
@@ -73,7 +77,7 @@ const FEATURE_COMPARISON = [
   {
     feature: "Comment removal rate",
     competitor: "~5% removal rate",
-    slopmog: "Low removal rate with human-written comments",
+    slopmog: "Low removal rate with natural-sounding AI comments",
     winner: "tie" as const,
   },
   {
@@ -163,17 +167,17 @@ const SWITCHING_REASONS = [
     ctaRoute: "/#demo",
   },
   {
-    id: "human-content",
+    id: "ai-content",
     icon: Users,
-    title: "We Write the Comments Too",
+    title: "AI Writes the Comments For You",
     description:
-      "CrowdReply requires you to write your own comments. Which is fine if you have the time and Reddit instincts. We handle the writing with real humans who actually know how Reddit works. You just approve and we post.",
+      "CrowdReply requires you to write your own comments. Which is fine if you have the time and Reddit instincts. Our AI generates natural-sounding comments tuned for Reddit's tone — or write your own if you prefer. You approve before anything goes live.",
     slopmogAdvantage:
-      "Human writers who understand Reddit culture handle everything",
+      "AI generates Reddit-native comments, or bring your own",
     benefits: [
-      "AI writes drafts, humans refine them",
+      "AI writes comments that match Reddit's tone",
+      "Write your own comments if you prefer",
       "You approve before anything goes live",
-      "Writers know Reddit tone and norms",
       "No need to become a Reddit expert yourself",
     ],
     ctaText: "Try SlopMog Free",
@@ -229,9 +233,9 @@ const FAQS = [
       "No. CrowdReply requires you to write your own comments — you pick the thread, write the message, and they post it through their accounts. SlopMog handles the writing too. Our team drafts comments that sound natural to Reddit, and you approve them before they go live. Less work on your end.",
   },
   {
-    question: "What about CrowdReply's upvote boosting?",
+    question: "What about upvote boosting?",
     answer:
-      "CrowdReply offers drip-feed upvote boosting at about $0.10 per upvote. We don't offer this. Our approach is to write comments that are genuinely helpful enough to earn organic upvotes. Is that idealistic? Maybe. But upvote manipulation is one of the things Reddit actively detects, and we'd rather not risk your comments getting nuked.",
+      "Both platforms offer upvote boosting. CrowdReply charges about $0.10 per upvote from your credit balance. SlopMog also offers upvote boosting as an add-on across all plans. The difference is that our comments are designed to earn organic upvotes too — we write genuinely helpful content, so the paid boost is just accelerating what would happen naturally.",
   },
   {
     question: "Why was CrowdReply's Trustpilot blocked?",
@@ -371,7 +375,7 @@ export default function CrowdReplyAlternative() {
             {[
               "Starts at $49/mo",
               "15-100 comments/mo",
-              "Human-written content",
+              "AI-generated content",
               "AI tracking included",
             ].map((badge) => (
               <span
@@ -393,7 +397,7 @@ export default function CrowdReplyAlternative() {
               { value: "4x", label: "More comments per dollar" },
               { value: "$2.48", label: "Per comment (Make Waves)" },
               { value: "$49", label: "Starting monthly price" },
-              { value: "100%", label: "Human-written comments" },
+              { value: "100%", label: "Approve before posting" },
             ].map((stat) => (
               <div key={stat.label}>
                 <div className="font-heading text-3xl md:text-4xl font-bold mb-1">
@@ -616,28 +620,20 @@ export default function CrowdReplyAlternative() {
 
                     <Link
                       href={reason.ctaRoute}
-                      className="inline-flex items-center gap-2 bg-white text-teal px-6 py-2.5 rounded-full font-bold text-sm border-2 border-teal hover:bg-teal hover:text-white transition-all"
+                      className="inline-flex items-center gap-2 bg-coral text-white px-6 py-2.5 rounded-full font-bold text-sm shadow-md shadow-coral/20 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all"
                     >
                       {reason.ctaText}
                       <ArrowRight size={16} />
                     </Link>
                   </div>
 
-                  {/* Visual panel */}
+                  {/* Animated visual */}
                   <div className="flex-1 w-full">
-                    <div className="bg-gradient-to-br from-teal/5 to-lavender/10 rounded-brand-lg p-8 md:p-10 border border-charcoal/[0.04]">
-                      <div className="text-center">
-                        <Icon
-                          size={48}
-                          className="text-teal mx-auto mb-4 opacity-60"
-                        />
-                        <div className="font-heading font-bold text-lg text-charcoal mb-2">
-                          {reason.title}
-                        </div>
-                        <p className="text-sm text-charcoal-light">
-                          {reason.slopmogAdvantage}
-                        </p>
-                      </div>
+                    <div className="bg-gradient-to-br from-teal/5 to-lavender/10 rounded-brand-lg p-4 md:p-6 border border-charcoal/[0.04]">
+                      {reason.id === "pricing" && <PricingAnimation />}
+                      {reason.id === "keywords" && <KeywordTargetAnimation />}
+                      {reason.id === "ai-tracking" && <AITrackingAnimation />}
+                      {reason.id === "human-content" && <HumanWritingAnimation />}
                     </div>
                   </div>
                 </div>
@@ -658,45 +654,91 @@ export default function CrowdReplyAlternative() {
               Let&apos;s Talk Money
             </h2>
             <p className="text-base text-charcoal-light max-w-[540px] mx-auto">
-              CrowdReply charges per comment. We charge per month. Here&apos;s
-              how that shakes out.
+              Same $99. Very different results.
             </p>
           </div>
 
-          {/* CrowdReply pricing summary */}
-          <div className="max-w-[600px] mx-auto mb-12">
-            <div className="bg-white rounded-brand-lg p-6 shadow-brand-sm border border-charcoal/[0.06]">
-              <h3 className="font-heading font-bold text-lg text-charcoal mb-4">
-                CrowdReply PRO — $99/mo
-              </h3>
-              <ul className="space-y-2 text-sm text-charcoal-light mb-4">
-                <li className="flex items-start gap-2">
-                  <span className="text-charcoal-light">-</span>
-                  $100 in monthly credits included
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-charcoal-light">-</span>
-                  $10/comment, $25/post, $0.10/upvote
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-charcoal-light">-</span>
-                  ~10 comments per month for $99
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-charcoal-light">-</span>
-                  Additional credits available at any time
-                </li>
-              </ul>
-              <div className="bg-sunny/10 rounded-brand-sm px-4 py-2 text-xs font-semibold text-charcoal">
-                Effective cost: ~$10 per comment
+          {/* Head-to-head $99 comparison */}
+          <div className="max-w-[800px] mx-auto mb-14">
+            <div className="grid md:grid-cols-[1fr_auto_1fr] gap-0 items-stretch">
+              {/* CrowdReply side */}
+              <div className="bg-white rounded-brand-lg md:rounded-r-none p-6 border border-charcoal/[0.06] border-r-0 max-md:border-r max-md:rounded-b-none">
+                <div className="text-xs font-bold uppercase tracking-wide text-charcoal-light mb-3">CrowdReply PRO</div>
+                <div className="font-heading text-3xl font-bold text-charcoal mb-1">$99<span className="text-sm font-medium text-charcoal-light">/mo</span></div>
+                <div className="text-sm text-charcoal-light mb-5">$100 in credits included</div>
+                <div className="space-y-3 mb-5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-charcoal-light">Comments</span>
+                    <span className="font-bold text-charcoal">~10</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-charcoal-light">Cost/comment</span>
+                    <span className="font-bold text-charcoal">$10.00</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-charcoal-light">Content writing</span>
+                    <span className="font-bold text-coral">You write it</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-charcoal-light">Upvote boost</span>
+                    <span className="font-bold text-charcoal">$0.10/each extra</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-charcoal-light">Keywords</span>
+                    <span className="font-bold text-charcoal-light">Manual thread picking</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* VS divider */}
+              <div className="hidden md:flex items-center justify-center bg-charcoal w-14 text-white font-heading font-bold text-sm z-[1] rounded-brand-sm shadow-brand-md">
+                VS
+              </div>
+              <div className="md:hidden flex items-center justify-center bg-charcoal py-2 text-white font-heading font-bold text-sm">
+                VS
+              </div>
+
+              {/* SlopMog side */}
+              <div className="bg-white rounded-brand-lg md:rounded-l-none p-6 border-2 border-teal max-md:rounded-t-none">
+                <div className="text-xs font-bold uppercase tracking-wide text-teal mb-3">SlopMog Make Waves</div>
+                <div className="font-heading text-3xl font-bold text-charcoal mb-1">$99<span className="text-sm font-medium text-charcoal-light">/mo</span></div>
+                <div className="text-sm text-teal font-medium mb-5">Everything included</div>
+                <div className="space-y-3 mb-5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-charcoal-light">Comments</span>
+                    <span className="font-bold text-teal">40</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-charcoal-light">Cost/comment</span>
+                    <span className="font-bold text-teal">$2.48</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-charcoal-light">Content writing</span>
+                    <span className="font-bold text-teal">We write it</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-charcoal-light">Upvote boost</span>
+                    <span className="font-bold text-teal">Available add-on</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-charcoal-light">Keywords</span>
+                    <span className="font-bold text-teal">10 targeted keywords</span>
+                  </div>
+                </div>
+                <div className="bg-teal/10 rounded-full px-4 py-1.5 text-xs font-bold text-teal text-center">
+                  4x more comments for the same price
+                </div>
               </div>
             </div>
           </div>
 
-          {/* SlopMog pricing cards */}
-          <h3 className="font-heading font-bold text-xl text-charcoal text-center mb-8">
-            SlopMog Plans
+          {/* All SlopMog plans */}
+          <h3 className="font-heading font-bold text-xl text-charcoal text-center mb-2">
+            All SlopMog Plans
           </h3>
+          <p className="text-sm text-charcoal-light text-center mb-8 max-w-[400px] mx-auto">
+            Pick a plan. All include upvote boosting as an add-on.
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-[960px] mx-auto items-start">
             {/* Tier 1 */}
             <div className="bg-white rounded-brand-lg px-7 py-9 shadow-brand-sm border-2 border-charcoal/[0.06] hover:-translate-y-1 hover:shadow-brand-lg transition-all relative">
@@ -1028,9 +1070,9 @@ export default function CrowdReplyAlternative() {
                 CrowdReply is fine. SlopMog is funnier and cheaper.
               </h2>
               <p className="text-white/70 text-base mb-7 leading-relaxed">
-                4x more comments per dollar. Human-written content. AI
-                recommendation tracking. And a name you&apos;ll never
-                forget. What&apos;s not to love?
+                4x more comments per dollar. AI-generated content you
+                approve before posting. AI recommendation tracking. And a
+                name you&apos;ll never forget. What&apos;s not to love?
               </p>
               <Link
                 href="/#pricing"

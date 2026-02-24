@@ -50,7 +50,7 @@ const PRICING_FAQ = [
   },
   {
     q: "What counts as one credit?",
-    a: "One credit = one Reddit comment posted. Each comment is written by a real human, posted on an aged Reddit account, and strategically placed in relevant conversations about your category.",
+    a: "One credit = one Reddit comment posted. Each comment is AI-generated (or written by you), posted on an aged Reddit account, and strategically placed in relevant conversations about your category.",
   },
   {
     q: "Is there a free trial?",
@@ -105,15 +105,15 @@ export default function PricingPage() {
     createOneTime.mutate({ credits: credits.toString() });
   };
 
-  function renderFeature(feature: string, available: boolean, values?: Record<string, number>) {
+  function renderFeature(feature: string, available: boolean, values?: Record<string, number>, key?: number) {
     let text = feature;
     if (values) {
-      for (const [key, val] of Object.entries(values)) {
-        text = text.replace(`{{${key}}}`, val.toString());
+      for (const [k, val] of Object.entries(values)) {
+        text = text.replace(`{{${k}}}`, val.toString());
       }
     }
     return (
-      <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal">
+      <li key={key} className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal">
         {available ? <CheckIcon /> : <CrossIcon />}
         <span className={available ? "" : "opacity-40"}>{text}</span>
       </li>
@@ -199,9 +199,9 @@ export default function PricingPage() {
                   <div className="text-[0.85rem] text-charcoal-light mb-6">{plan.description}</div>
 
                   <ul className="list-none mb-7 text-left">
-                    {plan.features.map((f, i) => (
-                      <li key={i}>{renderFeature(f.feature, f.available, f.values)}</li>
-                    ))}
+                    {plan.features.map((f, i) =>
+                      renderFeature(f.feature, f.available, f.values, i)
+                    )}
                   </ul>
 
                   <button

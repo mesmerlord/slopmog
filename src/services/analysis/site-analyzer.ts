@@ -64,6 +64,7 @@ Return JSON with these fields:
 - primaryKeywords: 5-8 keywords directly related to the product category (e.g. "project management tool", "time tracking app")
 - problemKeywords: 5-8 keywords describing problems the product solves (e.g. "team communication issues", "tracking billable hours")
 - competitorKeywords: 3-5 competitor or alternative product names people might search for
+- brandKeywords: 3-5 brand-related terms — the product name, company name, website domain, common misspellings, and abbreviations people might use when mentioning the brand on Reddit
 - longTailKeywords: 5-8 longer search phrases people might post about (e.g. "best tool for managing remote team tasks", "how to track time across multiple projects")
 - suggestedSubreddits: 5-10 relevant subreddits with:
   - name: subreddit name without "r/" prefix

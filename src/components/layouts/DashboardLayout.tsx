@@ -106,10 +106,10 @@ export default function DashboardLayout({ children, title, description }: Dashbo
   const sidebarContent = (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-5">
+      <Link href="/" className="flex items-center gap-2.5 px-5 py-5 hover:opacity-80 transition-opacity">
         <LogoBlob className="w-9 h-9 shrink-0" />
         <span className="font-heading font-bold text-lg text-charcoal">SlopMog</span>
-      </div>
+      </Link>
 
       {/* Nav items */}
       <nav className="flex-1 px-3 py-2">

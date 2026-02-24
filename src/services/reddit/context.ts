@@ -1,4 +1,4 @@
-import { getPostComments, getSubredditInfo } from "./client";
+import { getPostComments } from "./client";
 import type {
   RedditComment,
   PostContext,
@@ -71,23 +71,12 @@ function getTopComments(
     .slice(0, limit);
 }
 
-/**
- * Extract subreddit name from a Reddit permalink or URL.
- */
-function extractSubreddit(post: { subreddit: string; permalink: string }): string {
-  if (post.subreddit) return post.subreddit;
-
-  // Fallback: parse from permalink /r/{subreddit}/...
-  const match = post.permalink.match(/\/r\/([^/]+)/);
-  return match ? match[1] : "";
-}
-
 // ─── Main context function ───────────────────────────────────
 
 /**
  * Fetches full post context for comment generation, including:
  * - The post itself with comments
- * - Subreddit rules and info
+ * - Basic subreddit info (extracted from the post data)
  * - Suggested comment position (top-level, reply to OP, reply to question)
  */
 export async function fetchPostContext(params: {
@@ -96,26 +85,8 @@ export async function fetchPostContext(params: {
 }): Promise<PostContext> {
   const { redditUrl, parentCommentId } = params;
 
-  // Fetch post + comments and subreddit info in parallel
-  const [postData, subredditInfoResult] = await Promise.all([
-    getPostComments(redditUrl),
-    // We'll get the subreddit name after fetching the post, but we can
-    // extract it from the URL to parallelize
-    (async () => {
-      const subMatch = redditUrl.match(/reddit\.com\/r\/([^/]+)/);
-      if (subMatch) {
-        return getSubredditInfo(subMatch[1]);
-      }
-      return null;
-    })(),
-  ]);
-
-  const { post, comments } = postData;
-
-  // If we couldn't extract subreddit from URL, fetch it now
-  const subredditInfo =
-    subredditInfoResult ??
-    (await getSubredditInfo(extractSubreddit(post)));
+  // Fetch post + comments + subreddit info in one call
+  const { post, comments, subredditInfo } = await getPostComments(redditUrl);
 
   // Get top comments by score
   const topComments = getTopComments(comments, TOP_COMMENTS_LIMIT);

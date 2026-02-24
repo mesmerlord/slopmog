@@ -1,8 +1,8 @@
 export interface RedditPost {
-  id: string; // Reddit's post ID (e.g. "1abc123")
+  id: string; // Reddit's post ID (e.g. "1abc123"), normalized without t3_ prefix
   title: string;
-  selftext: string; // Post body text
-  author: string;
+  selftext: string; // Post body text (may be empty for subreddit/search results)
+  author: string; // May be empty for subreddit/search results
   subreddit: string;
   score: number;
   numComments: number;
@@ -30,8 +30,6 @@ export interface SubredditInfo {
   name: string;
   subscribers: number;
   description: string;
-  publicDescription: string;
-  rules: string[];
 }
 
 export interface DiscoveredThread {
@@ -50,7 +48,7 @@ export interface DiscoveredThread {
 export interface PostContext {
   post: RedditPost;
   topComments: RedditComment[];
-  subredditInfo: SubredditInfo;
+  subredditInfo: SubredditInfo | null;
   suggestedPosition: "top_level" | "reply_to_op" | "reply_to_question";
   replyTarget?: {
     commentId: string;

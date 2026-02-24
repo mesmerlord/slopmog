@@ -3,6 +3,10 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc";
 import { analyzeSite } from "@/services/analysis/site-analyzer";
 import { addToCampaignQueue } from "@/queue/queues";
+import { redis } from "@/server/utils/redis";
+import { getUserPlan } from "@/server/utils/plan";
+
+const keywordStrategyEnum = z.enum(["FEATURE", "BRAND", "COMPETITOR"]);
 
 export const campaignRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -100,8 +104,14 @@ export const campaignRouter = router({
         automationMode: z
           .enum(["FULL_MANUAL", "SEMI_AUTO", "AUTOPILOT"])
           .optional(),
+        featureStrategyEnabled: z.boolean().optional(),
+        brandStrategyEnabled: z.boolean().optional(),
+        competitorStrategyEnabled: z.boolean().optional(),
         siteAnalysisData: z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(z.unknown()), z.record(z.string(), z.unknown())]).optional(),
-        keywords: z.array(z.string().min(1)).min(1),
+        keywords: z.array(z.object({
+          keyword: z.string().min(1),
+          strategy: keywordStrategyEnum.optional(),
+        })).min(1),
         subreddits: z
           .array(
             z.object({
@@ -114,6 +124,15 @@ export const campaignRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Check keyword limit
+      const plan = await getUserPlan(ctx.session.user.id);
+      if (input.keywords.length > plan.maxKeywords) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Your ${plan.planName} plan allows up to ${plan.maxKeywords} keywords. You have ${input.keywords.length}.`,
+        });
+      }
+
       return ctx.prisma.campaign.create({
         data: {
           name: input.name,
@@ -125,10 +144,16 @@ export const campaignRouter = router({
           targetAudience: input.targetAudience,
           brandTone: input.brandTone,
           automationMode: input.automationMode ?? "SEMI_AUTO",
+          featureStrategyEnabled: input.featureStrategyEnabled ?? true,
+          brandStrategyEnabled: input.brandStrategyEnabled ?? true,
+          competitorStrategyEnabled: input.competitorStrategyEnabled ?? true,
           siteAnalysisData: (input.siteAnalysisData as typeof input.siteAnalysisData & import("@prisma/client").Prisma.InputJsonValue) ?? undefined,
           userId: ctx.session.user.id,
           keywords: {
-            create: input.keywords.map((keyword) => ({ keyword })),
+            create: input.keywords.map((kw) => ({
+              keyword: kw.keyword,
+              strategy: kw.strategy ?? "FEATURE",
+            })),
           },
           subreddits: input.subreddits
             ? {
@@ -230,13 +255,17 @@ export const campaignRouter = router({
     .input(
       z.object({
         campaignId: z.string(),
-        add: z.array(z.string()).optional(),
+        add: z.array(z.object({
+          keyword: z.string(),
+          strategy: keywordStrategyEnum.optional(),
+        })).optional(),
         remove: z.array(z.string()).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const campaign = await ctx.prisma.campaign.findUnique({
         where: { id: input.campaignId },
+        include: { keywords: true },
       });
 
       if (!campaign || campaign.userId !== ctx.session.user.id) {
@@ -253,11 +282,22 @@ export const campaignRouter = router({
         });
       }
 
-      // Add new keywords
+      // Check keyword limit before adding
       if (input.add?.length) {
+        const plan = await getUserPlan(ctx.session.user.id);
+        const currentCount = campaign.keywords.length - (input.remove?.length ?? 0);
+        const newTotal = currentCount + input.add.length;
+        if (newTotal > plan.maxKeywords) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Your ${plan.planName} plan allows up to ${plan.maxKeywords} keywords.`,
+          });
+        }
+
         await ctx.prisma.campaignKeyword.createMany({
-          data: input.add.map((keyword) => ({
-            keyword,
+          data: input.add.map((kw) => ({
+            keyword: kw.keyword,
+            strategy: kw.strategy ?? "FEATURE",
             campaignId: input.campaignId,
           })),
           skipDuplicates: true,
@@ -345,5 +385,36 @@ export const campaignRouter = router({
       return ctx.prisma.campaign.delete({
         where: { id: input.id },
       });
+    }),
+
+  getDiscoveryProgress: protectedProcedure
+    .input(z.object({ campaignId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const campaign = await ctx.prisma.campaign.findUnique({
+        where: { id: input.campaignId },
+        select: { userId: true },
+      });
+
+      if (!campaign || campaign.userId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Campaign not found" });
+      }
+
+      const raw = await redis.get(`discovery:progress:${input.campaignId}`);
+      if (!raw) return null;
+
+      try {
+        return JSON.parse(raw) as {
+          stage: string;
+          message: string;
+          currentSubreddit?: string;
+          threadsFound: number;
+          threadsScored: number;
+          opportunitiesCreated: number;
+          startedAt: string;
+          updatedAt: string;
+        };
+      } catch {
+        return null;
+      }
     }),
 });

@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 import Seo from "@/components/Seo";
 import MascotBlob from "@/components/MascotBlob";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
+import { ALTERNATIVES, routes } from "@/lib/constants";
 
 /* ─── Check icon for pricing features ─── */
 function CheckIcon() {
@@ -41,7 +44,7 @@ const TICKER_ITEMS = [
   { text: "Works with ChatGPT, Gemini, Perplexity", color: "#2EC4B6" },
   { text: "Results within 30 days", color: "#FF6B6B" },
   { text: "92% client retention rate", color: "#FFD93D" },
-  { text: "Human-written content only", color: "#B197FC" },
+  { text: "AI-crafted or write your own", color: "#B197FC" },
 ];
 
 /* ─── FAQ data ─── */
@@ -63,8 +66,8 @@ const FAQ_ITEMS = [
     a: "Some of them probably are. That's actually the strongest argument for starting now rather than later. The brands that establish a presence first tend to maintain their position. First-mover advantage is real in AI recommendations.",
   },
   {
-    q: "Do you write the comments with AI?",
-    a: "No. Every single comment is written by a real human who understands Reddit culture. AI-generated comments get spotted and downvoted instantly. The whole point is authenticity, so we invest in actual writers who know how to blend in.",
+    q: "Who writes the comments?",
+    a: "AI generates comments that sound natural and fit Reddit's tone, but you can also write your own if you prefer. Every comment goes through your approval before posting, so you're always in control of what gets published.",
   },
   {
     q: "Can I see which comments you've posted?",
@@ -81,6 +84,7 @@ const STATS = [
 ];
 
 export default function Home() {
+  const { data: session } = useSession();
   const [activeDemo, setActiveDemo] = useState<"before" | "after">("before");
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [statValues, setStatValues] = useState<string[]>(STATS.map(() => "0"));
@@ -240,8 +244,17 @@ export default function Home() {
               We post Reddit comments about your brand. AI learns from them. You show up in recommendations. Simple.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start">
-              <a href="#pricing" className="bg-coral text-white px-8 py-3 md:py-3.5 rounded-full font-bold text-sm md:text-base text-center shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl hover:shadow-coral/30 transition-all" onClick={(e) => { e.preventDefault(); scrollTo("pricing"); }}>Start Showing Up</a>
-              <a href="#how" className="bg-white text-charcoal px-8 py-3 md:py-3.5 rounded-full font-bold text-sm md:text-base text-center border-2 border-charcoal/10 hover:border-teal hover:text-teal hover:-translate-y-0.5 transition-all" onClick={(e) => { e.preventDefault(); scrollTo("how"); }}>See How It Works</a>
+              {session ? (
+                <>
+                  <Link href={routes.dashboard.campaigns.new} className="bg-coral text-white px-8 py-3 md:py-3.5 rounded-full font-bold text-sm md:text-base text-center shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl hover:shadow-coral/30 transition-all">New Campaign</Link>
+                  <Link href={routes.dashboard.index} className="bg-white text-charcoal px-8 py-3 md:py-3.5 rounded-full font-bold text-sm md:text-base text-center border-2 border-charcoal/10 hover:border-teal hover:text-teal hover:-translate-y-0.5 transition-all">Go to Dashboard</Link>
+                </>
+              ) : (
+                <>
+                  <a href="#pricing" className="bg-coral text-white px-8 py-3 md:py-3.5 rounded-full font-bold text-sm md:text-base text-center shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl hover:shadow-coral/30 transition-all" onClick={(e) => { e.preventDefault(); scrollTo("pricing"); }}>Start Showing Up</a>
+                  <a href="#how" className="bg-white text-charcoal px-8 py-3 md:py-3.5 rounded-full font-bold text-sm md:text-base text-center border-2 border-charcoal/10 hover:border-teal hover:text-teal hover:-translate-y-0.5 transition-all" onClick={(e) => { e.preventDefault(); scrollTo("how"); }}>See How It Works</a>
+                </>
+              )}
             </div>
           </div>
 
@@ -307,7 +320,7 @@ export default function Home() {
               {
                 num: "2",
                 title: "We Post the Comments",
-                desc: "Real humans write authentic Reddit comments that naturally mention your brand in the right conversations.",
+                desc: "AI writes authentic Reddit comments that naturally mention your brand — or write your own. You approve before anything goes live.",
                 icon: (
                   <svg viewBox="0 0 72 72" fill="none">
                     <rect x="8" y="14" width="40" height="28" rx="6" stroke="#2EC4B6" strokeWidth="2.5" />
@@ -535,7 +548,11 @@ export default function Home() {
                 <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> See which comments are live</li>
                 <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> AI writes them, you just approve</li>
               </ul>
-              <button className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">Get Started</button>
+              {session ? (
+                <Link href={routes.dashboard.campaigns.new} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">New Campaign</Link>
+              ) : (
+                <Link href={routes.auth.register} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">Get Started</Link>
+              )}
             </div>
 
             {/* Tier 2 — Popular */}
@@ -551,7 +568,11 @@ export default function Home() {
                 <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> Weekly performance reports</li>
                 <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> Priority support</li>
               </ul>
-              <button className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-coral bg-coral text-white shadow-[0_4px_16px_rgba(255,107,107,0.25)] hover:bg-coral-dark hover:border-coral-dark hover:-translate-y-0.5 transition-all">Get Started</button>
+              {session ? (
+                <Link href={routes.dashboard.campaigns.new} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-coral bg-coral text-white shadow-[0_4px_16px_rgba(255,107,107,0.25)] hover:bg-coral-dark hover:border-coral-dark hover:-translate-y-0.5 transition-all">New Campaign</Link>
+              ) : (
+                <Link href={routes.auth.register} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-coral bg-coral text-white shadow-[0_4px_16px_rgba(255,107,107,0.25)] hover:bg-coral-dark hover:border-coral-dark hover:-translate-y-0.5 transition-all">Get Started</Link>
+              )}
               <div className="pricing-mascot-ctx absolute -bottom-4 -right-5 z-[3]">
                 <MascotBlob />
               </div>
@@ -569,7 +590,11 @@ export default function Home() {
                 <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> Track AI chatbot mentions</li>
                 <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> Priority support + strategy call</li>
               </ul>
-              <button className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">Get Started</button>
+              {session ? (
+                <Link href={routes.dashboard.campaigns.new} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">New Campaign</Link>
+              ) : (
+                <Link href={routes.auth.register} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">Get Started</Link>
+              )}
             </div>
           </div>
         </div>
@@ -602,6 +627,34 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ═══ COMPARE ═══ */}
+      {ALTERNATIVES.length > 0 && (
+        <section className="py-16 px-6 max-md:py-10 max-md:px-4">
+          <div className="max-w-[1140px] mx-auto px-6 max-md:px-0 text-center">
+            <span className="reveal inline-block text-[0.78rem] font-bold uppercase tracking-[1.5px] text-teal mb-3">Compare</span>
+            <h2 className="reveal text-[clamp(1.4rem,3vw,1.8rem)] text-charcoal mb-3">Thinking about the other guys?</h2>
+            <p className="reveal text-[0.95rem] text-charcoal-light max-w-[480px] mx-auto mb-8">We did the research so you don&apos;t have to. Honest, side-by-side breakdowns.</p>
+            <div className="reveal flex flex-wrap justify-center gap-3">
+              {ALTERNATIVES.map((alt) => (
+                <Link
+                  key={alt.slug}
+                  href={alt.url}
+                  className="bg-white px-5 py-2.5 rounded-full text-[0.88rem] font-semibold text-charcoal border border-charcoal/[0.08] shadow-brand-sm hover:border-teal hover:text-teal hover:-translate-y-0.5 transition-all"
+                >
+                  SlopMog vs {alt.name}
+                </Link>
+              ))}
+              <Link
+                href={routes.alternatives.index}
+                className="bg-teal-bg px-5 py-2.5 rounded-full text-[0.88rem] font-semibold text-teal border border-teal/20 hover:bg-teal hover:text-white hover:-translate-y-0.5 transition-all"
+              >
+                All comparisons &rarr;
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* ═══ CTA ═══ */}
       <section className="cta-section-bg relative overflow-hidden py-[100px] px-6 max-md:py-[60px] max-md:px-4 bg-charcoal" id="cta">
         <div className="max-w-[1140px] mx-auto px-6 max-md:px-0">
@@ -612,7 +665,11 @@ export default function Home() {
             <div>
               <h2 className="text-[clamp(1.6rem,3.5vw,2.2rem)] max-md:text-[1.5rem] text-white mb-4">The name is ridiculous. The results aren&apos;t.</h2>
               <p className="text-white/70 text-[1.05rem] max-md:text-[0.95rem] mb-7 max-md:mb-6 leading-[1.7]">Your competitors are already showing up in AI recommendations. Every day you wait is another day they&apos;re getting picked instead of you.</p>
-              <a href="#pricing" className="inline-block bg-coral text-white px-8 py-3.5 rounded-full font-bold text-base shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl transition-all" onClick={(e) => { e.preventDefault(); scrollTo("pricing"); }}>Start Your Campaign</a>
+              {session ? (
+                <Link href={routes.dashboard.campaigns.new} className="inline-block bg-coral text-white px-8 py-3.5 rounded-full font-bold text-base shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl transition-all">New Campaign</Link>
+              ) : (
+                <a href="#pricing" className="inline-block bg-coral text-white px-8 py-3.5 rounded-full font-bold text-base shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl transition-all" onClick={(e) => { e.preventDefault(); scrollTo("pricing"); }}>Start Your Campaign</a>
+              )}
               <p className="mt-3.5 text-[0.82rem] text-white/[0.45]">No contracts. Cancel anytime. Results within 30 days.</p>
             </div>
           </div>

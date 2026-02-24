@@ -198,6 +198,12 @@ model UserCreditHistory {
 
 // ─── Campaign Models ───────────────────────────────────────────
 
+enum KeywordStrategy {
+  FEATURE    // What the product does
+  BRAND      // Brand name & URLs
+  COMPETITOR // Competitor names & URLs
+}
+
 enum CampaignStatus {
   DRAFT
   ACTIVE
@@ -233,8 +239,11 @@ model Campaign {
   valueProps          Json?          // string[]
   targetAudience      String?
   brandTone           String?        // "professional" | "casual" | "technical" | "friendly"
-  automationMode      AutomationMode @default(SEMI_AUTO)
-  siteAnalysisData    Json?          // Full analysis result cached
+  automationMode              AutomationMode @default(SEMI_AUTO)
+  featureStrategyEnabled      Boolean        @default(true)
+  brandStrategyEnabled        Boolean        @default(true)
+  competitorStrategyEnabled   Boolean        @default(true)
+  siteAnalysisData            Json?          // Full analysis result cached
 
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
@@ -244,14 +253,16 @@ model Campaign {
 }
 
 model CampaignKeyword {
-  id         String   @id @default(cuid())
+  id         String          @id @default(cuid())
   keyword    String
-  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  strategy   KeywordStrategy @default(FEATURE)
+  campaign   Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   campaignId String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
 
   @@index([campaignId])
+  @@index([campaignId, strategy])
 }
 
 model CampaignSubreddit {
@@ -327,9 +338,11 @@ model Opportunity {
   numComments      Int               @default(0)
   matchedKeyword   String
   discoverySource  DiscoverySource
-  relevanceScore   Float             @default(0)
-  status           OpportunityStatus @default(DISCOVERED)
-  isArchived       Boolean           @default(false)
+  relevanceScore      Float             @default(0)
+  relevanceReasoning  String?           @db.Text
+  scoredAt            DateTime?
+  status              OpportunityStatus @default(DISCOVERED)
+  isArchived          Boolean           @default(false)
 
   // Reply target — null means top-level comment on the post
   parentCommentId     String?        // Reddit comment ID we're replying to

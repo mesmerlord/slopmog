@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc";
 import { addToPostGenerationQueue, addToPostingQueue } from "@/queue/queues";
+import { getUserPlan } from "@/server/utils/plan";
 
 export const opportunityRouter = router({
   list: protectedProcedure
@@ -128,6 +129,15 @@ export const opportunityRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Opportunity is not pending review" });
       }
 
+      // Free tier posting gate
+      const plan = await getUserPlan(ctx.session.user.id);
+      if (!plan.canPost) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can see opportunities for free, but you need a paid plan to actually post comments. Pretty sneaky, huh?",
+        });
+      }
+
       const updated = await ctx.prisma.opportunity.update({
         where: { id: input.id },
         data: { status: "APPROVED" },
@@ -160,6 +170,15 @@ export const opportunityRouter = router({
   bulkApprove: protectedProcedure
     .input(z.object({ ids: z.array(z.string()).min(1).max(50) }))
     .mutation(async ({ ctx, input }) => {
+      // Free tier posting gate
+      const plan = await getUserPlan(ctx.session.user.id);
+      if (!plan.canPost) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can see opportunities for free, but you need a paid plan to actually post comments. Pretty sneaky, huh?",
+        });
+      }
+
       // Verify ownership of all opportunities
       const opportunities = await ctx.prisma.opportunity.findMany({
         where: { id: { in: input.ids } },
@@ -228,6 +247,15 @@ export const opportunityRouter = router({
 
       if (!opportunity.generatedComment) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No generated comment to approve" });
+      }
+
+      // Free tier posting gate
+      const plan = await getUserPlan(ctx.session.user.id);
+      if (!plan.canPost) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can see opportunities for free, but you need a paid plan to actually post comments. Pretty sneaky, huh?",
+        });
       }
 
       const updated = await ctx.prisma.opportunity.update({
