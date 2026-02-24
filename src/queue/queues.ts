@@ -56,6 +56,8 @@ export interface PostGenerationJobData {
 
 export interface PostingJobData {
   opportunityId: string;
+  phase?: "create" | "poll"; // default "create"
+  pollAttempt?: number;
 }
 
 export interface TrackingJobData {

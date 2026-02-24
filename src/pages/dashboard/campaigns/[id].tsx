@@ -346,19 +346,15 @@ export default function CampaignDetailPage() {
             {campaign.opportunities.slice(0, 10).map((opp) => {
               const isScoring = opp.status === "DISCOVERED" && !opp.scoredAt;
               return (
-                <div
+                <Link
                   key={opp.id}
-                  className="flex items-start gap-3 py-3 border-b border-charcoal/[0.04] last:border-0"
+                  href={`${routes.dashboard.queue}?selected=${opp.id}`}
+                  className="flex items-start gap-3 py-3 border-b border-charcoal/[0.04] last:border-0 hover:bg-charcoal/[0.02] -mx-2 px-2 rounded-brand-sm transition-colors"
                 >
                   <div className="flex-1 min-w-0">
-                    <a
-                      href={opp.redditUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[0.88rem] font-semibold text-charcoal hover:text-teal transition-colors line-clamp-1"
-                    >
+                    <span className="text-[0.88rem] font-semibold text-charcoal hover:text-teal transition-colors line-clamp-1">
                       {opp.title}
-                    </a>
+                    </span>
                     <div className="flex items-center gap-2 mt-1 text-[0.75rem] text-charcoal-light">
                       <span>r/{opp.subreddit}</span>
                       <span>
@@ -384,7 +380,7 @@ export default function CampaignDetailPage() {
                       {opp.status.replace(/_/g, " ")}
                     </span>
                   )}
-                </div>
+                </Link>
               );
             })}
           </div>

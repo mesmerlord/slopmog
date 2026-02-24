@@ -1,22 +1,33 @@
 import { fetchWithRetry } from "@/services/shared/http";
 import type { PostingProvider } from "./provider";
 import { postingRegistry } from "./provider";
-import type { PostCommentParams, PostCommentResult, CommentStatus } from "./types";
+import type {
+  PostCommentParams,
+  CreateOrderResult,
+  OrderStatusResult,
+  OrderStatus,
+} from "./types";
 
-interface UpvoteMaxResponse {
-  success: boolean;
-  comment_id?: string;
-  comment_url?: string;
-  error?: string;
-  error_code?: string;
+// ─── UpvoteMax API types ────────────────────────────────────
+
+/** POST /api/public/v1/orders response */
+interface UMCreateOrderResponse {
+  id: number;
+  cost: number;
+  balance: number;
 }
 
-interface UpvoteMaxStatusResponse {
-  exists: boolean;
-  score?: number;
-  removed?: boolean;
-  reply_count?: number;
+/** POST /api/public/v1/status response — map of order ID → status string */
+type UMStatusResponse = Record<string, string>;
+
+/** GET /api/public/v1/balance response */
+interface UMBalanceResponse {
+  balance: number;
 }
+
+// ─── Config ─────────────────────────────────────────────────
+
+const CUSTOM_COMMENTS_SERVICE_ID = 5;
 
 function getConfig() {
   const apiKey = process.env.UPVOTEMAX_API_KEY;
@@ -24,7 +35,21 @@ function getConfig() {
   if (!apiKey || !baseUrl) {
     throw new Error("UPVOTEMAX_API_KEY and UPVOTEMAX_BASE_URL must be set");
   }
-  return { apiKey, baseUrl };
+  // Ensure base URL doesn't have trailing slash
+  return { apiKey, baseUrl: baseUrl.replace(/\/+$/, "") };
+}
+
+function apiUrl(path: string): string {
+  const { baseUrl } = getConfig();
+  return `${baseUrl}/api/public/v1${path}`;
+}
+
+function authHeaders(): Record<string, string> {
+  const { apiKey } = getConfig();
+  return {
+    "x-api-key": apiKey,
+    "Content-Type": "application/json",
+  };
 }
 
 const RATE_LIMIT = {
@@ -33,82 +58,95 @@ const RATE_LIMIT = {
   windowMs: 60 * 60 * 1000, // 10 per hour — conservative for natural patterns
 };
 
+// ─── Helpers ────────────────────────────────────────────────
+
+function normalizeStatus(raw: string): OrderStatus {
+  const lower = raw.toLowerCase();
+  if (lower === "pending") return "pending";
+  if (lower === "running" || lower === "in_progress" || lower === "processing") return "running";
+  if (lower === "completed" || lower === "complete") return "completed";
+  if (lower === "failed" || lower === "error" || lower === "cancelled" || lower === "canceled") return "failed";
+  return "unknown";
+}
+
+// ─── Provider ───────────────────────────────────────────────
+
 const upvoteMaxProvider: PostingProvider = {
   name: "upvotemax",
 
-  async postComment(params: PostCommentParams): Promise<PostCommentResult> {
-    const { apiKey, baseUrl } = getConfig();
-
+  async createCommentOrder(params: PostCommentParams): Promise<CreateOrderResult> {
     try {
-      const response = await fetchWithRetry<UpvoteMaxResponse>(
-        `${baseUrl}/api/comments`,
+      const response = await fetchWithRetry<UMCreateOrderResponse>(
+        apiUrl("/orders"),
         {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
+          headers: authHeaders(),
           body: JSON.stringify({
-            thread_url: params.threadUrl,
-            comment_text: params.commentText,
-            subreddit: params.subreddit,
-            parent_comment_id: params.parentCommentId ?? null,
+            service: CUSTOM_COMMENTS_SERVICE_ID,
+            link: params.threadUrl,
+            comments: params.commentText,
           }),
           rateLimit: RATE_LIMIT,
           retry: { maxRetries: 2, baseDelayMs: 5000, maxDelayMs: 30000 },
         },
       );
 
-      if (response.success) {
+      if (response.id) {
         return {
           success: true,
-          commentId: response.comment_id,
-          commentUrl: response.comment_url,
+          orderId: String(response.id),
+          cost: response.cost,
+          balance: response.balance,
           retryable: false,
         };
       }
 
-      // Determine if error is retryable
-      const retryable = response.error_code !== "BANNED" &&
-        response.error_code !== "SUBREDDIT_RESTRICTED" &&
-        response.error_code !== "INVALID_THREAD";
-
       return {
         success: false,
-        error: response.error || "Unknown error from UpvoteMax",
-        retryable,
+        error: "No order ID returned from UpvoteMax",
+        retryable: true,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+
+      // 401/403 = bad API key, not retryable
+      // 402 = insufficient balance, not retryable
+      const notRetryable =
+        message.includes("401") ||
+        message.includes("403") ||
+        message.includes("402");
+
       return {
         success: false,
         error: message,
-        retryable: !message.includes("401") && !message.includes("403"),
+        retryable: !notRetryable,
       };
     }
   },
 
-  async checkCommentStatus(commentId: string): Promise<CommentStatus> {
-    const { apiKey, baseUrl } = getConfig();
-
+  async checkOrderStatus(orderId: string): Promise<OrderStatusResult> {
     try {
-      const response = await fetchWithRetry<UpvoteMaxStatusResponse>(
-        `${baseUrl}/api/comments/${commentId}/status`,
+      // Use the status endpoint with order IDs
+      const response = await fetchWithRetry<UMStatusResponse>(
+        apiUrl("/status"),
         {
-          headers: { Authorization: `Bearer ${apiKey}` },
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify([orderId]),
           rateLimit: RATE_LIMIT,
           retry: { maxRetries: 1, baseDelayMs: 2000, maxDelayMs: 10000 },
         },
       );
 
-      return {
-        exists: response.exists,
-        score: response.score,
-        removed: response.removed,
-        replyCount: response.reply_count,
-      };
-    } catch {
-      return { exists: false, removed: true };
+      const rawStatus = response[orderId];
+      if (!rawStatus) {
+        return { status: "unknown", error: "Order not found in status response" };
+      }
+
+      return { status: normalizeStatus(rawStatus) };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { status: "unknown", error: message };
     }
   },
 
@@ -121,10 +159,20 @@ const upvoteMaxProvider: PostingProvider = {
     }
   },
 
-  async getRemainingCapacity(): Promise<number> {
-    // Could check UpvoteMax API for remaining quota
-    // For now, return a default
-    return 100;
+  async getBalance(): Promise<number> {
+    try {
+      const response = await fetchWithRetry<UMBalanceResponse>(
+        apiUrl("/balance"),
+        {
+          headers: authHeaders(),
+          rateLimit: RATE_LIMIT,
+          retry: { maxRetries: 1, baseDelayMs: 2000, maxDelayMs: 10000 },
+        },
+      );
+      return response.balance ?? 0;
+    } catch {
+      return 0;
+    }
   },
 };
 

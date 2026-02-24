@@ -1,4 +1,3 @@
-import { postingRegistry } from "@/services/posting/provider";
 import type { CommentStatus } from "@/services/posting/types";
 
 // Decaying check schedule (in milliseconds)
@@ -32,27 +31,27 @@ export function getNextCheckDelay(checkNumber: number): number | null {
   return CHECK_SCHEDULE[checkNumber];
 }
 
+/**
+ * Check comment performance. Currently UpvoteMax doesn't expose individual
+ * Reddit comment metrics, so this returns a baseline snapshot. The schedule
+ * still runs so we have timestamps for future provider integrations.
+ */
 export async function checkCommentPerformance(
-  commentId: string,
-  providerName: string,
+  _commentId: string,
+  _providerName: string,
   checkNumber: number,
 ): Promise<{
   status: CommentStatus;
   snapshot: TrackingSnapshot;
   nextCheckDelay: number | null;
 }> {
-  // Find the provider that posted this comment
-  const providers = postingRegistry.getAll();
-  const provider = providers.find((p) => p.name === providerName);
-
-  let status: CommentStatus;
-
-  if (provider?.checkCommentStatus) {
-    status = await provider.checkCommentStatus(commentId);
-  } else {
-    // Fallback: assume comment still exists
-    status = { exists: true, score: 0, removed: false, replyCount: 0 };
-  }
+  // Baseline — provider doesn't give us Reddit comment data yet
+  const status: CommentStatus = {
+    exists: true,
+    score: 0,
+    removed: false,
+    replyCount: 0,
+  };
 
   const snapshot: TrackingSnapshot = {
     checkNumber,

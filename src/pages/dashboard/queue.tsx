@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useRouter } from "next/router";
 import type { GetServerSideProps } from "next";
 import {
   Inbox,
@@ -36,7 +37,7 @@ import { getServerAuthSession } from "@/server/utils/auth";
 // ---------------------------------------------------------------------------
 
 type StatusFilter = "DISCOVERED" | "PENDING_REVIEW" | "READY_FOR_REVIEW" | "APPROVED" | "POSTED" | "ALL";
-type SortOption = "newest" | "relevance" | "upvotes";
+type SortOption = "newest" | "relevance" | "upvotes" | "postDate";
 
 const STATUS_TABS: { label: string; value: StatusFilter }[] = [
   { label: "Scoring", value: "DISCOVERED" },
@@ -47,8 +48,17 @@ const STATUS_TABS: { label: string; value: StatusFilter }[] = [
   { label: "All", value: "ALL" },
 ];
 
+const RELEVANCE_OPTIONS: { label: string; value: number | undefined }[] = [
+  { label: "All", value: undefined },
+  { label: "40%+", value: 0.4 },
+  { label: "50%+", value: 0.5 },
+  { label: "60%+", value: 0.6 },
+  { label: "80%+", value: 0.8 },
+];
+
 const SORT_OPTIONS: { label: string; value: SortOption }[] = [
   { label: "Newest", value: "newest" },
+  { label: "Post date", value: "postDate" },
   { label: "Relevance", value: "relevance" },
   { label: "Upvotes", value: "upvotes" },
 ];
@@ -107,10 +117,28 @@ const relevanceColor = (score: number | null | undefined): string => {
 // ---------------------------------------------------------------------------
 
 export default function QueuePage() {
+  const router = useRouter();
+  const deepLinkId = typeof router.query.selected === "string" ? router.query.selected : null;
+  const deepLinkConsumed = useRef(false);
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("PENDING_REVIEW");
   const [campaignFilter, setCampaignFilter] = useState<string | undefined>(undefined);
+  const [minRelevance, setMinRelevance] = useState<number | undefined>(0.5);
   const [sort, setSort] = useState<SortOption>("newest");
+
+  // Deep-link: if ?selected=<id>, switch to ALL / no relevance filter so the item is visible
+  useEffect(() => {
+    if (deepLinkId && !deepLinkConsumed.current) {
+      deepLinkConsumed.current = true;
+      setStatusFilter("ALL");
+      setMinRelevance(undefined);
+      setSelectedId(deepLinkId);
+      setMobileDetailOpen(true);
+      // Clean URL without re-render
+      router.replace(routes.dashboard.queue, undefined, { shallow: true });
+    }
+  }, [deepLinkId, router]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editedComment, setEditedComment] = useState("");
   const [isEditingComment, setIsEditingComment] = useState(false);
@@ -118,9 +146,11 @@ export default function QueuePage() {
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [campaignDropdownOpen, setCampaignDropdownOpen] = useState(false);
+  const [relevanceDropdownOpen, setRelevanceDropdownOpen] = useState(false);
 
   const sortDropdownRef = useRef<HTMLDivElement>(null);
   const campaignDropdownRef = useRef<HTMLDivElement>(null);
+  const relevanceDropdownRef = useRef<HTMLDivElement>(null);
 
   const utils = trpc.useUtils();
 
@@ -133,6 +163,9 @@ export default function QueuePage() {
       }
       if (campaignDropdownRef.current && !campaignDropdownRef.current.contains(target)) {
         setCampaignDropdownOpen(false);
+      }
+      if (relevanceDropdownRef.current && !relevanceDropdownRef.current.contains(target)) {
+        setRelevanceDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClick);
@@ -153,6 +186,7 @@ export default function QueuePage() {
     {
       campaignId: campaignFilter,
       status: statusFilter === "ALL" ? undefined : statusFilter,
+      minRelevance: minRelevance,
       sort,
       limit: 25,
     },
@@ -185,7 +219,7 @@ export default function QueuePage() {
     setSelectedId(null);
     setSelectedIds(new Set());
     setMobileDetailOpen(false);
-  }, [statusFilter, campaignFilter, sort]);
+  }, [statusFilter, campaignFilter, minRelevance, sort]);
 
   // Initialize edited comment when detail loads
   useEffect(() => {
@@ -195,11 +229,25 @@ export default function QueuePage() {
     }
   }, [detail?.id, detail?.generatedComment]);
 
+  // Auto-advance to next item when current one leaves the list
+  const advanceSelection = useCallback((removedId: string) => {
+    const idx = allItems.findIndex((item) => item.id === removedId);
+    const remaining = allItems.filter((item) => item.id !== removedId);
+    if (remaining.length === 0) {
+      setSelectedId(null);
+      setMobileDetailOpen(false);
+    } else {
+      // Pick the next item, or the previous if we were at the end
+      const nextIdx = Math.min(idx, remaining.length - 1);
+      setSelectedId(remaining[nextIdx].id);
+    }
+  }, [allItems]);
+
   // ---- Mutations ----
   const approveMutation = trpc.opportunity.approve.useMutation({
     onMutate: ({ id }) => {
       utils.opportunity.list.setInfiniteData(
-        { campaignId: campaignFilter, status: statusFilter === "ALL" ? undefined : statusFilter, sort, limit: 25 },
+        { campaignId: campaignFilter, status: statusFilter === "ALL" ? undefined : statusFilter, minRelevance, sort, limit: 25 },
         (old) => {
           if (!old) return old;
           return {
@@ -214,8 +262,9 @@ export default function QueuePage() {
         }
       );
     },
-    onSuccess: () => {
+    onSuccess: (_, { id }) => {
       toast.success("Opportunity approved!");
+      if (statusFilter !== "ALL") advanceSelection(id);
       utils.opportunity.list.invalidate();
       utils.opportunity.unreadCount.invalidate();
     },
@@ -228,7 +277,7 @@ export default function QueuePage() {
   const rejectMutation = trpc.opportunity.reject.useMutation({
     onMutate: ({ id }) => {
       utils.opportunity.list.setInfiniteData(
-        { campaignId: campaignFilter, status: statusFilter === "ALL" ? undefined : statusFilter, sort, limit: 25 },
+        { campaignId: campaignFilter, status: statusFilter === "ALL" ? undefined : statusFilter, minRelevance, sort, limit: 25 },
         (old) => {
           if (!old) return old;
           return {
@@ -243,8 +292,9 @@ export default function QueuePage() {
         }
       );
     },
-    onSuccess: () => {
+    onSuccess: (_, { id }) => {
       toast.success("Opportunity rejected.");
+      if (statusFilter !== "ALL") advanceSelection(id);
       utils.opportunity.list.invalidate();
       utils.opportunity.unreadCount.invalidate();
     },
@@ -281,8 +331,9 @@ export default function QueuePage() {
   const approveCommentMutation = trpc.opportunity.approveComment.useMutation({
     onSuccess: () => {
       toast.success("Comment approved & queued for posting!");
+      if (selectedId && statusFilter !== "ALL") advanceSelection(selectedId);
       utils.opportunity.list.invalidate();
-      utils.opportunity.getById.invalidate({ id: selectedId! });
+      if (selectedId) utils.opportunity.getById.invalidate({ id: selectedId });
     },
     onError: () => {
       toast.error("Failed to approve comment. Try again?");
@@ -455,6 +506,32 @@ export default function QueuePage() {
                     }`}
                   >
                     {campaign.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Relevance filter dropdown */}
+          <div ref={relevanceDropdownRef} className="relative">
+            <button
+              onClick={() => setRelevanceDropdownOpen(!relevanceDropdownOpen)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold bg-white border border-charcoal/[0.1] text-charcoal-light hover:text-charcoal transition-colors"
+            >
+              {RELEVANCE_OPTIONS.find((o) => o.value === minRelevance)?.label ?? "All"} relevance
+              <ChevronDown size={14} />
+            </button>
+            {relevanceDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 w-36 bg-white rounded-brand-sm shadow-brand-md border border-charcoal/[0.08] py-1 z-50">
+                {RELEVANCE_OPTIONS.map((option) => (
+                  <button
+                    key={option.label}
+                    onClick={() => { setMinRelevance(option.value); setRelevanceDropdownOpen(false); }}
+                    className={`w-full text-left px-3.5 py-2 text-sm hover:bg-charcoal/[0.04] transition-colors ${
+                      minRelevance === option.value ? "font-bold text-teal" : "text-charcoal"
+                    }`}
+                  >
+                    {option.label}
                   </button>
                 ))}
               </div>
@@ -727,7 +804,7 @@ export default function QueuePage() {
                               className="inline-flex items-center gap-1.5 bg-coral text-white px-5 py-2 rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-50"
                             >
                               <Send size={14} />
-                              {approveCommentMutation.isPending ? "Posting..." : "Approve & Post"}
+                              {approveCommentMutation.isPending ? "Posting..." : "Approve"}
                             </button>
                             <button
                               onClick={() => regenerateMutation.mutate({ id: detail.id })}

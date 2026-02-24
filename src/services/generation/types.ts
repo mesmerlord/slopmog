@@ -27,6 +27,7 @@ export interface CommentGenerationInput {
   // Strategy
   matchedKeyword: string;
   commentPosition: "top_level" | "reply_to_op" | "reply_to_question";
+  postType: "showcase" | "question" | "discussion";
 }
 
 export interface GeneratedComment {

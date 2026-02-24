@@ -1,10 +1,44 @@
 import { Worker, Job } from "bullmq";
+import { z } from "zod";
 import { redisConnection } from "@/server/utils/redis";
 import { prisma } from "@/server/utils/db";
 import { fetchPostContext } from "@/services/reddit/context";
 import { generateComment } from "@/services/generation/comment-generator";
+import { chatCompletionJSON, MODELS } from "@/lib/openrouter";
 import { addToPostingQueue } from "./queues";
 import type { PostGenerationJobData } from "./queues";
+
+const postTypeSchema = z.object({
+  postType: z.enum(["showcase", "question", "discussion"]),
+});
+
+async function classifyPostType(title: string, body: string | null): Promise<"showcase" | "question" | "discussion"> {
+  try {
+    const result = await chatCompletionJSON({
+      model: MODELS.GEMINI_FLASH,
+      temperature: 0,
+      schema: postTypeSchema,
+      messages: [
+        {
+          role: "system",
+          content: `Classify this Reddit post into exactly one type. Return JSON with a single field "postType".
+
+- "showcase": OP is sharing/launching something they built or created (e.g. "I built X", "Check out my project", "Just launched X")
+- "question": OP is asking a question, seeking recommendations, or requesting help (e.g. "What's the best X?", "How do I Y?", "Looking for Z")
+- "discussion": General discussion, news, opinion, or anything else`,
+        },
+        {
+          role: "user",
+          content: `Title: ${title}\nBody: ${body?.slice(0, 500) || "(no body)"}`,
+        },
+      ],
+    });
+    return result.postType;
+  } catch {
+    // Fallback: default to discussion if classification fails
+    return "discussion";
+  }
+}
 
 const processPostGeneration = async (job: Job<PostGenerationJobData>) => {
   const { opportunityId } = job.data;
@@ -38,6 +72,10 @@ const processPostGeneration = async (job: Job<PostGenerationJobData>) => {
       parentCommentId: opportunity.parentCommentId ?? undefined,
     });
 
+    // Classify post type with LLM
+    const postType = await classifyPostType(context.post.title, context.post.selftext);
+    console.log(`[post-generation] Post type for ${opportunityId}: ${postType}`);
+
     // Generate comment
     const campaign = opportunity.campaign;
     const result = await generateComment({
@@ -64,6 +102,7 @@ const processPostGeneration = async (job: Job<PostGenerationJobData>) => {
       brandTone: campaign.brandTone || "friendly",
       matchedKeyword: opportunity.matchedKeyword,
       commentPosition: context.suggestedPosition,
+      postType,
     });
 
     if (result.noRelevantComment) {

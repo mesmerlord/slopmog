@@ -1,11 +1,15 @@
-import type { PostCommentParams, PostCommentResult, CommentStatus } from "./types";
+import type {
+  PostCommentParams,
+  CreateOrderResult,
+  OrderStatusResult,
+} from "./types";
 
 export interface PostingProvider {
   name: string;
-  postComment(params: PostCommentParams): Promise<PostCommentResult>;
-  checkCommentStatus?(commentId: string): Promise<CommentStatus>;
+  createCommentOrder(params: PostCommentParams): Promise<CreateOrderResult>;
+  checkOrderStatus(orderId: string): Promise<OrderStatusResult>;
   isAvailable(): Promise<boolean>;
-  getRemainingCapacity?(): Promise<number>;
+  getBalance?(): Promise<number>;
 }
 
 class PostingProviderRegistry {

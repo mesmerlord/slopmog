@@ -2,7 +2,6 @@ import { Worker, Job } from "bullmq";
 import { redisConnection } from "@/server/utils/redis";
 import { prisma } from "@/server/utils/db";
 import { checkCommentPerformance, type TrackingSnapshot } from "@/services/tracking/tracker";
-import "@/services/posting/upvotemax"; // Ensure provider is registered
 import { addToTrackingQueue } from "./queues";
 import type { TrackingJobData } from "./queues";
 
@@ -13,12 +12,12 @@ const processTracking = async (job: Job<TrackingJobData>) => {
     where: { id: opportunityId },
   });
 
-  if (!opportunity || opportunity.status !== "POSTED" || !opportunity.postedCommentId) {
+  if (!opportunity || opportunity.status !== "POSTED") {
     return;
   }
 
   const { status, snapshot, nextCheckDelay } = await checkCommentPerformance(
-    opportunity.postedCommentId,
+    opportunity.externalOrderId || opportunity.postedCommentId || "",
     opportunity.providerUsed || "upvotemax",
     checkNumber,
   );
@@ -37,7 +36,7 @@ const processTracking = async (job: Job<TrackingJobData>) => {
 
   // Check for removal within first hour
   if (status.removed && checkNumber <= 1) {
-    console.log(`[tracking] Comment removed quickly for ${opportunityId} — flagging campaign`);
+    console.log(`[tracking] Comment removed quickly for ${opportunityId} — flagging`);
     await prisma.opportunity.update({
       where: { id: opportunityId },
       data: { status: "FAILED", metadata: JSON.parse(JSON.stringify({ ...existingMetadata, trackingSnapshots: snapshots, removedEarly: true })) },

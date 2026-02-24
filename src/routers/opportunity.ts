@@ -25,7 +25,8 @@ export const opportunityRouter = router({
           ])
           .optional(),
         subreddit: z.string().optional(),
-        sort: z.enum(["newest", "relevance", "upvotes"]).optional(),
+        minRelevance: z.number().min(0).max(1).optional(),
+        sort: z.enum(["newest", "relevance", "upvotes", "postDate"]).optional(),
         cursor: z.string().optional(),
         limit: z.number().min(1).max(50).optional(),
       }),
@@ -37,7 +38,9 @@ export const opportunityRouter = router({
           ? { relevanceScore: "desc" as const }
           : input.sort === "upvotes"
             ? { score: "desc" as const }
-            : { discoveredAt: "desc" as const };
+            : input.sort === "postDate"
+              ? [{ redditCreatedAt: "desc" as const }, { discoveredAt: "desc" as const }]
+              : { discoveredAt: "desc" as const };
 
       // Get all campaign IDs for this user
       const userCampaigns = await ctx.prisma.campaign.findMany({
@@ -53,6 +56,7 @@ export const opportunityRouter = router({
             : { in: campaignIds },
           status: input.status ?? undefined,
           subreddit: input.subreddit ?? undefined,
+          relevanceScore: input.minRelevance ? { gte: input.minRelevance } : undefined,
           isArchived: false,
         },
         orderBy,

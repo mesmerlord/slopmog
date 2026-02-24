@@ -336,6 +336,7 @@ model Opportunity {
   postBody         String?           @db.Text
   score            Int               @default(0)
   numComments      Int               @default(0)
+  redditCreatedAt  DateTime?
   matchedKeyword   String
   discoverySource  DiscoverySource
   relevanceScore      Float             @default(0)
@@ -354,6 +355,7 @@ model Opportunity {
   commentVersion   Int               @default(0)
 
   // Posting result
+  externalOrderId  String?           // UpvoteMax order ID
   postedCommentId  String?
   postedCommentUrl String?
   providerUsed     String?

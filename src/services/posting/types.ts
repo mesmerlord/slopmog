@@ -5,14 +5,23 @@ export interface PostCommentParams {
   parentCommentId?: string; // If replying to a comment instead of top-level
 }
 
-export interface PostCommentResult {
+export interface CreateOrderResult {
   success: boolean;
-  commentId?: string;
-  commentUrl?: string;
+  orderId?: string;
+  cost?: number;
+  balance?: number;
   error?: string;
   retryable: boolean;
 }
 
+export type OrderStatus = "pending" | "running" | "completed" | "failed" | "unknown";
+
+export interface OrderStatusResult {
+  status: OrderStatus;
+  error?: string;
+}
+
+// Kept for tracking — represents what we know about a posted comment
 export interface CommentStatus {
   exists: boolean;
   score?: number;

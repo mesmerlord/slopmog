@@ -169,6 +169,7 @@ const processDiscovery = async (job: Job<DiscoveryJobData>) => {
           postBody: thread.post.selftext?.slice(0, 5000) || null,
           score: thread.post.score,
           numComments: thread.post.numComments,
+          redditCreatedAt: thread.post.createdUtc ? new Date(thread.post.createdUtc * 1000) : null,
           matchedKeyword: thread.matchedKeyword,
           discoverySource: mode === "scout" ? "SCOUT" : "MINER",
           relevanceScore: thread.relevanceScore,
