@@ -1,5 +1,6 @@
 import type { AppProps } from "next/app";
 import { SessionProvider } from "next-auth/react";
+import { Toaster } from "sonner";
 import { trpc } from "@/utils/trpc";
 import "@/styles/globals.css";
 
@@ -8,6 +9,7 @@ function App({ Component, pageProps }: AppProps) {
   return (
     <SessionProvider session={session as never}>
       <Component {...rest} />
+      <Toaster position="top-right" richColors />
     </SessionProvider>
   );
 }

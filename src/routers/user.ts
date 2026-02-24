@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "@/server/trpc";
+import bcrypt from "bcryptjs";
+import { router, publicProcedure, protectedProcedure } from "@/server/trpc";
 import Stripe from "stripe";
-import { CREDIT_PRICES } from "@/constants/pricing";
+import { CREDIT_PRICES, FREE_CREDITS } from "@/constants/pricing";
 import type { PrismaClient } from "@prisma/client";
 
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -63,6 +64,60 @@ async function resolveStripeCustomer(
 }
 
 export const userRouter = router({
+  checkEmailExists: publicProcedure
+    .input(z.object({ email: z.string().email() }))
+    .query(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: input.email },
+        select: { id: true },
+      });
+      return { exists: !!user };
+    }),
+
+  register: publicProcedure
+    .input(
+      z.object({
+        name: z.string().min(1),
+        email: z.string().email(),
+        password: z.string().min(8),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existing = await ctx.prisma.user.findUnique({
+        where: { email: input.email },
+        select: { id: true },
+      });
+
+      if (existing) {
+        throw new Error("An account with this email already exists");
+      }
+
+      const hashedPassword = await bcrypt.hash(input.password, 12);
+
+      const user = await ctx.prisma.user.create({
+        data: {
+          name: input.name,
+          email: input.email,
+          password: hashedPassword,
+          credits: FREE_CREDITS,
+          emailVerified: new Date(),
+        },
+      });
+
+      await ctx.prisma.userCreditHistory.create({
+        data: {
+          userId: user.id,
+          credits: FREE_CREDITS,
+          previousCredits: 0,
+          newCredits: FREE_CREDITS,
+          reason: "REGISTRATION_BONUS",
+          reasonExtra: "Free credits on sign up",
+        },
+      });
+
+      return { success: true, userId: user.id };
+    }),
+
   getCredits: protectedProcedure.query(async ({ ctx }) => {
     const user = await ctx.prisma.user.findUnique({
       where: { id: ctx.session.user.id },

@@ -1,57 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Seo from "@/components/Seo";
-
-/* ─── Reusable mascot blob (appears at 4 sizes via parent CSS context) ─── */
-function MascotBlob() {
-  return (
-    <div className="mascot-blob absolute w-[200px] h-[180px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[3]">
-      <div className="mascot-blob-body w-full h-full bg-coral relative">
-        <div className="mascot-antenna absolute -top-5 left-1/2 -translate-x-1/2 w-[3px] h-[30px] bg-coral-dark rounded-[3px]" />
-        <div className="mascot-eyes absolute top-[35%] left-1/2 -translate-x-1/2 flex gap-6">
-          <div className="mascot-eye w-8 h-9 bg-white rounded-full relative shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
-            <div className="mascot-pupil absolute w-4 h-4 bg-charcoal rounded-full top-[10px] left-1/2 -translate-x-1/2" />
-            <div className="mascot-eye-shine absolute w-1.5 h-1.5 bg-white rounded-full top-[10px] right-1.5 z-[1]" />
-          </div>
-          <div className="mascot-eye w-8 h-9 bg-white rounded-full relative shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
-            <div className="mascot-pupil absolute w-4 h-4 bg-charcoal rounded-full top-[10px] left-1/2 -translate-x-1/2" />
-            <div className="mascot-eye-shine absolute w-1.5 h-1.5 bg-white rounded-full top-[10px] right-1.5 z-[1]" />
-          </div>
-        </div>
-        <div className="mascot-mouth absolute top-[62%] left-1/2 -translate-x-1/2 w-10 h-5 border-b-4 border-charcoal border-l-4 border-l-transparent border-r-4 border-r-transparent rounded-b-[50%]" />
-        <div className="mascot-arm mascot-arm-left absolute w-[50px] h-5 bg-coral-dark rounded-[30px] top-[55%] z-[2] -left-5 -rotate-[20deg]" />
-        <div className="mascot-arm mascot-arm-right absolute w-[50px] h-5 bg-coral-dark rounded-[30px] top-[55%] z-[2] -right-5 rotate-[20deg]" />
-      </div>
-    </div>
-  );
-}
-
-/* ─── Animated logo blob SVG ─── */
-function LogoBlob({ className }: { className?: string }) {
-  return (
-    <div className={className ?? "w-10 h-10 shrink-0"}>
-      <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-        <path
-          d="M20 2 C30 2, 38 10, 38 20 C38 30, 30 38, 20 38 C10 38, 2 30, 2 20 C2 10, 10 2, 20 2Z"
-          fill="#FF6B6B"
-          stroke="#2D3047"
-          strokeWidth="2"
-        >
-          <animate
-            attributeName="d"
-            dur="4s"
-            repeatCount="indefinite"
-            values="M20 2 C30 2, 38 10, 38 20 C38 30, 30 38, 20 38 C10 38, 2 30, 2 20 C2 10, 10 2, 20 2Z;M20 4 C32 4, 36 12, 36 20 C36 32, 28 36, 20 36 C8 36, 4 28, 4 20 C4 8, 12 4, 20 4Z;M20 2 C30 2, 38 10, 38 20 C38 30, 30 38, 20 38 C10 38, 2 30, 2 20 C2 10, 10 2, 20 2Z"
-          />
-        </path>
-        <circle cx="14" cy="17" r="3.5" fill="white" />
-        <circle cx="26" cy="17" r="3.5" fill="white" />
-        <circle cx="15" cy="18" r="1.8" fill="#2D3047" />
-        <circle cx="27" cy="18" r="1.8" fill="#2D3047" />
-        <path d="M15 26 Q20 30, 25 26" stroke="#2D3047" strokeWidth="2" fill="none" strokeLinecap="round" />
-      </svg>
-    </div>
-  );
-}
+import MascotBlob from "@/components/MascotBlob";
+import Nav from "@/components/Nav";
+import Footer from "@/components/Footer";
 
 /* ─── Check icon for pricing features ─── */
 function CheckIcon() {
@@ -130,8 +81,6 @@ const STATS = [
 ];
 
 export default function Home() {
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [navScrolled, setNavScrolled] = useState(false);
   const [activeDemo, setActiveDemo] = useState<"before" | "after">("before");
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [statValues, setStatValues] = useState<string[]>(STATS.map(() => "0"));
@@ -140,10 +89,8 @@ export default function Home() {
   const demoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const faqRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  /* ── Scroll: nav shadow + reveal animations + stat counters ── */
+  /* ── Scroll: reveal animations + stat counters ── */
   const handleScroll = useCallback(() => {
-    setNavScrolled(window.scrollY > 20);
-
     // Reveal animations
     document.querySelectorAll(".reveal").forEach((el) => {
       if (el.getBoundingClientRect().top < window.innerHeight - 80) {
@@ -211,7 +158,6 @@ export default function Home() {
 
   /* ── Smooth scroll helper ── */
   function scrollTo(id: string) {
-    setMobileNavOpen(false);
     const el = document.getElementById(id);
     if (el) {
       const top = el.getBoundingClientRect().top + window.pageYOffset - 80;
@@ -241,42 +187,7 @@ export default function Home() {
         }}
       />
 
-      {/* ═══ NAV ═══ */}
-      <nav className={`fixed top-0 left-0 right-0 z-[1000] bg-bg/[0.92] backdrop-blur-xl border-b border-charcoal/[0.06] transition-shadow duration-300${navScrolled ? " shadow-brand-sm" : ""}`}>
-        <div className="max-w-[1140px] mx-auto px-4 md:px-6 flex items-center justify-between h-14 md:h-[68px]">
-          <a href="#" className="font-heading font-bold text-xl md:text-2xl text-charcoal flex items-center gap-2" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
-            <LogoBlob className="w-8 h-8 md:w-10 md:h-10 shrink-0" />
-            SlopMog
-          </a>
-
-          {/* Desktop nav */}
-          <ul className="hidden md:flex items-center gap-8 list-none">
-            <li><a href="#how" className="text-[0.95rem] font-semibold text-charcoal-light hover:text-teal transition-colors" onClick={(e) => { e.preventDefault(); scrollTo("how"); }}>How It Works</a></li>
-            <li><a href="#demo" className="text-[0.95rem] font-semibold text-charcoal-light hover:text-teal transition-colors" onClick={(e) => { e.preventDefault(); scrollTo("demo"); }}>Demo</a></li>
-            <li><a href="#pricing" className="text-[0.95rem] font-semibold text-charcoal-light hover:text-teal transition-colors" onClick={(e) => { e.preventDefault(); scrollTo("pricing"); }}>Pricing</a></li>
-            <li><a href="#faq" className="text-[0.95rem] font-semibold text-charcoal-light hover:text-teal transition-colors" onClick={(e) => { e.preventDefault(); scrollTo("faq"); }}>FAQ</a></li>
-            <li><a href="#cta" className="bg-coral text-white px-6 py-2.5 rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all" onClick={(e) => { e.preventDefault(); scrollTo("cta"); }}>Get Started</a></li>
-          </ul>
-
-          {/* Mobile hamburger */}
-          <button className="flex md:hidden flex-col gap-[5px] bg-transparent p-1" aria-label="Menu" onClick={() => setMobileNavOpen((v) => !v)}>
-            <span className={`block w-6 h-[2.5px] bg-charcoal rounded-sm transition-transform duration-300${mobileNavOpen ? " translate-y-[7.5px] rotate-45" : ""}`} />
-            <span className={`block w-6 h-[2.5px] bg-charcoal rounded-sm transition-opacity duration-300${mobileNavOpen ? " opacity-0" : ""}`} />
-            <span className={`block w-6 h-[2.5px] bg-charcoal rounded-sm transition-transform duration-300${mobileNavOpen ? " -translate-y-[7.5px] -rotate-45" : ""}`} />
-          </button>
-        </div>
-
-        {/* Mobile menu dropdown */}
-        <div className={`md:hidden overflow-hidden transition-all duration-300 bg-bg border-b border-charcoal/[0.06] shadow-brand-md${mobileNavOpen ? " max-h-80 opacity-100" : " max-h-0 opacity-0 pointer-events-none"}`}>
-          <ul className="flex flex-col items-center gap-4 py-6 list-none">
-            <li><a href="#how" className="text-base font-semibold text-charcoal-light hover:text-teal transition-colors" onClick={(e) => { e.preventDefault(); scrollTo("how"); }}>How It Works</a></li>
-            <li><a href="#demo" className="text-base font-semibold text-charcoal-light hover:text-teal transition-colors" onClick={(e) => { e.preventDefault(); scrollTo("demo"); }}>Demo</a></li>
-            <li><a href="#pricing" className="text-base font-semibold text-charcoal-light hover:text-teal transition-colors" onClick={(e) => { e.preventDefault(); scrollTo("pricing"); }}>Pricing</a></li>
-            <li><a href="#faq" className="text-base font-semibold text-charcoal-light hover:text-teal transition-colors" onClick={(e) => { e.preventDefault(); scrollTo("faq"); }}>FAQ</a></li>
-            <li><a href="#cta" className="bg-coral text-white px-8 py-2.5 rounded-full font-bold text-sm hover:bg-coral-dark transition-all" onClick={(e) => { e.preventDefault(); scrollTo("cta"); }}>Get Started</a></li>
-          </ul>
-        </div>
-      </nav>
+      <Nav variant="landing" onScrollTo={scrollTo} />
 
       {/* ═══ HERO ═══ */}
       <section className="relative overflow-hidden min-h-[100svh] flex items-center pt-16 pb-6 md:pt-28 md:pb-16 lg:pt-32 lg:pb-20 px-4 md:px-6">
@@ -708,23 +619,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ═══ FOOTER ═══ */}
-      <footer className="py-12 px-6 max-md:py-9 max-md:px-4 border-t border-charcoal/[0.06]">
-        <div className="max-w-[1140px] mx-auto flex items-center justify-between flex-wrap gap-4 max-md:flex-col max-md:items-center max-md:text-center max-md:gap-5">
-          <a href="#" className="font-heading font-bold text-[1.15rem] text-charcoal flex items-center gap-2" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
-            <LogoBlob className="w-7 h-7 shrink-0" />
-            SlopMog
-          </a>
-          <ul className="flex gap-6 max-md:flex-wrap max-md:justify-center max-md:gap-4 list-none">
-            <li><a href="#how" className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors" onClick={(e) => { e.preventDefault(); scrollTo("how"); }}>How It Works</a></li>
-            <li><a href="#pricing" className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors" onClick={(e) => { e.preventDefault(); scrollTo("pricing"); }}>Pricing</a></li>
-            <li><a href="#faq" className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors" onClick={(e) => { e.preventDefault(); scrollTo("faq"); }}>FAQ</a></li>
-            <li><a href="#" className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors">Privacy</a></li>
-            <li><a href="#" className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors">Terms</a></li>
-          </ul>
-          <p className="text-[0.82rem] text-charcoal-light opacity-70 w-full text-center mt-4 max-md:mt-2">&copy; 2025 SlopMog. The name is ridiculous. The results aren&apos;t.</p>
-        </div>
-      </footer>
+      <Footer onScrollTo={scrollTo} />
     </>
   );
 }

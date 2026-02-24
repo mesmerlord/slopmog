@@ -7,6 +7,7 @@ import {
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/server/utils/db";
 import { FREE_CREDITS } from "@/constants/pricing";
 
@@ -46,9 +47,8 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid credentials");
         }
 
-        // TODO: Add bcrypt comparison when password auth is needed
-        // const isValid = await bcrypt.compare(credentials.password, user.password);
-        // if (!isValid) throw new Error("Invalid credentials");
+        const isValid = await bcrypt.compare(credentials.password, user.password);
+        if (!isValid) throw new Error("Invalid credentials");
 
         return {
           id: user.id,
