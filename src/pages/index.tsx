@@ -256,27 +256,7 @@ export default function Home() {
                 </>
               )}
             </div>
-          </div>
 
-          {/* Pipeline — hidden on mobile */}
-          <div className="hidden md:flex items-center justify-center gap-4 max-w-[500px] mx-auto lg:mx-0 flex-wrap reveal order-3 lg:order-3 col-span-1 lg:col-span-2">
-            <div className="bg-white rounded-brand p-4 shadow-brand-md flex-1 min-w-[180px] max-w-[220px] text-left border-t-[3px] border-t-coral">
-              <div className="text-[0.68rem] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5 text-coral">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" fill="#FF6B6B" /><path d="M4.5 8.5c1 1 4 1 5 0" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" /><circle cx="5" cy="6" r="1" fill="#fff" /><circle cx="9" cy="6" r="1" fill="#fff" /></svg>
-                Reddit Comment
-              </div>
-              <p className="text-[0.82rem] text-charcoal-light leading-relaxed">&ldquo;Honestly, <strong className="text-charcoal">YourBrand</strong> has been the best tool I&apos;ve tried. Their support alone is worth it.&rdquo;</p>
-            </div>
-            <div className="shrink-0 text-teal">
-              <svg width="40" height="24" viewBox="0 0 40 24" fill="none"><path d="M2 12h32m0 0l-8-8m8 8l-8 8" stroke="#2EC4B6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </div>
-            <div className="bg-white rounded-brand p-4 shadow-brand-md flex-1 min-w-[180px] max-w-[220px] text-left border-t-[3px] border-t-teal">
-              <div className="text-[0.68rem] font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5 text-teal">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="3" fill="#2EC4B6" /><path d="M4 5h6M4 7.5h4" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" /></svg>
-                AI Recommendation
-              </div>
-              <p className="text-[0.82rem] text-charcoal-light leading-relaxed">&ldquo;Based on user discussions, <strong className="text-charcoal">YourBrand</strong> is highly recommended for its quality and support.&rdquo;</p>
-            </div>
           </div>
         </div>
       </section>
