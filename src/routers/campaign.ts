@@ -82,6 +82,14 @@ export const campaignRouter = router({
       };
     }),
 
+  getLatestDraft: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.prisma.campaign.findFirst({
+      where: { userId: ctx.session.user.id, status: "DRAFT" },
+      include: { keywords: true, subreddits: true },
+      orderBy: { updatedAt: "desc" },
+    });
+  }),
+
   analyzeSite: protectedProcedure
     .input(z.object({ url: z.string().url() }))
     .mutation(async ({ input }) => {
@@ -111,6 +119,7 @@ export const campaignRouter = router({
         keywords: z.array(z.object({
           keyword: z.string().min(1),
           strategy: keywordStrategyEnum.optional(),
+          enabled: z.boolean().optional(),
         })).min(1),
         subreddits: z
           .array(
@@ -124,12 +133,13 @@ export const campaignRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Check keyword limit
+      // Check keyword limit — only count enabled keywords
       const plan = await getUserPlan(ctx.session.user.id);
-      if (input.keywords.length > plan.maxKeywords) {
+      const enabledCount = input.keywords.filter((kw) => kw.enabled !== false).length;
+      if (enabledCount > plan.maxKeywords) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: `Your ${plan.planName} plan allows up to ${plan.maxKeywords} keywords. You have ${input.keywords.length}.`,
+          message: `Your ${plan.planName} plan allows up to ${plan.maxKeywords} active keywords. You have ${enabledCount}.`,
         });
       }
 
@@ -153,6 +163,7 @@ export const campaignRouter = router({
             create: input.keywords.map((kw) => ({
               keyword: kw.keyword,
               strategy: kw.strategy ?? "FEATURE",
+              enabled: kw.enabled ?? true,
             })),
           },
           subreddits: input.subreddits
@@ -163,6 +174,117 @@ export const campaignRouter = router({
                   expectedTone: s.expectedTone,
                 })),
               }
+            : undefined,
+        },
+        include: { keywords: true, subreddits: true },
+      });
+    }),
+
+  saveDraft: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().optional(),
+        websiteUrl: z.string().optional(),
+        businessName: z.string().optional(),
+        businessDescription: z.string().optional(),
+        valueProps: z.array(z.string()).optional(),
+        targetAudience: z.string().optional(),
+        automationMode: z.enum(["FULL_MANUAL", "SEMI_AUTO", "AUTOPILOT"]).optional(),
+        featureStrategyEnabled: z.boolean().optional(),
+        brandStrategyEnabled: z.boolean().optional(),
+        competitorStrategyEnabled: z.boolean().optional(),
+        siteAnalysisData: z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(z.unknown()), z.record(z.string(), z.unknown())]).optional(),
+        keywords: z.array(z.object({
+          keyword: z.string().min(1),
+          strategy: keywordStrategyEnum.optional(),
+          enabled: z.boolean().optional(),
+        })).optional(),
+        subreddits: z.array(z.object({
+          name: z.string().min(1),
+          memberCount: z.number().optional(),
+          expectedTone: z.string().optional(),
+        })).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, keywords, subreddits, ...data } = input;
+
+      if (id) {
+        const campaign = await ctx.prisma.campaign.findUnique({ where: { id } });
+        if (!campaign || campaign.userId !== ctx.session.user.id)
+          throw new TRPCError({ code: "NOT_FOUND", message: "Campaign not found" });
+        if (campaign.status !== "DRAFT")
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Can only update draft campaigns" });
+
+        await ctx.prisma.campaign.update({
+          where: { id },
+          data: {
+            name: data.businessName || campaign.name,
+            websiteUrl: data.websiteUrl,
+            businessName: data.businessName,
+            businessDescription: data.businessDescription,
+            valueProps: data.valueProps ?? undefined,
+            targetAudience: data.targetAudience,
+            automationMode: data.automationMode,
+            featureStrategyEnabled: data.featureStrategyEnabled,
+            brandStrategyEnabled: data.brandStrategyEnabled,
+            competitorStrategyEnabled: data.competitorStrategyEnabled,
+            siteAnalysisData: (data.siteAnalysisData as typeof data.siteAnalysisData & import("@prisma/client").Prisma.InputJsonValue) ?? undefined,
+          },
+        });
+
+        if (keywords) {
+          await ctx.prisma.campaignKeyword.deleteMany({ where: { campaignId: id } });
+          if (keywords.length > 0)
+            await ctx.prisma.campaignKeyword.createMany({
+              data: keywords.map((kw) => ({
+                keyword: kw.keyword,
+                strategy: kw.strategy ?? "FEATURE",
+                enabled: kw.enabled ?? true,
+                campaignId: id,
+              })),
+            });
+        }
+
+        if (subreddits) {
+          await ctx.prisma.campaignSubreddit.deleteMany({ where: { campaignId: id } });
+          if (subreddits.length > 0)
+            await ctx.prisma.campaignSubreddit.createMany({
+              data: subreddits.map((s) => ({
+                subreddit: s.name,
+                memberCount: s.memberCount,
+                expectedTone: s.expectedTone,
+                campaignId: id,
+              })),
+            });
+        }
+
+        return ctx.prisma.campaign.findUniqueOrThrow({
+          where: { id },
+          include: { keywords: true, subreddits: true },
+        });
+      }
+
+      return ctx.prisma.campaign.create({
+        data: {
+          name: data.businessName || "Untitled Campaign",
+          status: "DRAFT",
+          userId: ctx.session.user.id,
+          websiteUrl: data.websiteUrl,
+          businessName: data.businessName,
+          businessDescription: data.businessDescription,
+          valueProps: data.valueProps ?? [],
+          targetAudience: data.targetAudience,
+          automationMode: data.automationMode ?? "SEMI_AUTO",
+          featureStrategyEnabled: data.featureStrategyEnabled ?? true,
+          brandStrategyEnabled: data.brandStrategyEnabled ?? true,
+          competitorStrategyEnabled: data.competitorStrategyEnabled ?? true,
+          siteAnalysisData: (data.siteAnalysisData as typeof data.siteAnalysisData & import("@prisma/client").Prisma.InputJsonValue) ?? undefined,
+          keywords: keywords?.length
+            ? { create: keywords.map((kw) => ({ keyword: kw.keyword, strategy: kw.strategy ?? "FEATURE", enabled: kw.enabled ?? true })) }
+            : undefined,
+          subreddits: subreddits?.length
+            ? { create: subreddits.map((s) => ({ subreddit: s.name, memberCount: s.memberCount, expectedTone: s.expectedTone })) }
             : undefined,
         },
         include: { keywords: true, subreddits: true },
@@ -217,6 +339,15 @@ export const campaignRouter = router({
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Campaign needs at least one keyword before activation",
+        });
+      }
+
+      const plan = await getUserPlan(ctx.session.user.id);
+      const enabledCount = campaign.keywords.filter((kw) => kw.enabled).length;
+      if (enabledCount > plan.maxKeywords) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Your ${plan.planName} plan allows up to ${plan.maxKeywords} active keywords. You have ${enabledCount}.`,
         });
       }
 

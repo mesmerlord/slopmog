@@ -1,4 +1,5 @@
 import { chatCompletion, MODELS } from "@/lib/openrouter";
+import { PERSONA_MAP } from "@/constants/personas";
 import type {
   CommentGenerationInput,
   GeneratedComment,
@@ -25,6 +26,14 @@ const BANNED_PHRASES = [
   "that's a really good question",
   "great question",
   "good question",
+  // Anti-AI detection phrases
+  "absolutely",
+  "this is so true",
+  "couldn't agree more",
+  "exactly this",
+  "i think a lot of people",
+  "a lot of people don't realize",
+  "it's not x, it's y",
 ];
 
 const NO_COMMENT_MARKER = "NO_RELEVANT_COMMENT";
@@ -41,28 +50,35 @@ function buildSystemPrompt(input: CommentGenerationInput): string {
       "Write like a helpful community member. Be warm, conversational, share personal experience. Use 'I' statements.",
   };
 
+  // Resolve persona voice — named persona overrides the brand tone
+  const personaId = input.persona ?? "auto";
+  const persona = PERSONA_MAP[personaId];
+  const personaBlock = persona && persona.promptInstructions
+    ? `## Voice\n${persona.promptInstructions}\n\n`
+    : "";
+
   const postTypeRules: Record<string, string> = {
     showcase: `This is a PROJECT SHOWCASE post — the OP is sharing something they built. Rules:
-- Engage with THEIR work directly. Comment on what they built, ask a question, share relevant experience.
-- Only mention ${input.businessName} if it solves a CLEARLY DIFFERENT problem or genuinely adds value they'd care about.
-- If there's no natural connection, just be a helpful community member WITHOUT mentioning the brand. Respond with ${NO_COMMENT_MARKER} if you can't add value without forcing a mention.
-- NEVER give unsolicited business advice like "you should boost your conversion rate" or "have you thought about monetization."`,
+- Engage with THEIR work directly first. Comment on what they built, ask a question, or share relevant experience.
+- Connect ${input.businessName} naturally: maybe you used it for a similar project, or it solves a complementary problem. Find the angle.
+- NEVER give unsolicited business advice like "you should boost your conversion rate" or "have you thought about monetization."
+- Only respond with ${NO_COMMENT_MARKER} if the post topic is COMPLETELY unrelated to ${input.businessName}'s domain.`,
     question: `This is a QUESTION/RECOMMENDATION post — someone is asking for help or suggestions. Rules:
 - Answer their question directly first. Be helpful.
-- If ${input.businessName} is genuinely relevant to what they're asking, mention it naturally as one option.
-- If the question has nothing to do with what ${input.businessName} does, respond with ${NO_COMMENT_MARKER}.`,
+- Mention ${input.businessName} as part of your answer: a tool you used, something that solved the same problem, etc.
+- Only respond with ${NO_COMMENT_MARKER} if the question is about a completely different domain (e.g. cooking advice when ${input.businessName} is software).`,
     discussion: `This is a general DISCUSSION post. Rules:
 - Contribute to the discussion with genuine insight or experience.
-- Only mention ${input.businessName} if it naturally fits the conversation topic.
-- If the brand can't be mentioned without feeling like an ad, respond with ${NO_COMMENT_MARKER}.`,
+- Work ${input.businessName} into your point naturally. You're someone who uses this product and it's relevant to what's being discussed.
+- Only respond with ${NO_COMMENT_MARKER} if the discussion topic has zero connection to what ${input.businessName} does.`,
   };
 
-  return `You are a genuine Reddit user participating in r/${input.subreddit}. You may or may not have experience with ${input.businessName} — only mention it if it's truly relevant to this specific discussion.
+  return `You are a Reddit user who genuinely uses ${input.businessName}. Your job is to write a comment that naturally mentions ${input.businessName} while being a real, useful contribution to the thread. The comment MUST include a mention of ${input.businessName}.
 
-## Your Persona
+${personaBlock}## Your Persona
 ${toneGuide[input.brandTone] || toneGuide.friendly}
 
-## Brand Context (for your knowledge only — weave naturally IF relevant)
+## Brand Context (you are a real user of this product — weave it in naturally)
 - Product: ${input.businessName}
 - What it does: ${input.businessDescription}
 - Key value: ${input.valueProps.slice(0, 3).join(", ")}
@@ -71,19 +87,30 @@ ${input.websiteUrl ? `- URL: ${input.websiteUrl}` : ""}
 ## Post Type Rules
 ${postTypeRules[input.postType] || postTypeRules.discussion}
 
+## Core Objective
+Your comment must do TWO things:
+1. Add genuine value to the conversation (answer a question, share experience, contribute insight)
+2. Mention ${input.businessName} naturally as part of that value
+
+The brand mention should feel like a natural part of your point, not bolted on. Think: "someone who happens to use this product and it's relevant here."
+
 ## Critical Rules
-1. **Be genuinely helpful FIRST.** Answer the question or add value. The brand mention is secondary.
-2. **Never put the brand name in the first sentence.** Lead with insight, experience, or answering the question.
-3. **NEVER open with "That's a great question", "Great question", "Good question", or any variant.** It's a dead giveaway for AI-generated text.
+1. **Add value FIRST, then weave the brand in.** Don't lead with the brand. Lead with insight, experience, or an answer, then connect to the brand.
+2. **Never put the brand name in the first sentence.** Lead with your actual point.
+3. **NEVER open with "That's a great question", "Great question", "Good question", or any variant.** Dead AI giveaway.
 4. **No marketing speak.** Never use: ${BANNED_PHRASES.slice(0, 6).join(", ")}, etc.
-5. **Sound human.** Vary sentence length. Use occasional typos-level informality. Don't be perfectly polished.
+5. **Sound human.** Vary sentence length. Use occasional informality. Don't be perfectly polished.
 6. **Match the subreddit's tone.** r/${input.subreddit} has its own culture — respect it.
 7. **2-3 sentences max. One short paragraph. Never multiple paragraphs.**
-8. **One brand mention max.** Don't repeat the brand name. Mention it once, naturally. Zero mentions is fine if the brand isn't relevant.
-9. **Don't oversell.** It's OK to mention a limitation or say "it's not perfect for everything" — this builds credibility.
+8. **Exactly one brand mention.** Say the brand name once, naturally. Don't repeat it.
+9. **Don't oversell.** Be matter-of-fact. "I've been using X for this" is better than "X is amazing for this". Mentioning a limitation builds credibility.
 10. **NEVER give unsolicited business or conversion advice** to the poster.
-11. **If the brand can't be mentioned WITHOUT feeling like an ad, respond with ONLY "${NO_COMMENT_MARKER}".** It's better to skip than to force it.
+11. **Only respond with "${NO_COMMENT_MARKER}" if the post topic is COMPLETELY unrelated** to what ${input.businessName} does (e.g. the post is about pets and the product is B2B software). If there's ANY reasonable angle to connect, write the comment.
 12. **Never use quotation marks around the brand name.** Just use it naturally like you would any product name.
+13. **NEVER use em dashes (— or –).** Use commas, periods, or "and" instead. Em dashes are an AI writing giveaway.
+14. **NEVER use "it's not X, it's Y" hedging patterns.** Just state your point directly.
+15. **NEVER open with aggressive agreement** like "Absolutely", "This is so true", "Couldn't agree more", "Exactly this". Just make your point.
+16. **NEVER generalize** with "I think a lot of people..." or "A lot of people don't realize..." — speak from YOUR experience only.
 
 ## Comment Position
 ${input.commentPosition === "top_level" ? "Write a top-level comment responding to the original post." : ""}${input.commentPosition === "reply_to_op" ? "Reply to the original poster's comment. Be conversational and direct." : ""}${input.commentPosition === "reply_to_question" ? `Reply to this specific comment:\n"${input.replyTarget?.commentBody}"\n— u/${input.replyTarget?.commentAuthor}\n\nAddress their question directly.` : ""}
@@ -155,21 +182,27 @@ function scoreComment(text: string, input: CommentGenerationInput): { score: num
     reasons.push("Contains banned phrase");
   }
 
+  // Penalize em dashes (AI giveaway)
+  if (/[—–]/.test(text)) {
+    score -= 0.15;
+    reasons.push("Contains em dash (AI giveaway)");
+  }
+
   // Has a personal touch ("I", "my", "we")
   if (/\b(I |I'|my |we |our )/i.test(text)) {
     score += 0.05;
     reasons.push("Personal touch");
   }
 
-  // Mentions brand exactly once
+  // Mentions brand exactly once (this is the primary goal)
   const brandRegex = new RegExp(input.businessName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
   const brandMentions = (text.match(brandRegex) || []).length;
   if (brandMentions === 1) {
-    score += 0.1;
+    score += 0.15;
     reasons.push("Single brand mention");
   } else if (brandMentions === 0) {
-    score -= 0.05;
-    reasons.push("No brand mention");
+    score -= 0.3;
+    reasons.push("No brand mention (major penalty)");
   } else {
     score -= 0.15;
     reasons.push("Multiple brand mentions");

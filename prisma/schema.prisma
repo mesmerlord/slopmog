@@ -256,6 +256,7 @@ model CampaignKeyword {
   id         String          @id @default(cuid())
   keyword    String
   strategy   KeywordStrategy @default(FEATURE)
+  enabled    Boolean         @default(true)
   campaign   Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   campaignId String
   createdAt  DateTime        @default(now())
@@ -341,6 +342,7 @@ model Opportunity {
   discoverySource  DiscoverySource
   relevanceScore      Float             @default(0)
   relevanceReasoning  String?           @db.Text
+  postType            String?           // "showcase" | "question" | "discussion"
   scoredAt            DateTime?
   status              OpportunityStatus @default(DISCOVERED)
   isArchived          Boolean           @default(false)
@@ -353,6 +355,7 @@ model Opportunity {
   // Comment generation
   generatedComment String?           @db.Text
   commentVersion   Int               @default(0)
+  persona          String?           // persona used for last generation
 
   // Posting result
   externalOrderId  String?           // UpvoteMax order ID

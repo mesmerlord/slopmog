@@ -7,12 +7,18 @@ interface ChatMessage {
   content: string;
 }
 
+interface WebSearchPlugin {
+  id: "web";
+  max_results?: number;
+  search_prompt?: string;
+}
+
 interface ChatCompletionOptions {
   model: string;
   messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
-  webSearch?: boolean; // Appends :online suffix for web-grounded models
+  webSearch?: boolean | WebSearchPlugin;
 }
 
 interface ChatCompletionResponse {
@@ -35,21 +41,23 @@ function getHeaders() {
   };
 }
 
-function resolveModel(model: string, webSearch?: boolean): string {
-  return webSearch ? `${model}:online` : model;
-}
-
 export async function chatCompletion(
   options: ChatCompletionOptions,
 ): Promise<string> {
   const { model, messages, temperature = 0.7, maxTokens, webSearch } = options;
 
   const body: Record<string, unknown> = {
-    model: resolveModel(model, webSearch),
+    model,
     messages,
     temperature,
   };
   if (maxTokens) body.max_tokens = maxTokens;
+
+  if (webSearch) {
+    const plugin: WebSearchPlugin =
+      typeof webSearch === "object" ? webSearch : { id: "web" };
+    body.plugins = [plugin];
+  }
 
   const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
     method: "POST",

@@ -4,6 +4,7 @@ import { chatCompletionJSON, MODELS } from "@/lib/openrouter";
 const scoringResultSchema = z.object({
   relevance: z.number().min(0).max(1),
   reasoning: z.string(),
+  postType: z.enum(["showcase", "question", "discussion"]),
 });
 
 type ScoringResult = z.infer<typeof scoringResultSchema>;
@@ -49,7 +50,12 @@ Consider:
 3. Is the post actually seeking recommendations or discussing the problem space?
 4. Would a real human naturally bring up this product in this conversation?
 
-Return JSON with "relevance" (number 0-1) and "reasoning" (1-2 sentence explanation).`,
+Also classify the post type:
+- "showcase": OP is sharing/launching something they built (e.g. "I built X", "Check out my project", "Just launched X")
+- "question": OP is asking a question, seeking recommendations, or requesting help (e.g. "What's the best X?", "How do I Y?", "Looking for Z")
+- "discussion": General discussion, news, opinion, or anything else
+
+Return JSON with "relevance" (number 0-1), "reasoning" (1-2 sentence explanation), and "postType" ("showcase", "question", or "discussion").`,
       },
       {
         role: "user",

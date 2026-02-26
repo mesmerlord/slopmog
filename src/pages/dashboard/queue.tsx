@@ -30,14 +30,17 @@ import EmptyState from "@/components/shared/EmptyState";
 import LoadingState from "@/components/shared/LoadingState";
 import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
+import { PERSONAS } from "@/constants/personas";
 import { getServerAuthSession } from "@/server/utils/auth";
+import { SubscriptionModal } from "@/components/SubscriptionModal";
+import GeneratingMascotV1 from "@/components/illustrations/GeneratingMascotV1";
 
 // ---------------------------------------------------------------------------
 // Types & constants
 // ---------------------------------------------------------------------------
 
 type StatusFilter = "DISCOVERED" | "PENDING_REVIEW" | "READY_FOR_REVIEW" | "APPROVED" | "POSTED" | "ALL";
-type SortOption = "newest" | "relevance" | "upvotes" | "postDate";
+type SortOption = "recommended" | "newest" | "relevance" | "upvotes" | "postDate";
 
 const STATUS_TABS: { label: string; value: StatusFilter }[] = [
   { label: "Scoring", value: "DISCOVERED" },
@@ -57,6 +60,7 @@ const RELEVANCE_OPTIONS: { label: string; value: number | undefined }[] = [
 ];
 
 const SORT_OPTIONS: { label: string; value: SortOption }[] = [
+  { label: "Recommended", value: "recommended" },
   { label: "Newest", value: "newest" },
   { label: "Post date", value: "postDate" },
   { label: "Relevance", value: "relevance" },
@@ -104,6 +108,14 @@ const timeAgo = (date: Date | string): string => {
   return `${Math.floor(diffWeeks / 52)}y ago`;
 };
 
+const recommendedColor = (score: number | null | undefined): string => {
+  if (score === null || score === undefined) return "bg-charcoal/10 text-charcoal-light";
+  if (score >= 0.5) return "bg-teal/15 text-teal-dark";
+  if (score >= 0.35) return "bg-sunny/20 text-charcoal";
+  if (score >= 0.2) return "bg-lavender/15 text-lavender-dark";
+  return "bg-charcoal/10 text-charcoal-light";
+};
+
 const relevanceColor = (score: number | null | undefined): string => {
   if (score === null || score === undefined) return "bg-charcoal/10 text-charcoal-light";
   if (score >= 0.8) return "bg-teal/15 text-teal-dark";
@@ -121,16 +133,19 @@ export default function QueuePage() {
   const deepLinkId = typeof router.query.selected === "string" ? router.query.selected : null;
   const deepLinkConsumed = useRef(false);
 
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("PENDING_REVIEW");
+  const initialTabResolved = useRef(false);
   const [campaignFilter, setCampaignFilter] = useState<string | undefined>(undefined);
   const [minRelevance, setMinRelevance] = useState<number | undefined>(0.5);
-  const [sort, setSort] = useState<SortOption>("newest");
+  const [sort, setSort] = useState<SortOption>("recommended");
 
   // Deep-link: if ?selected=<id>, switch to ALL / no relevance filter so the item is visible
   useEffect(() => {
     if (deepLinkId && !deepLinkConsumed.current) {
       deepLinkConsumed.current = true;
+      initialTabResolved.current = true; // skip auto-tab when deep-linking
       setStatusFilter("ALL");
       setMinRelevance(undefined);
       setSelectedId(deepLinkId);
@@ -143,6 +158,8 @@ export default function QueuePage() {
   const [editedComment, setEditedComment] = useState("");
   const [isEditingComment, setIsEditingComment] = useState(false);
   const [showFullBody, setShowFullBody] = useState(false);
+  const [selectedPersona, setSelectedPersona] = useState("auto");
+  const [personaDropdownOpen, setPersonaDropdownOpen] = useState(false);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [campaignDropdownOpen, setCampaignDropdownOpen] = useState(false);
@@ -151,6 +168,7 @@ export default function QueuePage() {
   const sortDropdownRef = useRef<HTMLDivElement>(null);
   const campaignDropdownRef = useRef<HTMLDivElement>(null);
   const relevanceDropdownRef = useRef<HTMLDivElement>(null);
+  const personaDropdownRef = useRef<HTMLDivElement>(null);
 
   const utils = trpc.useUtils();
 
@@ -166,6 +184,9 @@ export default function QueuePage() {
       }
       if (relevanceDropdownRef.current && !relevanceDropdownRef.current.contains(target)) {
         setRelevanceDropdownOpen(false);
+      }
+      if (personaDropdownRef.current && !personaDropdownRef.current.contains(target)) {
+        setPersonaDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClick);
@@ -202,17 +223,48 @@ export default function QueuePage() {
     return listQuery.data.pages.flatMap((p) => p.items);
   }, [listQuery.data]);
 
+  // Counts come from the first page of the list query (skipped on "load more")
+  const counts = listQuery.data?.pages[0]?.counts;
+
+  // Auto-switch to "Ready" tab on first load if there are ready items
+  useEffect(() => {
+    if (initialTabResolved.current || !counts) return;
+    initialTabResolved.current = true;
+    const readyCount = counts.byStatus["READY_FOR_REVIEW"] ?? 0;
+    if (readyCount > 0) setStatusFilter("READY_FOR_REVIEW");
+  }, [counts]);
+
   const selectedItem = useMemo(() => {
     if (!selectedId) return null;
     return allItems.find((item) => item.id === selectedId) ?? null;
   }, [allItems, selectedId]);
 
   // Detail query for the selected opportunity (gets fresh data)
+  // Poll every 3s when item is in a transient state (GENERATING/POSTING)
   const detailQuery = trpc.opportunity.getById.useQuery(
     { id: selectedId! },
     { enabled: !!selectedId }
   );
   const detail = detailQuery.data ?? selectedItem;
+  // Regenerating = READY_FOR_REVIEW but no comment yet
+  const isRegenerating = detail?.status === "READY_FOR_REVIEW" && !detail?.generatedComment;
+  const isTransientStatus = detail?.status === "GENERATING" || detail?.status === "POSTING" || isRegenerating;
+  const prevTransient = useRef(false);
+  // Poll every 3s while in a transient/regenerating state, refresh list when it completes
+  useEffect(() => {
+    if (isTransientStatus && selectedId) {
+      prevTransient.current = true;
+      const interval = setInterval(() => {
+        utils.opportunity.getById.invalidate({ id: selectedId });
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+    // Transitioned out of transient state — refresh the list so row updates
+    if (prevTransient.current) {
+      prevTransient.current = false;
+      utils.opportunity.list.invalidate();
+    }
+  }, [isTransientStatus, selectedId, utils]);
 
   // Reset selection when filter changes
   useEffect(() => {
@@ -221,13 +273,20 @@ export default function QueuePage() {
     setMobileDetailOpen(false);
   }, [statusFilter, campaignFilter, minRelevance, sort]);
 
-  // Initialize edited comment when detail loads
+  // Initialize edited comment and persona when detail loads
   useEffect(() => {
     if (detail?.generatedComment) {
       setEditedComment(detail.generatedComment);
       setIsEditingComment(false);
     }
   }, [detail?.id, detail?.generatedComment]);
+
+  // Sync persona dropdown with the persona used for the current comment
+  useEffect(() => {
+    if (detail?.id) {
+      setSelectedPersona((detail as { persona?: string | null }).persona ?? "auto");
+    }
+  }, [detail?.id]);
 
   // Auto-advance to next item when current one leaves the list
   const advanceSelection = useCallback((removedId: string) => {
@@ -341,13 +400,31 @@ export default function QueuePage() {
   });
 
   const regenerateMutation = trpc.opportunity.regenerateComment.useMutation({
+    onMutate: ({ id }) => {
+      // Optimistic: null out the comment but keep the status unchanged
+      utils.opportunity.list.setInfiniteData(
+        { campaignId: campaignFilter, status: statusFilter === "ALL" ? undefined : statusFilter, minRelevance, sort, limit: 25 },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              items: page.items.map((item) =>
+                item.id === id ? { ...item, generatedComment: null } : item
+              ),
+            })),
+          };
+        }
+      );
+    },
     onSuccess: () => {
       toast.success("Regenerating comment...");
-      utils.opportunity.getById.invalidate({ id: selectedId! });
-      utils.opportunity.list.invalidate();
+      if (selectedId) utils.opportunity.getById.invalidate({ id: selectedId });
     },
     onError: () => {
       toast.error("Failed to regenerate. Try again?");
+      utils.opportunity.list.invalidate();
     },
   });
 
@@ -419,8 +496,8 @@ export default function QueuePage() {
     const badge = STATUS_BADGE[status] ?? { bg: "bg-charcoal/10", text: "text-charcoal-light", label: status };
     const isScoring = status === "DISCOVERED";
     return (
-      <span className={`inline-flex items-center gap-1 text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${badge.bg} ${badge.text}`}>
-        {isScoring && <Loader2 size={10} className="animate-spin" />}
+      <span className={`inline-flex items-center gap-1 text-[0.7rem] font-bold px-2.5 py-0.5 rounded-full ${badge.bg} ${badge.text}`}>
+        {isScoring && <Loader2 size={11} className="animate-spin" />}
         {badge.label}
       </span>
     );
@@ -429,7 +506,7 @@ export default function QueuePage() {
   const renderRelevanceBadge = (score: number | null | undefined) => {
     if (score === null || score === undefined) return null;
     return (
-      <span className={`inline-flex items-center text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${relevanceColor(score)}`}>
+      <span className={`inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full ${relevanceColor(score)}`}>
         {Math.round(score * 100)}%
       </span>
     );
@@ -446,6 +523,7 @@ export default function QueuePage() {
   }
 
   return (
+  <>
     <DashboardLayout>
       <Seo title="Opportunity Queue -- SlopMog" noIndex />
 
@@ -459,19 +537,33 @@ export default function QueuePage() {
       <div className="mb-4 space-y-3">
         {/* Status tabs */}
         <div className="flex flex-wrap items-center gap-1.5">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setStatusFilter(tab.value)}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all ${
-                statusFilter === tab.value
-                  ? "bg-teal text-white shadow-brand-sm"
-                  : "bg-white text-charcoal-light border border-charcoal/[0.1] hover:bg-charcoal/[0.04] hover:text-charcoal"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {STATUS_TABS.map((tab) => {
+            const count = tab.value === "ALL"
+              ? counts?.total
+              : counts?.byStatus[tab.value];
+            return (
+              <button
+                key={tab.value}
+                onClick={() => setStatusFilter(tab.value)}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all ${
+                  statusFilter === tab.value
+                    ? "bg-teal text-white shadow-brand-sm"
+                    : "bg-white text-charcoal-light border border-charcoal/[0.1] hover:bg-charcoal/[0.04] hover:text-charcoal"
+                }`}
+              >
+                {tab.label}
+                {count !== undefined && count > 0 && (
+                  <span className={`text-[0.6rem] font-bold px-1.5 py-0 rounded-full leading-tight ${
+                    statusFilter === tab.value
+                      ? "bg-white/25 text-white"
+                      : "bg-charcoal/[0.08] text-charcoal-light"
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Campaign filter + sort */}
@@ -522,18 +614,28 @@ export default function QueuePage() {
               <ChevronDown size={14} />
             </button>
             {relevanceDropdownOpen && (
-              <div className="absolute top-full left-0 mt-1 w-36 bg-white rounded-brand-sm shadow-brand-md border border-charcoal/[0.08] py-1 z-50">
-                {RELEVANCE_OPTIONS.map((option) => (
-                  <button
-                    key={option.label}
-                    onClick={() => { setMinRelevance(option.value); setRelevanceDropdownOpen(false); }}
-                    className={`w-full text-left px-3.5 py-2 text-sm hover:bg-charcoal/[0.04] transition-colors ${
-                      minRelevance === option.value ? "font-bold text-teal" : "text-charcoal"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+              <div className="absolute top-full left-0 mt-1 w-40 bg-white rounded-brand-sm shadow-brand-md border border-charcoal/[0.08] py-1 z-50">
+                {RELEVANCE_OPTIONS.map((option) => {
+                  const relCount = counts?.byRelevance
+                    ? option.value === undefined
+                      ? counts.byRelevance.all
+                      : counts.byRelevance[String(option.value) as keyof typeof counts.byRelevance]
+                    : undefined;
+                  return (
+                    <button
+                      key={option.label}
+                      onClick={() => { setMinRelevance(option.value); setRelevanceDropdownOpen(false); }}
+                      className={`w-full text-left px-3.5 py-2 text-sm hover:bg-charcoal/[0.04] transition-colors flex items-center justify-between ${
+                        minRelevance === option.value ? "font-bold text-teal" : "text-charcoal"
+                      }`}
+                    >
+                      {option.label}
+                      {relCount !== undefined && (
+                        <span className="text-[0.65rem] text-charcoal-light font-medium">{relCount}</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -599,7 +701,7 @@ export default function QueuePage() {
                 return (
                   <div
                     key={item.id}
-                    className={`relative flex items-start gap-2.5 px-4 py-2.5 border-b border-charcoal/[0.04] cursor-pointer transition-all hover:bg-charcoal/[0.02] ${
+                    className={`relative flex items-start gap-3 px-4 py-3.5 border-b border-charcoal/[0.04] cursor-pointer transition-all hover:bg-charcoal/[0.02] ${
                       isSelected ? "bg-teal/[0.04] border-l-[3px] border-l-teal" : "border-l-[3px] border-l-transparent"
                     }`}
                     onClick={() => handleSelect(item.id)}
@@ -607,41 +709,49 @@ export default function QueuePage() {
                     {/* Checkbox */}
                     <button
                       onClick={(e) => { e.stopPropagation(); handleCheckboxToggle(item.id); }}
-                      className={`mt-1 shrink-0 rounded border-2 flex items-center justify-center transition-all ${
+                      className={`mt-1.5 shrink-0 rounded border-2 flex items-center justify-center transition-all ${
                         isChecked
                           ? "bg-teal border-teal text-white"
                           : "border-charcoal/20 hover:border-teal/50"
                       }`}
-                      style={{ width: 16, height: 16 }}
+                      style={{ width: 18, height: 18 }}
                     >
-                      {isChecked && <Check size={10} strokeWidth={3} />}
+                      {isChecked && <Check size={11} strokeWidth={3} />}
                     </button>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      {/* Row 1: Title + status badge */}
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-sm text-charcoal leading-snug truncate">
-                          {item.title}
-                        </p>
-                        <span className="shrink-0">{renderStatusBadge(item.status)}</span>
-                      </div>
+                      {/* Row 1: Title */}
+                      <p className="font-semibold text-[0.9rem] text-charcoal leading-snug truncate">
+                        {item.title}
+                      </p>
 
-                      {/* Row 2: Compact meta */}
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="inline-flex items-center text-[0.6rem] font-bold px-1.5 py-0 rounded-full bg-lavender/10 text-lavender-dark">
+                      {/* Row 2: Key info — score, subreddit, relevance */}
+                      <div className="flex items-center gap-2 mt-1.5">
+                        {"recommendedScore" in item && item.recommendedScore != null && (
+                          <span className={`inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full ${recommendedColor(item.recommendedScore as number)}`}>
+                            <Zap size={10} />
+                            {Math.round((item.recommendedScore as number) * 100)}
+                          </span>
+                        )}
+                        <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full bg-lavender/10 text-lavender-dark">
                           r/{item.subreddit}
                         </span>
                         {renderRelevanceBadge(item.relevanceScore)}
+                        <span className="shrink-0">{renderStatusBadge(item.status)}</span>
+                      </div>
+
+                      {/* Row 3: Keyword + time */}
+                      <div className="flex items-center gap-2 mt-1">
                         {item.matchedKeyword && (
-                          <span className="inline-flex items-center text-[0.6rem] font-medium px-1.5 py-0 rounded-full bg-teal/[0.08] text-teal-dark truncate max-w-[100px]">
+                          <span className="inline-flex items-center text-[0.7rem] font-medium px-2 py-0.5 rounded-full bg-teal/[0.08] text-teal-dark truncate max-w-[140px]">
                             {item.matchedKeyword}
                           </span>
                         )}
                         {item.parentCommentId && (
-                          <Reply size={10} className="text-charcoal-light shrink-0" />
+                          <Reply size={11} className="text-charcoal-light shrink-0" />
                         )}
-                        <span className="text-[0.6rem] text-charcoal-light ml-auto shrink-0">
+                        <span className="text-[0.7rem] text-charcoal-light ml-auto shrink-0">
                           {timeAgo(item.discoveredAt)}
                         </span>
                       </div>
@@ -699,31 +809,35 @@ export default function QueuePage() {
                     href={detail.redditUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex items-start gap-2 mb-3"
+                    className="group flex items-start gap-2 mb-4"
                   >
-                    <h2 className="font-heading font-bold text-lg text-charcoal group-hover:text-teal transition-colors leading-snug">
+                    <h2 className="font-heading font-bold text-xl text-charcoal group-hover:text-teal transition-colors leading-snug">
                       {detail.title}
                     </h2>
-                    <ExternalLink size={16} className="shrink-0 mt-1 text-charcoal-light group-hover:text-teal transition-colors" />
+                    <ExternalLink size={16} className="shrink-0 mt-1.5 text-charcoal-light group-hover:text-teal transition-colors" />
                   </a>
 
                   {/* Meta row */}
-                  <div className="flex flex-wrap items-center gap-2 mb-4">
-                    <span className="inline-flex items-center text-xs font-bold px-2.5 py-0.5 rounded-full bg-lavender/10 text-lavender-dark">
+                  <div className="flex flex-wrap items-center gap-2.5 mb-5">
+                    <span className="inline-flex items-center text-sm font-bold px-3 py-1 rounded-full bg-lavender/10 text-lavender-dark">
                       r/{detail.subreddit}
                     </span>
-                    {renderRelevanceBadge(detail.relevanceScore)}
+                    {detail.relevanceScore != null && (
+                      <span className={`inline-flex items-center text-sm font-bold px-3 py-1 rounded-full ${relevanceColor(detail.relevanceScore)}`}>
+                        {Math.round(detail.relevanceScore * 100)}%
+                      </span>
+                    )}
                     {renderStatusBadge(detail.status)}
-                    <span className="flex items-center gap-1 text-xs text-charcoal-light">
-                      <ArrowUpCircle size={12} />
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-charcoal-light">
+                      <ArrowUpCircle size={15} />
                       {detail.score ?? 0}
                     </span>
-                    <span className="flex items-center gap-1 text-xs text-charcoal-light">
-                      <MessageCircle size={12} />
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-charcoal-light">
+                      <MessageCircle size={15} />
                       {detail.numComments ?? 0}
                     </span>
-                    <span className="flex items-center gap-1 text-xs text-charcoal-light">
-                      <Clock size={12} />
+                    <span className="flex items-center gap-1.5 text-sm text-charcoal-light">
+                      <Clock size={14} />
                       {timeAgo(detail.discoveredAt)}
                     </span>
                   </div>
@@ -742,12 +856,12 @@ export default function QueuePage() {
                           <p className="text-[0.82rem] text-charcoal-light mb-3">
                             You can see opportunities for free, but you need a paid plan to actually post comments. Pretty sneaky, huh?
                           </p>
-                          <a
-                            href={routes.pricing}
+                          <button
+                            onClick={() => setShowUpgradeModal(true)}
                             className="inline-flex items-center gap-1.5 bg-coral text-white px-5 py-2 rounded-full font-bold text-sm hover:bg-coral-dark transition-all"
                           >
                             View Plans
-                          </a>
+                          </button>
                         </div>
                       ) : (
                         <>
@@ -780,7 +894,7 @@ export default function QueuePage() {
                   {/* READY_FOR_REVIEW */}
                   {detail.status === "READY_FOR_REVIEW" && (
                     <div className="space-y-3 mb-5">
-                      {/* Sticky action buttons */}
+                      {/* Sticky action buttons — Approve + Reject only */}
                       <div className="sticky top-0 z-10 bg-white pt-1 pb-3 border-b border-charcoal/[0.04] -mx-5 px-5 lg:-mx-6 lg:px-6">
                         {isFreeUser ? (
                           <div className="bg-coral/[0.06] border border-coral/20 rounded-brand-sm p-4 text-center">
@@ -789,30 +903,22 @@ export default function QueuePage() {
                             <p className="text-[0.82rem] text-charcoal-light mb-3">
                               The comment is ready, but you need a paid plan to post it.
                             </p>
-                            <a
-                              href={routes.pricing}
+                            <button
+                              onClick={() => setShowUpgradeModal(true)}
                               className="inline-flex items-center gap-1.5 bg-coral text-white px-5 py-2 rounded-full font-bold text-sm hover:bg-coral-dark transition-all"
                             >
                               View Plans
-                            </a>
+                            </button>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 flex-wrap">
                             <button
                               onClick={handleApproveComment}
-                              disabled={approveCommentMutation.isPending}
+                              disabled={approveCommentMutation.isPending || !detail.generatedComment}
                               className="inline-flex items-center gap-1.5 bg-coral text-white px-5 py-2 rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-50"
                             >
                               <Send size={14} />
                               {approveCommentMutation.isPending ? "Posting..." : "Approve"}
-                            </button>
-                            <button
-                              onClick={() => regenerateMutation.mutate({ id: detail.id })}
-                              disabled={regenerateMutation.isPending}
-                              className="inline-flex items-center gap-1.5 border border-teal/30 text-teal px-5 py-2 rounded-full font-bold text-sm hover:bg-teal/[0.06] transition-all disabled:opacity-50"
-                            >
-                              <RefreshCw size={14} className={regenerateMutation.isPending ? "animate-spin" : ""} />
-                              Regenerate
                             </button>
                             <button
                               onClick={() => rejectMutation.mutate({ id: detail.id })}
@@ -825,51 +931,106 @@ export default function QueuePage() {
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      {/* Comment header row with persona dropdown + regenerate */}
+                      <div className="flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-2">
                           <Sparkles size={16} className="text-teal" />
                           <span className="text-sm font-semibold text-charcoal">Generated Comment</span>
+                          {detail.generatedComment && detail.commentVersion ? (
+                            <span className="text-[0.65rem] text-charcoal-light">
+                              v{detail.commentVersion}
+                            </span>
+                          ) : null}
                         </div>
-                        {detail.commentVersion && (
-                          <span className="text-[0.65rem] text-charcoal-light">
-                            v{detail.commentVersion}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {/* Persona dropdown */}
+                          <div ref={personaDropdownRef} className="relative">
+                            <button
+                              onClick={() => setPersonaDropdownOpen(!personaDropdownOpen)}
+                              disabled={!detail.generatedComment}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-charcoal/[0.04] border border-charcoal/[0.1] text-charcoal-light hover:text-charcoal transition-colors disabled:opacity-50"
+                            >
+                              {PERSONAS.find((p) => p.id === selectedPersona)?.label ?? "Auto"}
+                              <ChevronDown size={12} />
+                            </button>
+                            {personaDropdownOpen && (
+                              <div className="absolute top-full right-0 mt-1 w-56 bg-white rounded-brand-sm shadow-brand-md border border-charcoal/[0.08] py-1 z-50">
+                                {PERSONAS.map((persona) => (
+                                  <button
+                                    key={persona.id}
+                                    onClick={() => { setSelectedPersona(persona.id); setPersonaDropdownOpen(false); }}
+                                    className={`w-full text-left px-3.5 py-2 hover:bg-charcoal/[0.04] transition-colors ${
+                                      selectedPersona === persona.id ? "bg-teal/[0.06]" : ""
+                                    }`}
+                                  >
+                                    <span className={`text-sm font-semibold ${selectedPersona === persona.id ? "text-teal" : "text-charcoal"}`}>
+                                      {persona.label}
+                                    </span>
+                                    <p className="text-[0.7rem] text-charcoal-light leading-tight mt-0.5">
+                                      {persona.description}
+                                    </p>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          {/* Regenerate button */}
+                          <button
+                            onClick={() => regenerateMutation.mutate({ id: detail.id, persona: selectedPersona })}
+                            disabled={regenerateMutation.isPending || !detail.generatedComment}
+                            className="inline-flex items-center gap-1.5 border border-teal/30 text-teal px-3.5 py-1.5 rounded-full font-bold text-xs hover:bg-teal/[0.06] transition-all disabled:opacity-50"
+                          >
+                            <RefreshCw size={12} className={regenerateMutation.isPending ? "animate-spin" : ""} />
+                            Regenerate
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Editable comment area */}
-                      <div className="relative">
-                        <textarea
-                          value={editedComment}
-                          onChange={(e) => { setEditedComment(e.target.value); setIsEditingComment(true); }}
-                          rows={6}
-                          className="w-full bg-charcoal/[0.02] border border-charcoal/[0.1] rounded-brand-sm p-4 text-sm text-charcoal leading-relaxed font-body resize-y focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal/40 transition-all"
-                        />
-                        {isEditingComment && editedComment !== detail.generatedComment && (
-                          <div className="flex items-center gap-2 mt-2">
-                            <button
-                              onClick={handleSaveEdit}
-                              disabled={editCommentMutation.isPending}
-                              className="text-xs font-semibold text-teal hover:text-teal-dark transition-colors disabled:opacity-50"
-                            >
-                              {editCommentMutation.isPending ? "Saving..." : "Save edit"}
-                            </button>
-                            <button
-                              onClick={() => { setEditedComment(detail.generatedComment ?? ""); setIsEditingComment(false); }}
-                              className="text-xs font-semibold text-charcoal-light hover:text-charcoal transition-colors"
-                            >
-                              Discard
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      {/* Comment area — show loading when regenerating, textarea when ready */}
+                      {!detail.generatedComment ? (
+                        <div className="flex flex-col items-center py-6 text-center">
+                          <div className="w-28 h-28 mb-2"><GeneratingMascotV1 /></div>
+                          <p className="font-heading font-bold text-charcoal text-sm mb-1">
+                            Regenerating comment...
+                          </p>
+                          <p className="text-xs text-charcoal-light">
+                            {FUN_LOADING_TEXTS[Math.floor(Math.random() * FUN_LOADING_TEXTS.length)]}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <textarea
+                            value={editedComment}
+                            onChange={(e) => { setEditedComment(e.target.value); setIsEditingComment(true); }}
+                            rows={6}
+                            className="w-full bg-charcoal/[0.02] border border-charcoal/[0.1] rounded-brand-sm p-4 text-sm text-charcoal leading-relaxed font-body resize-y focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal/40 transition-all"
+                          />
+                          {isEditingComment && editedComment !== detail.generatedComment && (
+                            <div className="flex items-center gap-2 mt-2">
+                              <button
+                                onClick={handleSaveEdit}
+                                disabled={editCommentMutation.isPending}
+                                className="text-xs font-semibold text-teal hover:text-teal-dark transition-colors disabled:opacity-50"
+                              >
+                                {editCommentMutation.isPending ? "Saving..." : "Save edit"}
+                              </button>
+                              <button
+                                onClick={() => { setEditedComment(detail.generatedComment ?? ""); setIsEditingComment(false); }}
+                                className="text-xs font-semibold text-charcoal-light hover:text-charcoal transition-colors"
+                              >
+                                Discard
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {/* GENERATING / POSTING */}
                   {(detail.status === "GENERATING" || detail.status === "POSTING") && (
-                    <div className="flex flex-col items-center py-8 text-center mb-5">
-                      <Loader2 size={32} className="text-teal animate-spin mb-3" />
+                    <div className="flex flex-col items-center py-6 text-center mb-5">
+                      <div className="w-32 h-32 mb-2"><GeneratingMascotV1 /></div>
                       <p className="font-heading font-bold text-charcoal mb-1">
                         {detail.status === "GENERATING" ? "Generating comment..." : "Posting comment..."}
                       </p>
@@ -946,21 +1107,21 @@ export default function QueuePage() {
                   <hr className="border-charcoal/[0.06] mb-4" />
 
                   {/* Keyword + Campaign inline */}
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 text-xs">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mb-4 text-sm">
                     {detail.matchedKeyword && (
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex items-center gap-2">
                         <span className="font-semibold text-charcoal-light">Keyword:</span>
-                        <span className="font-medium px-2 py-0.5 rounded-full bg-teal/[0.08] text-teal-dark">
+                        <span className="font-semibold px-2.5 py-0.5 rounded-full bg-teal/[0.08] text-teal-dark">
                           {detail.matchedKeyword}
                         </span>
                       </span>
                     )}
                     {detail.campaign && (
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex items-center gap-2">
                         <span className="font-semibold text-charcoal-light">Campaign:</span>
-                        <span className="font-medium text-charcoal">{detail.campaign.name}</span>
+                        <span className="font-semibold text-charcoal">{detail.campaign.name}</span>
                         {detail.campaign.automationMode && (
-                          <span className="text-[0.6rem] font-bold px-1.5 py-0.5 rounded-full bg-sunny/20 text-charcoal">
+                          <span className="text-[0.65rem] font-bold px-2 py-0.5 rounded-full bg-sunny/20 text-charcoal">
                             {detail.campaign.automationMode}
                           </span>
                         )}
@@ -970,9 +1131,9 @@ export default function QueuePage() {
 
                   {/* Relevance reasoning from LLM */}
                   {"relevanceReasoning" in detail && detail.relevanceReasoning && (
-                    <div className="flex items-start gap-2 mb-4 bg-charcoal/[0.02] rounded-brand-sm border border-charcoal/[0.06] p-3">
-                      <Brain size={14} className="text-charcoal-light shrink-0 mt-0.5" />
-                      <p className="text-[0.78rem] text-charcoal-light leading-relaxed">
+                    <div className="flex items-start gap-2.5 mb-4 bg-charcoal/[0.02] rounded-brand-sm border border-charcoal/[0.06] p-4">
+                      <Brain size={16} className="text-lavender shrink-0 mt-0.5" />
+                      <p className="text-sm text-charcoal-light leading-relaxed">
                         {String(detail.relevanceReasoning)}
                       </p>
                     </div>
@@ -981,13 +1142,13 @@ export default function QueuePage() {
                   {/* Post body */}
                   {detail.postBody && (
                     <div className="mb-4 bg-charcoal/[0.02] rounded-brand-sm border border-charcoal/[0.06] p-4">
-                      <p className={`text-sm text-charcoal-light leading-relaxed whitespace-pre-wrap ${showFullBody ? "" : "line-clamp-4"}`}>
+                      <p className={`text-[0.9rem] text-charcoal-light leading-relaxed whitespace-pre-wrap ${showFullBody ? "" : "line-clamp-5"}`}>
                         {detail.postBody}
                       </p>
                       {detail.postBody.length > 300 && (
                         <button
                           onClick={() => setShowFullBody(!showFullBody)}
-                          className="mt-2 text-xs font-semibold text-teal hover:text-teal-dark transition-colors"
+                          className="mt-2 text-sm font-semibold text-teal hover:text-teal-dark transition-colors"
                         >
                           {showFullBody ? "Show less" : "Show more"}
                         </button>
@@ -1021,13 +1182,13 @@ export default function QueuePage() {
                 {selectedIds.size} selected
               </span>
               {isFreeUser ? (
-                <a
-                  href={routes.pricing}
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
                   className="inline-flex items-center gap-1.5 bg-coral text-white px-4 py-1.5 rounded-full font-bold text-sm hover:bg-coral-dark transition-all"
                 >
                   <Zap size={14} />
                   Upgrade to approve
-                </a>
+                </button>
               ) : (
                 <button
                   onClick={handleBulkApprove}
@@ -1057,6 +1218,14 @@ export default function QueuePage() {
         </>
       )}
     </DashboardLayout>
+
+    <SubscriptionModal
+      open={showUpgradeModal}
+      onOpenChange={setShowUpgradeModal}
+      title="Upgrade to start posting"
+      description="You need a paid plan to approve and post comments. Pick one that fits."
+    />
+  </>
   );
 }
 

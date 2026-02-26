@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/router";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { toast } from "sonner";
@@ -27,6 +27,7 @@ import PageHeader from "@/components/shared/PageHeader";
 import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
 import { getServerAuthSession } from "@/server/utils/auth";
+import { SubscriptionModal } from "@/components/SubscriptionModal";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,27 +40,26 @@ interface SubredditEntry {
   reason?: string;
 }
 
+interface KeywordEntry {
+  value: string;
+  enabled: boolean;
+}
+
 interface WizardForm {
   url: string;
   businessName: string;
   businessDescription: string;
   valueProps: { value: string }[];
   targetAudience: string;
-  featureKeywords: { value: string }[];
-  brandKeywords: { value: string }[];
-  competitorKeywords: { value: string }[];
+  featureKeywords: KeywordEntry[];
+  brandKeywords: KeywordEntry[];
+  competitorKeywords: KeywordEntry[];
   featureStrategyEnabled: boolean;
   brandStrategyEnabled: boolean;
   competitorStrategyEnabled: boolean;
   subreddits: SubredditEntry[];
   automationMode: "FULL_MANUAL" | "SEMI_AUTO" | "AUTOPILOT";
 }
-
-// ---------------------------------------------------------------------------
-// Session storage key
-// ---------------------------------------------------------------------------
-
-const STORAGE_KEY = "slopmog-campaign-wizard";
 
 const STEP_LABELS = [
   "Website",
@@ -81,35 +81,6 @@ const ANALYSIS_MESSAGES = [
 ];
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-const loadSavedForm = (): Partial<WizardForm> | null => {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as Partial<WizardForm>;
-  } catch {
-    return null;
-  }
-};
-
-const saveFormToStorage = (data: WizardForm) => {
-  if (typeof window === "undefined") return;
-  try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {
-    // storage full or unavailable, ignore
-  }
-};
-
-const clearStorage = () => {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(STORAGE_KEY);
-};
-
-// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -118,10 +89,25 @@ export default function NewCampaignPage() {
   const [step, setStep] = useState(0);
   const [analysisMessage, setAnalysisMessage] = useState(ANALYSIS_MESSAGES[0]);
 
+  // Plan info for keyword limits
+  const planQuery = trpc.user.getPlanInfo.useQuery();
+  const maxKeywords = planQuery.data?.maxKeywords ?? 10;
+  const planName = planQuery.data?.planName ?? "FREE";
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   // Suggested items from analysis (not directly in the form)
-  const [suggestedKeywords, setSuggestedKeywords] = useState<string[]>([]);
   const [suggestedSubreddits, setSuggestedSubreddits] = useState<SubredditEntry[]>([]);
   const [analysisRaw, setAnalysisRaw] = useState<Record<string, unknown> | null>(null);
+
+  // -------------------------------------------------------------------------
+  // Draft persistence (replaces sessionStorage)
+  // -------------------------------------------------------------------------
+
+  const draftIdRef = useRef<string | null>(null);
+  const draftLoadedRef = useRef(false);
+  const draftQuery = trpc.campaign.getLatestDraft.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
 
   // -------------------------------------------------------------------------
   // Form setup
@@ -143,15 +129,9 @@ export default function NewCampaignPage() {
     automationMode: "SEMI_AUTO",
   };
 
-  const saved = useMemo(() => loadSavedForm(), []);
+  const form = useForm<WizardForm>({ defaultValues });
 
-  const form = useForm<WizardForm>({
-    defaultValues: saved
-      ? { ...defaultValues, ...saved }
-      : defaultValues,
-  });
-
-  const { control, register, watch, setValue, getValues, handleSubmit } = form;
+  const { control, register, watch, setValue, getValues } = form;
 
   const valuePropFields = useFieldArray({ control, name: "valueProps" });
   const featureKeywordFields = useFieldArray({ control, name: "featureKeywords" });
@@ -159,27 +139,49 @@ export default function NewCampaignPage() {
   const competitorKeywordFields = useFieldArray({ control, name: "competitorKeywords" });
   const subredditFields = useFieldArray({ control, name: "subreddits" });
 
-  // Persist to session storage on change
-  const watchAll = watch();
+  // Load draft into form (once)
   useEffect(() => {
-    saveFormToStorage(watchAll);
-  }, [watchAll]);
+    if (draftLoadedRef.current || !draftQuery.isSuccess) return;
+    draftLoadedRef.current = true;
 
-  // Restore step from storage
-  useEffect(() => {
-    if (saved && saved.businessName) {
-      // User has past the analysis step -- figure out what step they were on
-      const kw = [...(saved.featureKeywords ?? []), ...(saved.brandKeywords ?? []), ...(saved.competitorKeywords ?? [])];
-      const sr = saved.subreddits ?? [];
-      if (kw.length > 0 && sr.length > 0) {
-        setStep(4);
-      } else if (kw.length > 0) {
-        setStep(3);
-      } else {
-        setStep(1);
-      }
+    const draft = draftQuery.data;
+    if (!draft) return;
+
+    draftIdRef.current = draft.id;
+    setValue("url", draft.websiteUrl || "");
+    setValue("businessName", draft.businessName || "");
+    setValue("businessDescription", draft.businessDescription || "");
+    setValue("targetAudience", draft.targetAudience || "");
+    setValue("valueProps", ((draft.valueProps as string[]) || []).map((v) => ({ value: v })));
+    setValue("automationMode", (draft.automationMode as WizardForm["automationMode"]) || "SEMI_AUTO");
+    setValue("featureStrategyEnabled", draft.featureStrategyEnabled);
+    setValue("brandStrategyEnabled", draft.brandStrategyEnabled);
+    setValue("competitorStrategyEnabled", draft.competitorStrategyEnabled);
+
+    const featureKw = draft.keywords.filter((k) => k.strategy === "FEATURE").map((k) => ({ value: k.keyword, enabled: k.enabled }));
+    const brandKw = draft.keywords.filter((k) => k.strategy === "BRAND").map((k) => ({ value: k.keyword, enabled: k.enabled }));
+    const compKw = draft.keywords.filter((k) => k.strategy === "COMPETITOR").map((k) => ({ value: k.keyword, enabled: k.enabled }));
+    setValue("featureKeywords", featureKw);
+    setValue("brandKeywords", brandKw);
+    setValue("competitorKeywords", compKw);
+
+    setValue("subreddits", draft.subreddits.map((s) => ({
+      name: s.subreddit,
+      memberCount: s.memberCount ?? undefined,
+      expectedTone: s.expectedTone ?? undefined,
+    })));
+
+    if (draft.siteAnalysisData) {
+      setAnalysisRaw(draft.siteAnalysisData as Record<string, unknown>);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Determine which step to resume at
+    const hasKeywords = draft.keywords.length > 0;
+    const hasSubreddits = draft.subreddits.length > 0;
+    if (hasKeywords && hasSubreddits) setStep(4);
+    else if (hasKeywords) setStep(3);
+    else if (draft.businessName) setStep(1);
+  }, [draftQuery.isSuccess, draftQuery.data, setValue]);
 
   // -------------------------------------------------------------------------
   // Rotate analysis loading messages
@@ -198,19 +200,54 @@ export default function NewCampaignPage() {
   }, [analyzeSite.isPending]);
 
   // -------------------------------------------------------------------------
-  // Create campaign mutation
+  // Draft save + activate mutations
   // -------------------------------------------------------------------------
 
-  const createCampaign = trpc.campaign.create.useMutation({
+  const saveDraftMutation = trpc.campaign.saveDraft.useMutation();
+
+  const activateMutation = trpc.campaign.activate.useMutation({
     onSuccess: (data) => {
-      clearStorage();
       toast.success("Campaign created! Let's go shill.");
       router.push(routes.dashboard.campaigns.detail(data.id));
     },
     onError: (err) => {
-      toast.error(err.message || "Something went wrong creating the campaign.");
+      toast.error(err.message || "Something went wrong launching the campaign.");
     },
   });
+
+  const saveDraft = useCallback(async (analysisData?: Record<string, unknown>) => {
+    try {
+      const vals = getValues();
+      const allKeywords = [
+        ...vals.featureKeywords.map((k) => ({ keyword: k.value, strategy: "FEATURE" as const, enabled: k.enabled })),
+        ...vals.brandKeywords.map((k) => ({ keyword: k.value, strategy: "BRAND" as const, enabled: k.enabled })),
+        ...vals.competitorKeywords.map((k) => ({ keyword: k.value, strategy: "COMPETITOR" as const, enabled: k.enabled })),
+      ].filter((k) => k.keyword);
+
+      const result = await saveDraftMutation.mutateAsync({
+        id: draftIdRef.current ?? undefined,
+        websiteUrl: vals.url || undefined,
+        businessName: vals.businessName || undefined,
+        businessDescription: vals.businessDescription || undefined,
+        valueProps: vals.valueProps.map((v) => v.value).filter(Boolean),
+        targetAudience: vals.targetAudience || undefined,
+        automationMode: vals.automationMode,
+        featureStrategyEnabled: vals.featureStrategyEnabled,
+        brandStrategyEnabled: vals.brandStrategyEnabled,
+        competitorStrategyEnabled: vals.competitorStrategyEnabled,
+        siteAnalysisData: (analysisData ?? analysisRaw) ?? undefined,
+        keywords: allKeywords,
+        subreddits: vals.subreddits.filter((s) => s.name).map((s) => ({
+          name: s.name,
+          memberCount: s.memberCount,
+          expectedTone: s.expectedTone,
+        })),
+      });
+      draftIdRef.current = result.id;
+    } catch {
+      // Don't block wizard navigation on draft save failure
+    }
+  }, [getValues, analysisRaw, saveDraftMutation]);
 
   // -------------------------------------------------------------------------
   // Step 0: Analyze site
@@ -225,6 +262,19 @@ export default function NewCampaignPage() {
 
     // Ensure it starts with http
     const normalizedUrl = url.startsWith("http") ? url : `https://${url}`;
+
+    // Basic format check before hitting the backend
+    try {
+      const parsed = new URL(normalizedUrl);
+      if (!parsed.hostname.includes(".")) {
+        toast.error("Please enter a valid website URL (e.g. example.com).");
+        return;
+      }
+    } catch {
+      toast.error("That doesn't look like a valid URL. Try something like example.com");
+      return;
+    }
+
     setValue("url", normalizedUrl);
 
     try {
@@ -245,17 +295,28 @@ export default function NewCampaignPage() {
         ...(result.problemKeywords || []),
         ...(result.longTailKeywords || []),
       ];
-      setValue("featureKeywords", featureKw.map((k) => ({ value: k })));
-
-      // Brand keywords
       const brandKw = result.brandKeywords || [];
-      setValue("brandKeywords", brandKw.map((k) => ({ value: k })));
-
-      // Competitor keywords
       const compKw = result.competitorKeywords || [];
-      setValue("competitorKeywords", compKw.map((k) => ({ value: k })));
 
-      setSuggestedKeywords([]); // No longer needed — all keywords go directly to buckets
+      // All keywords are kept — first N (within plan limit) are enabled, rest disabled.
+      // Priority: brand > feature > competitor (brand is most critical for identity).
+      const limit = planQuery.data?.maxKeywords ?? 10;
+      let slotsLeft = limit === Infinity ? Infinity : limit;
+
+      const tagEnabled = (arr: string[]) =>
+        arr.map((k) => {
+          const on = slotsLeft > 0;
+          if (on && slotsLeft !== Infinity) slotsLeft--;
+          return { value: k, enabled: on };
+        });
+
+      const taggedBrand = tagEnabled(brandKw);
+      const taggedFeature = tagEnabled(featureKw);
+      const taggedComp = tagEnabled(compKw);
+
+      setValue("brandKeywords", taggedBrand);
+      setValue("featureKeywords", taggedFeature);
+      setValue("competitorKeywords", taggedComp);
 
       // Subreddits
       const subs = (result.suggestedSubreddits || []).map((s) => ({
@@ -269,13 +330,18 @@ export default function NewCampaignPage() {
       setSuggestedSubreddits(subs.slice(5));
 
       // Store raw analysis
-      setAnalysisRaw(result as unknown as Record<string, unknown>);
+      const rawData = result as unknown as Record<string, unknown>;
+      setAnalysisRaw(rawData);
 
       setStep(1);
-    } catch {
-      toast.error("Failed to analyze site. Please check the URL and try again.");
+
+      // Save draft so analysis data isn't lost
+      await saveDraft(rawData);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : typeof err === "object" && err !== null && "message" in err ? String((err as { message: unknown }).message) : "";
+      toast.error(message || "Failed to analyze site. Please check the URL and try again.");
     }
-  }, [analyzeSite, getValues, setValue]);
+  }, [analyzeSite, getValues, setValue, saveDraft]);
 
   // -------------------------------------------------------------------------
   // Step navigation
@@ -285,23 +351,26 @@ export default function NewCampaignPage() {
     (fromStep: number): boolean => {
       const vals = getValues();
       if (fromStep === 2) {
-        const totalKw = vals.featureKeywords.length + vals.brandKeywords.length + vals.competitorKeywords.length;
-        return totalKw >= 1;
+        const enabledKw = vals.featureKeywords.filter((k) => k.enabled).length +
+          vals.brandKeywords.filter((k) => k.enabled).length +
+          vals.competitorKeywords.filter((k) => k.enabled).length;
+        return enabledKw >= 1;
       }
       if (fromStep === 3) return vals.subreddits.length >= 1;
       return true;
     },
-    [getValues]
+    [getValues, maxKeywords]
   );
 
-  const goNext = useCallback(() => {
+  const goNext = useCallback(async () => {
     if (!canProceed(step)) {
       if (step === 2) toast.error("Add at least one keyword to continue.");
       if (step === 3) toast.error("Add at least one subreddit to continue.");
       return;
     }
+    await saveDraft();
     setStep((s) => Math.min(s + 1, 5));
-  }, [step, canProceed]);
+  }, [step, canProceed, saveDraft]);
 
   const goBack = useCallback(() => {
     setStep((s) => Math.max(s - 1, 0));
@@ -319,37 +388,15 @@ export default function NewCampaignPage() {
   // Submit
   // -------------------------------------------------------------------------
 
-  const onLaunch = useCallback(() => {
-    const vals = getValues();
-    const allKeywords = [
-      ...vals.featureKeywords.map((k) => ({ keyword: k.value, strategy: "FEATURE" as const })),
-      ...vals.brandKeywords.map((k) => ({ keyword: k.value, strategy: "BRAND" as const })),
-      ...vals.competitorKeywords.map((k) => ({ keyword: k.value, strategy: "COMPETITOR" as const })),
-    ].filter((k) => k.keyword);
-
-    createCampaign.mutate({
-      name: vals.businessName || "Untitled Campaign",
-      description: vals.businessDescription,
-      websiteUrl: vals.url || undefined,
-      businessName: vals.businessName || undefined,
-      businessDescription: vals.businessDescription || undefined,
-      valueProps: vals.valueProps.map((v) => v.value).filter(Boolean),
-      targetAudience: vals.targetAudience || undefined,
-      automationMode: vals.automationMode,
-      featureStrategyEnabled: vals.featureStrategyEnabled,
-      brandStrategyEnabled: vals.brandStrategyEnabled,
-      competitorStrategyEnabled: vals.competitorStrategyEnabled,
-      siteAnalysisData: analysisRaw ?? undefined,
-      keywords: allKeywords,
-      subreddits: vals.subreddits
-        .filter((s) => s.name)
-        .map((s) => ({
-          name: s.name,
-          memberCount: s.memberCount,
-          expectedTone: s.expectedTone,
-        })),
-    });
-  }, [getValues, createCampaign, analysisRaw]);
+  const onLaunch = useCallback(async () => {
+    await saveDraft();
+    const id = draftIdRef.current;
+    if (!id) {
+      toast.error("Please complete the wizard steps first.");
+      return;
+    }
+    activateMutation.mutate({ id });
+  }, [saveDraft, activateMutation]);
 
   // -------------------------------------------------------------------------
   // Tag input helpers
@@ -361,15 +408,52 @@ export default function NewCampaignPage() {
   const [newSubredditInput, setNewSubredditInput] = useState("");
   const [newValuePropInput, setNewValuePropInput] = useState("");
 
+  const enabledKeywordCount = useCallback(
+    () => {
+      const vals = getValues();
+      return (
+        vals.featureKeywords.filter((k) => k.enabled).length +
+        vals.brandKeywords.filter((k) => k.enabled).length +
+        vals.competitorKeywords.filter((k) => k.enabled).length
+      );
+    },
+    [getValues]
+  );
+
+  const isAtKeywordLimit = useCallback(
+    () => {
+      if (maxKeywords === Infinity) return false;
+      return enabledKeywordCount() >= maxKeywords;
+    },
+    [enabledKeywordCount, maxKeywords]
+  );
+
+  // Toggle a keyword between enabled/disabled. If enabling, check limit.
+  const toggleKeyword = useCallback(
+    (field: "featureKeywords" | "brandKeywords" | "competitorKeywords", idx: number) => {
+      const keywords = getValues(field);
+      const kw = keywords[idx];
+      if (!kw) return;
+      if (!kw.enabled) {
+        // Trying to enable — check limit
+        if (isAtKeywordLimit()) { setShowUpgradeModal(true); return; }
+      }
+      setValue(`${field}.${idx}.enabled`, !kw.enabled);
+    },
+    [getValues, setValue, isAtKeywordLimit]
+  );
+
   const addFeatureKeyword = useCallback(
     (kw: string) => {
       const trimmed = kw.trim().toLowerCase();
       if (!trimmed) return;
       const existing = getValues("featureKeywords").map((k) => k.value.toLowerCase());
       if (existing.includes(trimmed)) return;
-      featureKeywordFields.append({ value: trimmed });
+      const enabled = !isAtKeywordLimit();
+      featureKeywordFields.append({ value: trimmed, enabled });
+      if (!enabled) setShowUpgradeModal(true);
     },
-    [getValues, featureKeywordFields]
+    [getValues, featureKeywordFields, isAtKeywordLimit]
   );
 
   const addBrandKeyword = useCallback(
@@ -378,9 +462,11 @@ export default function NewCampaignPage() {
       if (!trimmed) return;
       const existing = getValues("brandKeywords").map((k) => k.value.toLowerCase());
       if (existing.includes(trimmed)) return;
-      brandKeywordFields.append({ value: trimmed });
+      const enabled = !isAtKeywordLimit();
+      brandKeywordFields.append({ value: trimmed, enabled });
+      if (!enabled) setShowUpgradeModal(true);
     },
-    [getValues, brandKeywordFields]
+    [getValues, brandKeywordFields, isAtKeywordLimit]
   );
 
   const addCompetitorKeyword = useCallback(
@@ -389,9 +475,11 @@ export default function NewCampaignPage() {
       if (!trimmed) return;
       const existing = getValues("competitorKeywords").map((k) => k.value.toLowerCase());
       if (existing.includes(trimmed)) return;
-      competitorKeywordFields.append({ value: trimmed });
+      const enabled = !isAtKeywordLimit();
+      competitorKeywordFields.append({ value: trimmed, enabled });
+      if (!enabled) setShowUpgradeModal(true);
     },
-    [getValues, competitorKeywordFields]
+    [getValues, competitorKeywordFields, isAtKeywordLimit]
   );
 
   const addSubreddit = useCallback(
@@ -421,16 +509,26 @@ export default function NewCampaignPage() {
   const valuePropsValue = watch("valueProps");
 
   const totalKeywords = featureKeywordsValue.length + brandKeywordsValue.length + competitorKeywordsValue.length;
+  const activeKeywords = featureKeywordsValue.filter((k) => k.enabled).length + brandKeywordsValue.filter((k) => k.enabled).length + competitorKeywordsValue.filter((k) => k.enabled).length;
 
   // Filter suggested subreddits by what's already active
-  const filteredSuggestedSubreddits = useMemo(() => {
-    const active = new Set(subredditsValue.map((s) => s.name.toLowerCase()));
-    return suggestedSubreddits.filter((s) => !active.has(s.name.toLowerCase()));
-  }, [subredditsValue, suggestedSubreddits]);
+  const activeSubNames = new Set(subredditsValue.map((s) => s.name.toLowerCase()));
+  const filteredSuggested = suggestedSubreddits.filter((s) => !activeSubNames.has(s.name.toLowerCase()));
 
   // -------------------------------------------------------------------------
   // Render
   // -------------------------------------------------------------------------
+
+  // Show loading while checking for existing draft
+  if (draftQuery.isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 size={32} className="text-teal animate-spin" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -688,6 +786,7 @@ export default function NewCampaignPage() {
               onToggle={() => setValue("featureStrategyEnabled", !featureStrategyEnabled)}
               keywords={featureKeywordsValue}
               onRemove={(idx) => featureKeywordFields.remove(idx)}
+              onToggleKeyword={(idx) => toggleKeyword("featureKeywords", idx)}
               inputValue={newFeatureKwInput}
               onInputChange={setNewFeatureKwInput}
               onAdd={(kw) => { addFeatureKeyword(kw); setNewFeatureKwInput(""); }}
@@ -704,6 +803,7 @@ export default function NewCampaignPage() {
               onToggle={() => setValue("brandStrategyEnabled", !brandStrategyEnabled)}
               keywords={brandKeywordsValue}
               onRemove={(idx) => brandKeywordFields.remove(idx)}
+              onToggleKeyword={(idx) => toggleKeyword("brandKeywords", idx)}
               inputValue={newBrandKwInput}
               onInputChange={setNewBrandKwInput}
               onAdd={(kw) => { addBrandKeyword(kw); setNewBrandKwInput(""); }}
@@ -720,6 +820,7 @@ export default function NewCampaignPage() {
               onToggle={() => setValue("competitorStrategyEnabled", !competitorStrategyEnabled)}
               keywords={competitorKeywordsValue}
               onRemove={(idx) => competitorKeywordFields.remove(idx)}
+              onToggleKeyword={(idx) => toggleKeyword("competitorKeywords", idx)}
               inputValue={newCompetitorKwInput}
               onInputChange={setNewCompetitorKwInput}
               onAdd={(kw) => { addCompetitorKeyword(kw); setNewCompetitorKwInput(""); }}
@@ -727,15 +828,38 @@ export default function NewCampaignPage() {
             />
           </div>
 
-          {/* Total count + minimum notice */}
+          {/* Keyword usage counter */}
           <div className="text-center mt-4">
-            <span className="text-[0.82rem] font-semibold text-charcoal-light">
-              {totalKeywords} total keyword{totalKeywords !== 1 ? "s" : ""}
-            </span>
+            {maxKeywords === Infinity ? (
+              <span className="text-[0.82rem] font-semibold text-charcoal-light">
+                {totalKeywords} keyword{totalKeywords !== 1 ? "s" : ""}
+              </span>
+            ) : (
+              <span className={`text-[0.82rem] font-semibold ${
+                activeKeywords >= maxKeywords ? "text-teal" : "text-charcoal-light"
+              }`}>
+                {activeKeywords} / {maxKeywords} active keywords
+                {activeKeywords < totalKeywords && (
+                  <span className="text-charcoal-light/50"> ({totalKeywords - activeKeywords} locked)</span>
+                )}
+                {activeKeywords >= maxKeywords && (
+                  <>
+                    {" "}&middot;{" "}
+                    <button
+                      type="button"
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="text-coral hover:text-coral-dark font-bold underline underline-offset-2 transition-colors"
+                    >
+                      Unlock more
+                    </button>
+                  </>
+                )}
+              </span>
+            )}
           </div>
-          {totalKeywords === 0 && (
+          {activeKeywords === 0 && (
             <p className="text-center text-[0.82rem] text-coral font-medium mt-1">
-              You need at least 1 keyword to continue.
+              You need at least 1 active keyword to continue.
             </p>
           )}
 
@@ -752,7 +876,7 @@ export default function NewCampaignPage() {
             <button
               type="button"
               onClick={goNext}
-              disabled={totalKeywords === 0}
+              disabled={activeKeywords === 0}
               className="inline-flex items-center gap-1.5 bg-teal text-white px-6 py-2.5 rounded-full font-bold text-sm hover:bg-teal-dark hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-40 disabled:hover:translate-y-0"
             >
               Next
@@ -855,7 +979,7 @@ export default function NewCampaignPage() {
                 </h3>
               </div>
 
-              {filteredSuggestedSubreddits.length === 0 ? (
+              {filteredSuggested.length === 0 ? (
                 <p className="text-sm text-charcoal-light/60 italic">
                   {suggestedSubreddits.length > 0
                     ? "You've added all the suggestions. Thorough!"
@@ -863,7 +987,7 @@ export default function NewCampaignPage() {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {filteredSuggestedSubreddits.map((sub) => (
+                  {filteredSuggested.map((sub) => (
                     <button
                       key={sub.name}
                       type="button"
@@ -1085,14 +1209,14 @@ export default function NewCampaignPage() {
 
           {/* Keywords */}
           <ReviewCard
-            title={`Keywords (${totalKeywords})`}
+            title={maxKeywords === Infinity ? `Keywords (${activeKeywords})` : `Keywords (${activeKeywords} active${totalKeywords > activeKeywords ? `, ${totalKeywords - activeKeywords} locked` : ""})`}
             onEdit={() => setStep(2)}
           >
             <div className="space-y-2">
               {featureKeywordsValue.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {featureKeywordsValue.map((kw, idx) => (
-                    <span key={idx} className="bg-teal/10 text-teal-dark text-[0.78rem] font-semibold px-2.5 py-1 rounded-full">
+                    <span key={idx} className={`text-[0.78rem] font-semibold px-2.5 py-1 rounded-full ${kw.enabled ? "bg-teal text-white" : "bg-charcoal/[0.04] text-charcoal-light/40 line-through"}`}>
                       {kw.value}
                     </span>
                   ))}
@@ -1101,7 +1225,7 @@ export default function NewCampaignPage() {
               {brandKeywordsValue.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {brandKeywordsValue.map((kw, idx) => (
-                    <span key={idx} className="bg-coral/10 text-coral-dark text-[0.78rem] font-semibold px-2.5 py-1 rounded-full">
+                    <span key={idx} className={`text-[0.78rem] font-semibold px-2.5 py-1 rounded-full ${kw.enabled ? "bg-coral text-white" : "bg-charcoal/[0.04] text-charcoal-light/40 line-through"}`}>
                       {kw.value}
                     </span>
                   ))}
@@ -1110,7 +1234,7 @@ export default function NewCampaignPage() {
               {competitorKeywordsValue.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {competitorKeywordsValue.map((kw, idx) => (
-                    <span key={idx} className="bg-lavender/10 text-lavender text-[0.78rem] font-semibold px-2.5 py-1 rounded-full">
+                    <span key={idx} className={`text-[0.78rem] font-semibold px-2.5 py-1 rounded-full ${kw.enabled ? "bg-lavender text-white" : "bg-charcoal/[0.04] text-charcoal-light/40 line-through"}`}>
                       {kw.value}
                     </span>
                   ))}
@@ -1161,10 +1285,10 @@ export default function NewCampaignPage() {
             <button
               type="button"
               onClick={onLaunch}
-              disabled={createCampaign.isPending}
+              disabled={activateMutation.isPending}
               className="inline-flex items-center gap-2 bg-coral text-white px-8 py-3 rounded-full font-bold text-[0.95rem] shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl hover:shadow-coral/30 transition-all disabled:opacity-50 disabled:hover:translate-y-0"
             >
-              {createCampaign.isPending ? (
+              {activateMutation.isPending ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
                   Launching...
@@ -1179,6 +1303,13 @@ export default function NewCampaignPage() {
           </div>
         </div>
       )}
+      {/* Subscription upgrade modal */}
+      <SubscriptionModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+        title="Need more keywords?"
+        description={`Your ${planName} plan supports ${maxKeywords} keywords. Upgrade for more keyword slots and extra posting credits.`}
+      />
     </DashboardLayout>
   );
 }
@@ -1220,9 +1351,9 @@ const STRATEGY_BORDER_COLORS: Record<string, string> = {
 };
 
 const STRATEGY_CHIP_COLORS: Record<string, string> = {
-  teal: "bg-teal/10 text-teal-dark",
-  coral: "bg-coral/10 text-coral-dark",
-  lavender: "bg-lavender/10 text-lavender",
+  teal: "bg-teal text-white",
+  coral: "bg-coral text-white",
+  lavender: "bg-lavender text-white",
 };
 
 const StrategyBucket = ({
@@ -1234,6 +1365,7 @@ const StrategyBucket = ({
   onToggle,
   keywords,
   onRemove,
+  onToggleKeyword,
   inputValue,
   onInputChange,
   onAdd,
@@ -1245,78 +1377,100 @@ const StrategyBucket = ({
   color: string;
   enabled: boolean;
   onToggle: () => void;
-  keywords: { value: string }[];
+  keywords: KeywordEntry[];
   onRemove: (idx: number) => void;
+  onToggleKeyword: (idx: number) => void;
   inputValue: string;
   onInputChange: (val: string) => void;
   onAdd: (val: string) => void;
   placeholder: string;
-}) => (
-  <div className={`bg-white rounded-brand-lg shadow-brand-sm border-2 p-5 transition-all ${
-    enabled ? (STRATEGY_BORDER_COLORS[color] ?? "border-charcoal/[0.06]") : "border-charcoal/[0.06] opacity-60"
-  }`}>
-    <div className="flex items-center gap-3 mb-3">
-      {icon}
-      <div className="flex-1">
-        <h3 className="font-heading font-bold text-charcoal text-sm">{label}</h3>
-        <p className="text-[0.75rem] text-charcoal-light leading-snug">{description}</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="text-[0.72rem] font-bold text-charcoal-light">{keywords.length}</span>
-        <button
-          type="button"
-          onClick={onToggle}
-          className={`relative w-10 h-5 rounded-full transition-colors ${enabled ? "bg-teal" : "bg-charcoal/20"}`}
-        >
-          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${enabled ? "left-[22px]" : "left-0.5"}`} />
-        </button>
-      </div>
-    </div>
+}) => {
+  const enabledCount = keywords.filter((k) => k.enabled).length;
+  const disabledCount = keywords.length - enabledCount;
 
-    {enabled && (
-      <>
-        <div className="flex flex-wrap gap-1.5 mb-3 min-h-[32px]">
-          {keywords.length === 0 && (
-            <p className="text-[0.78rem] text-charcoal-light/50 italic">No keywords yet</p>
-          )}
-          {keywords.map((kw, idx) => (
-            <span
-              key={idx}
-              className={`inline-flex items-center gap-1 text-[0.78rem] font-semibold px-2.5 py-1 rounded-full ${STRATEGY_CHIP_COLORS[color] ?? "bg-charcoal/10 text-charcoal"}`}
-            >
-              {kw.value}
-              <button type="button" onClick={() => onRemove(idx)} className="hover:text-coral transition-colors ml-0.5">
-                <X size={12} />
-              </button>
-            </span>
-          ))}
+  return (
+    <div className={`bg-white rounded-brand-lg shadow-brand-sm border-2 p-5 transition-all ${
+      enabled ? (STRATEGY_BORDER_COLORS[color] ?? "border-charcoal/[0.06]") : "border-charcoal/[0.06] opacity-60"
+    }`}>
+      <div className="flex items-center gap-3 mb-3">
+        {icon}
+        <div className="flex-1">
+          <h3 className="font-heading font-bold text-charcoal text-sm">{label}</h3>
+          <p className="text-[0.75rem] text-charcoal-light leading-snug">{description}</p>
         </div>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            className="flex-1 px-3 py-2 bg-white border-2 border-charcoal/[0.08] rounded-brand-sm text-sm text-charcoal placeholder:text-charcoal-light/50 focus:outline-none focus:border-teal transition-colors"
-            placeholder={placeholder}
-            value={inputValue}
-            onChange={(e) => onInputChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                onAdd(inputValue);
-              }
-            }}
-          />
+        <div className="flex items-center gap-2">
+          <span className="text-[0.72rem] font-bold text-charcoal-light">
+            {enabledCount}{disabledCount > 0 && <span className="text-charcoal-light/40">+{disabledCount}</span>}
+          </span>
           <button
             type="button"
-            onClick={() => onAdd(inputValue)}
-            className="px-3 py-2 bg-charcoal/[0.04] text-charcoal font-bold text-sm rounded-brand-sm hover:bg-charcoal/[0.08] transition-colors"
+            onClick={onToggle}
+            className={`relative w-10 h-5 rounded-full transition-colors ${enabled ? "bg-teal" : "bg-charcoal/20"}`}
           >
-            <Plus size={16} />
+            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${enabled ? "left-[22px]" : "left-0.5"}`} />
           </button>
         </div>
-      </>
-    )}
-  </div>
-);
+      </div>
+
+      {enabled && (
+        <>
+          <div className="flex flex-wrap gap-1.5 mb-3 min-h-[32px]">
+            {keywords.length === 0 && (
+              <p className="text-[0.78rem] text-charcoal-light/50 italic">No keywords yet</p>
+            )}
+            {keywords.map((kw, idx) => kw.enabled ? (
+              <span
+                key={idx}
+                className={`inline-flex items-center gap-1 text-[0.78rem] font-semibold pl-2.5 pr-1 py-1 rounded-full ${STRATEGY_CHIP_COLORS[color] ?? "bg-charcoal/10 text-charcoal"}`}
+              >
+                <button type="button" onClick={() => onToggleKeyword(idx)} className="hover:opacity-70 transition-opacity">
+                  {kw.value}
+                </button>
+                <button type="button" onClick={() => onRemove(idx)} className="opacity-60 hover:opacity-100 transition-opacity ml-0.5">
+                  <X size={12} />
+                </button>
+              </span>
+            ) : (
+              <span
+                key={idx}
+                className="inline-flex items-center gap-1 text-[0.78rem] font-medium pl-2.5 pr-1 py-1 rounded-full bg-charcoal/[0.05] text-charcoal-light/40 border border-dashed border-charcoal/[0.08]"
+              >
+                <button type="button" onClick={() => onToggleKeyword(idx)} className="hover:text-charcoal-light/70 transition-colors">
+                  {kw.value}
+                </button>
+                <button type="button" onClick={() => onRemove(idx)} className="opacity-40 hover:opacity-70 hover:text-coral transition-all ml-0.5">
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="flex-1 px-3 py-2 bg-white border-2 border-charcoal/[0.08] rounded-brand-sm text-sm text-charcoal placeholder:text-charcoal-light/50 focus:outline-none focus:border-teal transition-colors"
+              placeholder={placeholder}
+              value={inputValue}
+              onChange={(e) => onInputChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onAdd(inputValue);
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => onAdd(inputValue)}
+              className="px-3 py-2 bg-charcoal/[0.04] text-charcoal font-bold text-sm rounded-brand-sm hover:bg-charcoal/[0.08] transition-colors"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 const ReviewRow = ({ label, value }: { label: string; value: string }) => (
   <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 py-1.5 border-b border-charcoal/[0.04] last:border-0">

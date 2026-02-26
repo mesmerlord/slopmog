@@ -28,6 +28,9 @@ export interface CommentGenerationInput {
   matchedKeyword: string;
   commentPosition: "top_level" | "reply_to_op" | "reply_to_question";
   postType: "showcase" | "question" | "discussion";
+
+  // Persona
+  persona?: string;
 }
 
 export interface GeneratedComment {

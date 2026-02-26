@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import type { GetServerSideProps } from "next";
 import {
@@ -19,6 +19,7 @@ import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
 import { CREDIT_PRICES } from "@/constants/pricing";
 import { getServerAuthSession } from "@/server/utils/auth";
+import { SubscriptionModal } from "@/components/SubscriptionModal";
 
 const creditPacks = Object.entries(CREDIT_PRICES).map(([credits, info]) => ({
   credits: Number(credits),
@@ -26,6 +27,7 @@ const creditPacks = Object.entries(CREDIT_PRICES).map(([credits, info]) => ({
 }));
 
 export default function BillingPage() {
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const subscriptionQuery = trpc.user.getSubscriptionStatus.useQuery();
   const creditsQuery = trpc.user.getCredits.useQuery();
 
@@ -68,6 +70,7 @@ export default function BillingPage() {
   const isLoading = subscriptionQuery.isLoading || creditsQuery.isLoading;
 
   return (
+  <>
     <DashboardLayout>
       <Seo title="Billing -- SlopMog" noIndex />
 
@@ -148,13 +151,13 @@ export default function BillingPage() {
                   <p className="text-sm text-charcoal-light">
                     You&apos;re on the free tier. Upgrade to get monthly credits and unlock more features.
                   </p>
-                  <a
-                    href={routes.pricing}
+                  <button
+                    onClick={() => setShowUpgradeModal(true)}
                     className="inline-flex items-center gap-1.5 bg-coral text-white px-5 py-2.5 rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all"
                   >
                     <Sparkles size={14} />
                     Upgrade Now
-                  </a>
+                  </button>
                 </div>
               )}
             </div>
@@ -249,6 +252,14 @@ export default function BillingPage() {
         </div>
       )}
     </DashboardLayout>
+
+    <SubscriptionModal
+      open={showUpgradeModal}
+      onOpenChange={setShowUpgradeModal}
+      title="Time to level up"
+      description="Upgrade to get monthly credits and unlock more features."
+    />
+  </>
   );
 }
 

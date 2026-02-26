@@ -6,7 +6,6 @@ import { scoreWithLLM } from "@/services/scoring/llm-scorer";
 import type { ScoringJobData } from "./queues";
 
 const SCORE_THRESHOLD = 0.4;
-const AUTO_GENERATE_THRESHOLD = 0.5;
 
 const processScoring = async (job: Job<ScoringJobData>) => {
   const { opportunityId } = job.data;
@@ -21,7 +20,7 @@ const processScoring = async (job: Job<ScoringJobData>) => {
   }
 
   // Score with LLM
-  const { relevance, reasoning } = await scoreWithLLM({
+  const { relevance, reasoning, postType } = await scoreWithLLM({
     postTitle: opportunity.title,
     postBody: opportunity.postBody,
     subreddit: opportunity.subreddit,
@@ -39,6 +38,7 @@ const processScoring = async (job: Job<ScoringJobData>) => {
       data: {
         relevanceScore: relevance,
         relevanceReasoning: reasoning,
+        postType,
         scoredAt: new Date(),
         status: "SKIPPED",
       },
@@ -55,37 +55,26 @@ const processScoring = async (job: Job<ScoringJobData>) => {
       data: {
         relevanceScore: relevance,
         relevanceReasoning: reasoning,
+        postType,
         scoredAt: new Date(),
         status: "APPROVED",
       },
     });
     await addToPostGenerationQueue({ opportunityId });
     console.log(`[scoring] Opportunity ${opportunityId} auto-approved (autopilot)`);
-  } else if (relevance >= AUTO_GENERATE_THRESHOLD) {
-    // High-relevance: auto-approve + generate regardless of mode
-    // Post-generation worker will set READY_FOR_REVIEW (FULL_MANUAL) or auto-post (SEMI_AUTO)
-    await prisma.opportunity.update({
-      where: { id: opportunityId },
-      data: {
-        relevanceScore: relevance,
-        relevanceReasoning: reasoning,
-        scoredAt: new Date(),
-        status: "APPROVED",
-      },
-    });
-    await addToPostGenerationQueue({ opportunityId });
-    console.log(`[scoring] Opportunity ${opportunityId} auto-generated (relevance ${relevance.toFixed(2)} >= ${AUTO_GENERATE_THRESHOLD})`);
   } else {
-    // Low-relevance (0.4-0.5): needs manual approval to trigger generation
+    // FULL_MANUAL and SEMI_AUTO: user must approve the opportunity first
     await prisma.opportunity.update({
       where: { id: opportunityId },
       data: {
         relevanceScore: relevance,
         relevanceReasoning: reasoning,
+        postType,
         scoredAt: new Date(),
         status: "PENDING_REVIEW",
       },
     });
+    console.log(`[scoring] Opportunity ${opportunityId} pending review (${automationMode}, relevance ${relevance.toFixed(2)})`);
   }
 };
 

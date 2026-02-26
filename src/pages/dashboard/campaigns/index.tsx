@@ -133,7 +133,7 @@ export default function CampaignsListPage() {
 
                 {/* Card body — clickable */}
                 <Link
-                  href={routes.dashboard.campaigns.detail(campaign.id)}
+                  href={campaign.status === "DRAFT" ? routes.dashboard.campaigns.new : routes.dashboard.campaigns.detail(campaign.id)}
                   className="flex flex-col flex-1 p-5 pb-0"
                 >
                   {/* Top row: name + status */}

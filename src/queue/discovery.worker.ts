@@ -82,34 +82,16 @@ const processDiscovery = async (job: Job<DiscoveryJobData>) => {
     return;
   }
 
-  // Group keywords by strategy, respecting enabled toggles
+  // Group keywords by strategy, respecting per-keyword enabled flag + strategy toggles
   const featureKws = campaign.keywords
-    .filter((k) => k.strategy === "FEATURE" && campaign.featureStrategyEnabled)
+    .filter((k) => k.enabled && k.strategy === "FEATURE" && campaign.featureStrategyEnabled)
     .map((k) => k.keyword);
   const brandKws = campaign.keywords
-    .filter((k) => k.strategy === "BRAND" && campaign.brandStrategyEnabled)
+    .filter((k) => k.enabled && k.strategy === "BRAND" && campaign.brandStrategyEnabled)
     .map((k) => k.keyword);
   const competitorKws = campaign.keywords
-    .filter((k) => k.strategy === "COMPETITOR" && campaign.competitorStrategyEnabled)
+    .filter((k) => k.enabled && k.strategy === "COMPETITOR" && campaign.competitorStrategyEnabled)
     .map((k) => k.keyword);
-
-  // Free tier keyword cap
-  const plan = await getUserPlan(campaign.userId);
-  const allKws = [...featureKws, ...brandKws, ...competitorKws];
-  if (!plan.isPaid && allKws.length > plan.maxKeywords) {
-    // Slice across all strategies to respect cap
-    const capped = allKws.slice(0, plan.maxKeywords);
-    featureKws.length = 0;
-    brandKws.length = 0;
-    competitorKws.length = 0;
-    for (const kw of capped) {
-      const original = campaign.keywords.find((k) => k.keyword === kw);
-      if (original?.strategy === "BRAND") brandKws.push(kw);
-      else if (original?.strategy === "COMPETITOR") competitorKws.push(kw);
-      else featureKws.push(kw);
-    }
-    await log(`Free tier: capped keywords to ${plan.maxKeywords}`);
-  }
 
   const subreddits = campaign.subreddits.map((s) => s.subreddit);
 

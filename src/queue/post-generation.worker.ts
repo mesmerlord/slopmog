@@ -1,44 +1,10 @@
 import { Worker, Job } from "bullmq";
-import { z } from "zod";
 import { redisConnection } from "@/server/utils/redis";
 import { prisma } from "@/server/utils/db";
 import { fetchPostContext } from "@/services/reddit/context";
 import { generateComment } from "@/services/generation/comment-generator";
-import { chatCompletionJSON, MODELS } from "@/lib/openrouter";
 import { addToPostingQueue } from "./queues";
 import type { PostGenerationJobData } from "./queues";
-
-const postTypeSchema = z.object({
-  postType: z.enum(["showcase", "question", "discussion"]),
-});
-
-async function classifyPostType(title: string, body: string | null): Promise<"showcase" | "question" | "discussion"> {
-  try {
-    const result = await chatCompletionJSON({
-      model: MODELS.GEMINI_FLASH,
-      temperature: 0,
-      schema: postTypeSchema,
-      messages: [
-        {
-          role: "system",
-          content: `Classify this Reddit post into exactly one type. Return JSON with a single field "postType".
-
-- "showcase": OP is sharing/launching something they built or created (e.g. "I built X", "Check out my project", "Just launched X")
-- "question": OP is asking a question, seeking recommendations, or requesting help (e.g. "What's the best X?", "How do I Y?", "Looking for Z")
-- "discussion": General discussion, news, opinion, or anything else`,
-        },
-        {
-          role: "user",
-          content: `Title: ${title}\nBody: ${body?.slice(0, 500) || "(no body)"}`,
-        },
-      ],
-    });
-    return result.postType;
-  } catch {
-    // Fallback: default to discussion if classification fails
-    return "discussion";
-  }
-}
 
 const processPostGeneration = async (job: Job<PostGenerationJobData>) => {
   const { opportunityId } = job.data;
@@ -54,16 +20,23 @@ const processPostGeneration = async (job: Job<PostGenerationJobData>) => {
     return;
   }
 
-  if (opportunity.status !== "APPROVED" && opportunity.status !== "GENERATING") {
+  const validStatuses = ["APPROVED", "GENERATING", "READY_FOR_REVIEW"];
+  if (!validStatuses.includes(opportunity.status)) {
     console.log(`[post-generation] Opportunity ${opportunityId} status is ${opportunity.status}, skipping`);
     return;
   }
 
-  // Mark as generating
-  await prisma.opportunity.update({
-    where: { id: opportunityId },
-    data: { status: "GENERATING" },
-  });
+  // Track whether this is a regeneration (item stays in READY_FOR_REVIEW)
+  const isRegeneration = opportunity.status === "READY_FOR_REVIEW";
+
+  // Only change status to GENERATING for first-time generation (from APPROVED)
+  // Regenerations stay in READY_FOR_REVIEW so the item doesn't leave its tab
+  if (!isRegeneration) {
+    await prisma.opportunity.update({
+      where: { id: opportunityId },
+      data: { status: "GENERATING" },
+    });
+  }
 
   try {
     // Fetch full post context from Reddit
@@ -72,9 +45,8 @@ const processPostGeneration = async (job: Job<PostGenerationJobData>) => {
       parentCommentId: opportunity.parentCommentId ?? undefined,
     });
 
-    // Classify post type with LLM
-    const postType = await classifyPostType(context.post.title, context.post.selftext);
-    console.log(`[post-generation] Post type for ${opportunityId}: ${postType}`);
+    // Use post type from scoring (already classified by LLM during scoring)
+    const postType = (opportunity.postType as "showcase" | "question" | "discussion") ?? "discussion";
 
     // Generate comment
     const campaign = opportunity.campaign;
@@ -103,10 +75,16 @@ const processPostGeneration = async (job: Job<PostGenerationJobData>) => {
       matchedKeyword: opportunity.matchedKeyword,
       commentPosition: context.suggestedPosition,
       postType,
+      persona: opportunity.persona ?? undefined,
     });
 
     if (result.noRelevantComment) {
-      // Model decided no natural comment fits — skip this opportunity
+      if (isRegeneration) {
+        // Regeneration failed to find a comment — keep item in READY_FOR_REVIEW, don't skip
+        console.log(`[post-generation] Regen found no relevant comment for ${opportunityId}, keeping in review`);
+        return;
+      }
+      // First-time generation — skip this opportunity
       await prisma.opportunity.update({
         where: { id: opportunityId },
         data: { status: "SKIPPED", metadata: { skipReason: "no_relevant_comment" } },
@@ -155,10 +133,13 @@ const processPostGeneration = async (job: Job<PostGenerationJobData>) => {
     }
   } catch (error) {
     console.error(`[post-generation] Failed for ${opportunityId}:`, error);
-    await prisma.opportunity.update({
-      where: { id: opportunityId },
-      data: { status: "FAILED", metadata: { error: String(error) } },
-    });
+    if (!isRegeneration) {
+      // Only mark as FAILED for first-time generation; regens keep their current status
+      await prisma.opportunity.update({
+        where: { id: opportunityId },
+        data: { status: "FAILED", metadata: { error: String(error) } },
+      });
+    }
     throw error; // Re-throw for BullMQ retry
   }
 };
