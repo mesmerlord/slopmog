@@ -5,6 +5,7 @@ import { authOptions } from "@/server/utils/auth";
 import type { CreateNextContextOptions } from "@trpc/server/adapters/next";
 import { prisma } from "@/server/utils/db";
 import type { Session } from "next-auth";
+import type { IncomingMessage } from "http";
 
 export const createContext = async (opts: CreateNextContextOptions) => {
   let session = null;
@@ -32,6 +33,7 @@ export const createContext = async (opts: CreateNextContextOptions) => {
 export type Context = {
   session: Session | null;
   prisma: typeof prisma;
+  req?: IncomingMessage;
 };
 
 const t = initTRPC.context<Context>().create({

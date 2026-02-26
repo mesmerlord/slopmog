@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import LogoBlob from "@/components/LogoBlob";
@@ -18,8 +18,15 @@ export default function Nav({ variant = "app", onScrollTo }: NavProps) {
   const [navScrolled, setNavScrolled] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
+  // Track previous value to avoid unnecessary re-renders
+  const scrolledRef = useRef(false);
+
   const handleScroll = useCallback(() => {
-    setNavScrolled(window.scrollY > 20);
+    const scrolled = window.scrollY > 20;
+    if (scrolledRef.current !== scrolled) {
+      scrolledRef.current = scrolled;
+      setNavScrolled(scrolled);
+    }
   }, []);
 
   useEffect(() => {
@@ -30,26 +37,36 @@ export default function Nav({ variant = "app", onScrollTo }: NavProps) {
 
   const isLanding = variant === "landing";
 
-  const handleNavClick = (id: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    setMobileNavOpen(false);
-    if (onScrollTo) onScrollTo(id);
-  };
+  // Stabilize handleNavClick — only depends on onScrollTo
+  const handleNavClick = useCallback(
+    (id: string) => (e: React.MouseEvent) => {
+      e.preventDefault();
+      setMobileNavOpen(false);
+      if (onScrollTo) onScrollTo(id);
+    },
+    [onScrollTo],
+  );
 
-  const navLinks: { label: string; href: string; onClick?: (e: React.MouseEvent) => void }[] = isLanding
-    ? [
-        { label: "How It Works", href: "#how", onClick: handleNavClick("how") },
-        { label: "Demo", href: "#demo", onClick: handleNavClick("demo") },
-        { label: "Pricing", href: "#pricing", onClick: handleNavClick("pricing") },
-        { label: "FAQ", href: "#faq", onClick: handleNavClick("faq") },
-      ]
-    : [
-        { label: "Dashboard", href: routes.dashboard.index },
-        { label: "Pricing", href: routes.pricing },
-      ];
+  // Memoize navLinks so children don't re-render on every parent render
+  const navLinks = useMemo(
+    (): { label: string; href: string; onClick?: (e: React.MouseEvent) => void }[] =>
+      isLanding
+        ? [
+            { label: "How It Works", href: "#how", onClick: handleNavClick("how") },
+            { label: "Demo", href: "#demo", onClick: handleNavClick("demo") },
+            { label: "Pricing", href: "#pricing", onClick: handleNavClick("pricing") },
+            { label: "FAQ", href: "#faq", onClick: handleNavClick("faq") },
+          ]
+        : [
+            { label: "Dashboard", href: routes.dashboard.index },
+            { label: "Free Tools", href: routes.tools.redditCommentGenerator },
+            { label: "Pricing", href: routes.pricing },
+          ],
+    [isLanding, handleNavClick],
+  );
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-[1000] bg-bg/[0.92] backdrop-blur-xl border-b border-charcoal/[0.06] transition-shadow duration-300${navScrolled ? " shadow-brand-sm" : ""}`}>
+    <nav className={`fixed top-0 left-0 right-0 z-[1000] bg-bg/[0.92] backdrop-blur-xl border-b border-charcoal/[0.06] transition-shadow duration-300 ${navScrolled ? "shadow-brand-sm" : ""}`}>
       <div className="max-w-[1140px] mx-auto px-4 md:px-6 flex items-center justify-between h-14 md:h-[68px]">
         {isLanding ? (
           <a
@@ -100,7 +117,7 @@ export default function Nav({ variant = "app", onScrollTo }: NavProps) {
                 <div className="w-8 h-8 rounded-full bg-teal text-white flex items-center justify-center text-sm font-bold">
                   {session.user.name?.[0]?.toUpperCase() || session.user.email?.[0]?.toUpperCase() || "?"}
                 </div>
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`transition-transform${userMenuOpen ? " rotate-180" : ""}`}>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`transition-transform ${userMenuOpen ? "rotate-180" : ""}`}>
                   <path d="M3 5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
@@ -138,14 +155,14 @@ export default function Nav({ variant = "app", onScrollTo }: NavProps) {
 
         {/* Mobile hamburger */}
         <button className="flex md:hidden flex-col gap-[5px] bg-transparent p-1" aria-label="Menu" onClick={() => setMobileNavOpen((v) => !v)}>
-          <span className={`block w-6 h-[2.5px] bg-charcoal rounded-sm transition-transform duration-300${mobileNavOpen ? " translate-y-[7.5px] rotate-45" : ""}`} />
-          <span className={`block w-6 h-[2.5px] bg-charcoal rounded-sm transition-opacity duration-300${mobileNavOpen ? " opacity-0" : ""}`} />
-          <span className={`block w-6 h-[2.5px] bg-charcoal rounded-sm transition-transform duration-300${mobileNavOpen ? " -translate-y-[7.5px] -rotate-45" : ""}`} />
+          <span className={`block w-6 h-[2.5px] bg-charcoal rounded-sm transition-transform duration-300 ${mobileNavOpen ? "translate-y-[7.5px] rotate-45" : ""}`} />
+          <span className={`block w-6 h-[2.5px] bg-charcoal rounded-sm transition-opacity duration-300 ${mobileNavOpen ? "opacity-0" : ""}`} />
+          <span className={`block w-6 h-[2.5px] bg-charcoal rounded-sm transition-transform duration-300 ${mobileNavOpen ? "-translate-y-[7.5px] -rotate-45" : ""}`} />
         </button>
       </div>
 
       {/* Mobile menu dropdown */}
-      <div className={`md:hidden overflow-hidden transition-all duration-300 bg-bg border-b border-charcoal/[0.06] shadow-brand-md${mobileNavOpen ? " max-h-80 opacity-100" : " max-h-0 opacity-0 pointer-events-none"}`}>
+      <div className={`md:hidden overflow-hidden transition-all duration-300 bg-bg border-b border-charcoal/[0.06] shadow-brand-md ${mobileNavOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0 pointer-events-none"}`}>
         <ul className="flex flex-col items-center gap-4 py-6 list-none">
           {navLinks.map((link) => (
             <li key={link.label}>

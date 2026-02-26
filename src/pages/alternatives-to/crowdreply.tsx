@@ -25,7 +25,12 @@ import { ALTERNATIVES } from "@/lib/constants";
 
 /* ─── Data ─── */
 
-const FEATURE_COMPARISON: { feature: string; competitor: string; slopmog: string; winner: "slopmog" | "competitor" | "tie" }[] = [
+const FEATURE_COMPARISON: {
+  feature: string;
+  competitor: string;
+  slopmog: string;
+  winner: "slopmog" | "competitor" | "tie";
+}[] = [
   {
     feature: "Monthly pricing",
     competitor: "$99/mo PRO (includes $100 credits)",
@@ -138,8 +143,7 @@ const SWITCHING_REASONS = [
     title: "Keyword-First Strategy",
     description:
       "We don't just find threads and drop comments. We start with the keywords you actually want to rank for in AI recommendations, then work backwards to find the right conversations. It's targeting, not carpet bombing.",
-    slopmogAdvantage:
-      "Target 3-unlimited keywords depending on your plan",
+    slopmogAdvantage: "Target 3-unlimited keywords depending on your plan",
     benefits: [
       "Keyword-driven thread discovery",
       "Focus on high-intent conversations",
@@ -172,8 +176,7 @@ const SWITCHING_REASONS = [
     title: "AI Writes the Comments For You",
     description:
       "CrowdReply requires you to write your own comments. Which is fine if you have the time and Reddit instincts. Our AI generates natural-sounding comments tuned for Reddit's tone — or write your own if you prefer. You approve before anything goes live.",
-    slopmogAdvantage:
-      "AI generates Reddit-native comments, or bring your own",
+    slopmogAdvantage: "AI generates Reddit-native comments, or bring your own",
     benefits: [
       "AI writes comments that match Reddit's tone",
       "Write your own comments if you prefer",
@@ -301,7 +304,7 @@ export default function CrowdReplyAlternative() {
   const faqRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const relatedAlternatives = ALTERNATIVES.filter(
-    (a) => a.slug !== "crowdreply"
+    (a) => a.slug !== "crowdreply",
   ).slice(0, 3);
 
   return (
@@ -312,8 +315,7 @@ export default function CrowdReplyAlternative() {
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "Article",
-          headline:
-            "CrowdReply Alternative: Complete Comparison Guide 2026",
+          headline: "CrowdReply Alternative: Complete Comparison Guide 2026",
           description:
             "Detailed comparison of CrowdReply vs SlopMog for Reddit marketing and AI recommendation optimization.",
         }}
@@ -325,12 +327,7 @@ export default function CrowdReplyAlternative() {
       <section className="relative overflow-hidden pt-24 pb-16 md:pt-32 md:pb-20 px-4 md:px-6">
         <div className="max-w-[1140px] mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-teal-bg text-charcoal px-4 py-1.5 rounded-full text-xs font-bold mb-6 border border-teal/20">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-            >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path
                 d="M7 2l1.5 3.5H13L9.5 8l1.2 4L7 9.5 3.3 12l1.2-4L1 5.5h4.5z"
                 fill="#2EC4B6"
@@ -340,13 +337,12 @@ export default function CrowdReplyAlternative() {
           </div>
 
           <h1 className="font-heading font-bold text-3xl md:text-5xl lg:text-[3.2rem] text-charcoal mb-5 leading-tight">
-            Alternative to{" "}
-            <span className="text-teal">CrowdReply</span>
+            Alternative to <span className="text-teal">CrowdReply</span>
           </h1>
           <p className="text-base md:text-lg text-charcoal-light max-w-[620px] mx-auto mb-8 leading-relaxed">
-            CrowdReply is solid. But $10 per comment adds up fast. SlopMog
-            gives you 4x more comments for the same price — and we write
-            them for you. Also our name is funnier.
+            CrowdReply is solid. But $10 per comment adds up fast. SlopMog gives
+            you 4x more comments for the same price — and we write them for you.
+            Also our name is funnier.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
@@ -413,10 +409,7 @@ export default function CrowdReplyAlternative() {
       </section>
 
       {/* ═══ FEATURE COMPARISON TABLE ═══ */}
-      <section
-        className="py-16 md:py-24 px-4 md:px-6"
-        id="comparison"
-      >
+      <section className="py-16 md:py-24 px-4 md:px-6" id="comparison">
         <div className="max-w-[1140px] mx-auto">
           <div className="text-center mb-12">
             <span className="inline-block text-xs font-bold uppercase tracking-[1.5px] text-teal mb-3">
@@ -540,10 +533,7 @@ export default function CrowdReplyAlternative() {
                     key={i}
                     className="flex items-start gap-2.5 text-sm text-charcoal-light"
                   >
-                    <XCircle
-                      size={16}
-                      className="text-coral shrink-0 mt-0.5"
-                    />
+                    <XCircle size={16} className="text-coral shrink-0 mt-0.5" />
                     {con}
                   </li>
                 ))}
@@ -564,8 +554,7 @@ export default function CrowdReplyAlternative() {
               Why Consider SlopMog Instead
             </h2>
             <p className="text-base text-charcoal-light max-w-[540px] mx-auto">
-              Besides the obviously superior name? Here are some actual
-              reasons.
+              Besides the obviously superior name? Here are some actual reasons.
             </p>
           </div>
 
@@ -633,7 +622,7 @@ export default function CrowdReplyAlternative() {
                       {reason.id === "pricing" && <PricingAnimation />}
                       {reason.id === "keywords" && <KeywordTargetAnimation />}
                       {reason.id === "ai-tracking" && <AITrackingAnimation />}
-                      {reason.id === "human-content" && <HumanWritingAnimation />}
+                      {reason.id === "ai-content" && <HumanWritingAnimation />}
                     </div>
                   </div>
                 </div>
@@ -663,9 +652,18 @@ export default function CrowdReplyAlternative() {
             <div className="grid md:grid-cols-[1fr_auto_1fr] gap-0 items-stretch">
               {/* CrowdReply side */}
               <div className="bg-white rounded-brand-lg md:rounded-r-none p-6 border border-charcoal/[0.06] border-r-0 max-md:border-r max-md:rounded-b-none">
-                <div className="text-xs font-bold uppercase tracking-wide text-charcoal-light mb-3">CrowdReply PRO</div>
-                <div className="font-heading text-3xl font-bold text-charcoal mb-1">$99<span className="text-sm font-medium text-charcoal-light">/mo</span></div>
-                <div className="text-sm text-charcoal-light mb-5">$100 in credits included</div>
+                <div className="text-xs font-bold uppercase tracking-wide text-charcoal-light mb-3">
+                  CrowdReply PRO
+                </div>
+                <div className="font-heading text-3xl font-bold text-charcoal mb-1">
+                  $99
+                  <span className="text-sm font-medium text-charcoal-light">
+                    /mo
+                  </span>
+                </div>
+                <div className="text-sm text-charcoal-light mb-5">
+                  $100 in credits included
+                </div>
                 <div className="space-y-3 mb-5">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-charcoal-light">Comments</span>
@@ -681,11 +679,15 @@ export default function CrowdReplyAlternative() {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-charcoal-light">Upvote boost</span>
-                    <span className="font-bold text-charcoal">$0.10/each extra</span>
+                    <span className="font-bold text-charcoal">
+                      $0.10/each extra
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-charcoal-light">Keywords</span>
-                    <span className="font-bold text-charcoal-light">Manual thread picking</span>
+                    <span className="font-bold text-charcoal-light">
+                      Manual thread picking
+                    </span>
                   </div>
                 </div>
               </div>
@@ -700,9 +702,18 @@ export default function CrowdReplyAlternative() {
 
               {/* SlopMog side */}
               <div className="bg-white rounded-brand-lg md:rounded-l-none p-6 border-2 border-teal max-md:rounded-t-none">
-                <div className="text-xs font-bold uppercase tracking-wide text-teal mb-3">SlopMog Make Waves</div>
-                <div className="font-heading text-3xl font-bold text-charcoal mb-1">$99<span className="text-sm font-medium text-charcoal-light">/mo</span></div>
-                <div className="text-sm text-teal font-medium mb-5">Everything included</div>
+                <div className="text-xs font-bold uppercase tracking-wide text-teal mb-3">
+                  SlopMog Make Waves
+                </div>
+                <div className="font-heading text-3xl font-bold text-charcoal mb-1">
+                  $99
+                  <span className="text-sm font-medium text-charcoal-light">
+                    /mo
+                  </span>
+                </div>
+                <div className="text-sm text-teal font-medium mb-5">
+                  Everything included
+                </div>
                 <div className="space-y-3 mb-5">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-charcoal-light">Comments</span>
@@ -718,11 +729,15 @@ export default function CrowdReplyAlternative() {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-charcoal-light">Upvote boost</span>
-                    <span className="font-bold text-teal">Available add-on</span>
+                    <span className="font-bold text-teal">
+                      Available add-on
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-charcoal-light">Keywords</span>
-                    <span className="font-bold text-teal">10 targeted keywords</span>
+                    <span className="font-bold text-teal">
+                      10 targeted keywords
+                    </span>
                   </div>
                 </div>
                 <div className="bg-teal/10 rounded-full px-4 py-1.5 text-xs font-bold text-teal text-center">
@@ -861,8 +876,8 @@ export default function CrowdReplyAlternative() {
               What People Say About CrowdReply
             </h2>
             <p className="text-base text-charcoal-light max-w-[540px] mx-auto">
-              Real reviews from real users. We didn&apos;t cherry-pick the
-              bad ones — that would be ironic for a brand reputation company.
+              Real reviews from real users. We didn&apos;t cherry-pick the bad
+              ones — that would be ironic for a brand reputation company.
             </p>
           </div>
 
@@ -880,9 +895,7 @@ export default function CrowdReplyAlternative() {
                         : "bg-sunny/20 text-sunny-dark"
                     }`}
                   >
-                    {review.sentiment === "positive"
-                      ? "Positive"
-                      : "Mixed"}
+                    {review.sentiment === "positive" ? "Positive" : "Mixed"}
                   </span>
                 </div>
                 <p className="text-sm text-charcoal-light leading-relaxed italic mb-3">
@@ -913,8 +926,8 @@ export default function CrowdReplyAlternative() {
               Which Tool is Right for You?
             </h2>
             <p className="text-base text-charcoal-light max-w-[540px] mx-auto">
-              No tool is perfect for everyone. Here&apos;s an honest take
-              on who should use what.
+              No tool is perfect for everyone. Here&apos;s an honest take on who
+              should use what.
             </p>
           </div>
 
@@ -990,10 +1003,10 @@ export default function CrowdReplyAlternative() {
                 <p className="text-xs text-charcoal-light leading-relaxed">
                   No Reddit marketing service can guarantee specific AI
                   recommendation placements, permanent comment survival, or
-                  immunity from Reddit&apos;s spam detection. Both SlopMog
-                  and CrowdReply operate in a space where platform policies
-                  can change. Any service promising guaranteed results is
-                  lying to you.
+                  immunity from Reddit&apos;s spam detection. Both SlopMog and
+                  CrowdReply operate in a space where platform policies can
+                  change. Any service promising guaranteed results is lying to
+                  you.
                 </p>
               </div>
             </div>
@@ -1012,8 +1025,7 @@ export default function CrowdReplyAlternative() {
               Questions You Probably Have
             </h2>
             <p className="text-base text-charcoal-light max-w-[540px] mx-auto">
-              We tried to answer them before you asked. How considerate of
-              us.
+              We tried to answer them before you asked. How considerate of us.
             </p>
           </div>
 
@@ -1026,9 +1038,7 @@ export default function CrowdReplyAlternative() {
                 <button
                   className="w-full flex justify-between items-center py-5 bg-transparent font-heading text-base font-bold text-charcoal text-left gap-4 hover:text-teal transition-colors"
                   onClick={() =>
-                    setOpenFaqIndex((prev) =>
-                      prev === i ? null : i
-                    )
+                    setOpenFaqIndex((prev) => (prev === i ? null : i))
                   }
                 >
                   {item.question}
@@ -1070,9 +1080,9 @@ export default function CrowdReplyAlternative() {
                 CrowdReply is fine. SlopMog is funnier and cheaper.
               </h2>
               <p className="text-white/70 text-base mb-7 leading-relaxed">
-                4x more comments per dollar. AI-generated content you
-                approve before posting. AI recommendation tracking. And a
-                name you&apos;ll never forget. What&apos;s not to love?
+                4x more comments per dollar. AI-generated content you approve
+                before posting. AI recommendation tracking. And a name
+                you&apos;ll never forget. What&apos;s not to love?
               </p>
               <Link
                 href="/#pricing"

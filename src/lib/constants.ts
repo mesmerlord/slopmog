@@ -17,6 +17,9 @@ export const routes = {
   },
   pricing: "/pricing",
   campaigns: "/campaigns",
+  tools: {
+    redditCommentGenerator: "/tools/reddit-comment-generator",
+  },
   alternatives: {
     index: "/alternatives-to",
     crowdreply: "/alternatives-to/crowdreply",
