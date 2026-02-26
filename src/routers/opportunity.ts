@@ -461,6 +461,93 @@ export const opportunityRouter = router({
       return updated;
     }),
 
+  retry: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const opportunity = await ctx.prisma.opportunity.findUnique({
+        where: { id: input.id },
+        include: { campaign: { select: { userId: true } } },
+      });
+
+      if (!opportunity || opportunity.campaign.userId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Opportunity not found" });
+      }
+
+      if (opportunity.status !== "FAILED") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only failed opportunities can be retried" });
+      }
+
+      if (!opportunity.generatedComment) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No generated comment to retry with" });
+      }
+
+      // Free tier posting gate
+      const plan = await getUserPlan(ctx.session.user.id);
+      if (!plan.canPost) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You need a paid plan to post comments.",
+        });
+      }
+
+      // Reset to READY_FOR_REVIEW so user can re-approve
+      const updated = await ctx.prisma.opportunity.update({
+        where: { id: input.id },
+        data: {
+          status: "READY_FOR_REVIEW",
+          externalOrderId: null,
+          providerUsed: null,
+          metadata: {},
+        },
+      });
+
+      return updated;
+    }),
+
+  retryDirect: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const opportunity = await ctx.prisma.opportunity.findUnique({
+        where: { id: input.id },
+        include: { campaign: { select: { userId: true } } },
+      });
+
+      if (!opportunity || opportunity.campaign.userId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Opportunity not found" });
+      }
+
+      if (opportunity.status !== "FAILED") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only failed opportunities can be retried" });
+      }
+
+      if (!opportunity.generatedComment) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No generated comment to retry with" });
+      }
+
+      const plan = await getUserPlan(ctx.session.user.id);
+      if (!plan.canPost) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You need a paid plan to post comments.",
+        });
+      }
+
+      // Go straight to POSTING and enqueue
+      const updated = await ctx.prisma.opportunity.update({
+        where: { id: input.id },
+        data: {
+          status: "POSTING",
+          externalOrderId: null,
+          providerUsed: null,
+          metadata: {},
+        },
+      });
+
+      await addToPostingQueue({ opportunityId: input.id });
+
+      return updated;
+    }),
+
   editComment: protectedProcedure
     .input(
       z.object({

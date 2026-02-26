@@ -39,7 +39,7 @@ import GeneratingMascotV1 from "@/components/illustrations/GeneratingMascotV1";
 // Types & constants
 // ---------------------------------------------------------------------------
 
-type StatusFilter = "DISCOVERED" | "PENDING_REVIEW" | "READY_FOR_REVIEW" | "APPROVED" | "POSTED" | "ALL";
+type StatusFilter = "DISCOVERED" | "PENDING_REVIEW" | "READY_FOR_REVIEW" | "APPROVED" | "POSTED" | "FAILED" | "ALL";
 type SortOption = "recommended" | "newest" | "relevance" | "upvotes" | "postDate";
 
 const STATUS_TABS: { label: string; value: StatusFilter }[] = [
@@ -48,6 +48,7 @@ const STATUS_TABS: { label: string; value: StatusFilter }[] = [
   { label: "Ready", value: "READY_FOR_REVIEW" },
   { label: "Approved", value: "APPROVED" },
   { label: "Posted", value: "POSTED" },
+  { label: "Failed", value: "FAILED" },
   { label: "All", value: "ALL" },
 ];
 
@@ -77,6 +78,7 @@ const STATUS_BADGE: Record<string, { bg: string; text: string; label: string }> 
   POSTED: { bg: "bg-teal/10", text: "text-teal-dark", label: "Posted" },
   REJECTED: { bg: "bg-coral/10", text: "text-coral-dark", label: "Rejected" },
   SKIPPED: { bg: "bg-charcoal/10", text: "text-charcoal-light", label: "Skipped" },
+  FAILED: { bg: "bg-coral/10", text: "text-coral-dark", label: "Failed" },
 };
 
 const FUN_LOADING_TEXTS = [
@@ -436,6 +438,29 @@ export default function QueuePage() {
     },
     onError: () => {
       toast.error("Failed to save edit. Try again?");
+    },
+  });
+
+  const retryMutation = trpc.opportunity.retry.useMutation({
+    onSuccess: () => {
+      toast.success("Moved back to review — you can re-approve when ready.");
+      utils.opportunity.list.invalidate();
+      if (selectedId) utils.opportunity.getById.invalidate({ id: selectedId });
+    },
+    onError: () => {
+      toast.error("Failed to retry. Try again?");
+    },
+  });
+
+  const retryDirectMutation = trpc.opportunity.retryDirect.useMutation({
+    onSuccess: () => {
+      toast.success("Re-queued for posting!");
+      if (selectedId && statusFilter !== "ALL") advanceSelection(selectedId);
+      utils.opportunity.list.invalidate();
+      if (selectedId) utils.opportunity.getById.invalidate({ id: selectedId });
+    },
+    onError: () => {
+      toast.error("Failed to retry posting. Try again?");
     },
   });
 
@@ -1100,6 +1125,51 @@ export default function QueuePage() {
                     <div className="flex items-center gap-2 py-4 mb-5">
                       <XCircle size={16} className="text-coral" />
                       <span className="text-sm font-semibold text-charcoal-light">This opportunity was rejected.</span>
+                    </div>
+                  )}
+
+                  {/* FAILED */}
+                  {detail.status === "FAILED" && (
+                    <div className="space-y-3 mb-5">
+                      <div className="bg-coral/[0.06] border border-coral/20 rounded-brand-sm p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <XCircle size={16} className="text-coral" />
+                          <span className="text-sm font-bold text-coral">Posting Failed</span>
+                        </div>
+                        {detail.metadata && typeof detail.metadata === "object" && "error" in detail.metadata && (
+                          <p className="text-xs text-charcoal-light font-mono bg-charcoal/[0.03] rounded p-2">
+                            {String((detail.metadata as Record<string, unknown>).error)}
+                          </p>
+                        )}
+                      </div>
+
+                      {detail.generatedComment && (
+                        <div className="bg-charcoal/[0.02] border border-charcoal/[0.1] rounded-brand-sm p-4">
+                          <p className="text-sm text-charcoal leading-relaxed whitespace-pre-wrap">
+                            {detail.generatedComment}
+                          </p>
+                        </div>
+                      )}
+
+                      {detail.generatedComment && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            onClick={() => retryDirectMutation.mutate({ id: detail.id })}
+                            disabled={retryDirectMutation.isPending || retryMutation.isPending}
+                            className="inline-flex items-center gap-1.5 bg-coral text-white px-5 py-2 rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-50"
+                          >
+                            <RefreshCw size={14} className={retryDirectMutation.isPending ? "animate-spin" : ""} />
+                            {retryDirectMutation.isPending ? "Retrying..." : "Retry Posting"}
+                          </button>
+                          <button
+                            onClick={() => retryMutation.mutate({ id: detail.id })}
+                            disabled={retryMutation.isPending || retryDirectMutation.isPending}
+                            className="inline-flex items-center gap-1.5 border border-teal/30 text-teal px-5 py-2 rounded-full font-bold text-sm hover:bg-teal/[0.06] transition-all disabled:opacity-50"
+                          >
+                            {retryMutation.isPending ? "Moving..." : "Edit & Re-approve"}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 

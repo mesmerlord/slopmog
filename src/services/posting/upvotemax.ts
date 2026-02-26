@@ -12,13 +12,16 @@ import type {
 
 /** POST /api/public/v1/orders response */
 interface UMCreateOrderResponse {
-  id: number;
+  status: string;
+  orderId: number;
   cost: number;
-  balance: number;
+  balanceAfter: number;
 }
 
-/** POST /api/public/v1/status response — map of order ID → status string */
-type UMStatusResponse = Record<string, string>;
+/** POST /api/public/v1/status response */
+interface UMStatusResponse {
+  results: Array<{ orderId: number; status: string }>;
+}
 
 /** GET /api/public/v1/balance response */
 interface UMBalanceResponse {
@@ -27,7 +30,7 @@ interface UMBalanceResponse {
 
 // ─── Config ─────────────────────────────────────────────────
 
-const CUSTOM_COMMENTS_SERVICE_ID = 5;
+const CUSTOM_COMMENTS_SERVICE_KEY = "custom_comments";
 
 function getConfig() {
   const apiKey = process.env.UPVOTEMAX_API_KEY;
@@ -83,7 +86,7 @@ const upvoteMaxProvider: PostingProvider = {
           method: "POST",
           headers: authHeaders(),
           body: JSON.stringify({
-            service: CUSTOM_COMMENTS_SERVICE_ID,
+            service: CUSTOM_COMMENTS_SERVICE_KEY,
             link: params.threadUrl,
             comments: params.commentText,
           }),
@@ -94,13 +97,13 @@ const upvoteMaxProvider: PostingProvider = {
 
       console.log(`[upvotemax] Order response:`, JSON.stringify(response));
 
-      if (response.id) {
-        console.log(`[upvotemax] Order created: id=${response.id}, cost=${response.cost}, balance=${response.balance}`);
+      if (response.orderId) {
+        console.log(`[upvotemax] Order created: id=${response.orderId}, cost=${response.cost}, balance=${response.balanceAfter}`);
         return {
           success: true,
-          orderId: String(response.id),
+          orderId: String(response.orderId),
           cost: response.cost,
-          balance: response.balance,
+          balance: response.balanceAfter,
           retryable: false,
         };
       }
@@ -115,9 +118,11 @@ const upvoteMaxProvider: PostingProvider = {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`[upvotemax] createCommentOrder error: ${message}`);
 
+      // 400 = bad request (invalid params), not retryable
       // 401/403 = bad API key, not retryable
       // 402 = insufficient balance, not retryable
       const notRetryable =
+        message.includes("400") ||
         message.includes("401") ||
         message.includes("403") ||
         message.includes("402");
@@ -141,20 +146,20 @@ const upvoteMaxProvider: PostingProvider = {
         {
           method: "POST",
           headers: authHeaders(),
-          body: JSON.stringify([orderId]),
+          body: JSON.stringify({ orders: [orderId] }),
           rateLimit: RATE_LIMIT,
           retry: { maxRetries: 1, baseDelayMs: 2000, maxDelayMs: 10000 },
         },
       );
 
-      const rawStatus = response[orderId];
-      if (!rawStatus) {
+      const entry = response.results?.find((r) => String(r.orderId) === orderId);
+      if (!entry) {
         console.error(`[upvotemax] Order ${orderId} not found in status response:`, JSON.stringify(response));
         return { status: "unknown", error: "Order not found in status response" };
       }
 
-      console.log(`[upvotemax] Order ${orderId} status: ${rawStatus} → ${normalizeStatus(rawStatus)}`);
-      return { status: normalizeStatus(rawStatus) };
+      console.log(`[upvotemax] Order ${orderId} status: ${entry.status} → ${normalizeStatus(entry.status)}`);
+      return { status: normalizeStatus(entry.status) };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`[upvotemax] checkOrderStatus error for ${orderId}: ${message}`);
