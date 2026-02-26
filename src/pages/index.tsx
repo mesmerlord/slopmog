@@ -251,7 +251,7 @@ export default function Home() {
                 </>
               ) : (
                 <>
-                  <a href="#pricing" className="bg-coral text-white px-8 py-3 md:py-3.5 rounded-full font-bold text-sm md:text-base text-center shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl hover:shadow-coral/30 transition-all" onClick={(e) => { e.preventDefault(); scrollTo("pricing"); }}>Start Showing Up</a>
+                  <Link href={routes.auth.login} className="bg-coral text-white px-8 py-3 md:py-3.5 rounded-full font-bold text-sm md:text-base text-center shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl hover:shadow-coral/30 transition-all">Start Showing Up</Link>
                   <a href="#how" className="bg-white text-charcoal px-8 py-3 md:py-3.5 rounded-full font-bold text-sm md:text-base text-center border-2 border-charcoal/10 hover:border-teal hover:text-teal hover:-translate-y-0.5 transition-all" onClick={(e) => { e.preventDefault(); scrollTo("how"); }}>See How It Works</a>
                 </>
               )}
@@ -668,7 +668,7 @@ export default function Home() {
               {session ? (
                 <Link href={routes.dashboard.campaigns.new} className="inline-block bg-coral text-white px-8 py-3.5 rounded-full font-bold text-base shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl transition-all">New Campaign</Link>
               ) : (
-                <a href="#pricing" className="inline-block bg-coral text-white px-8 py-3.5 rounded-full font-bold text-base shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl transition-all" onClick={(e) => { e.preventDefault(); scrollTo("pricing"); }}>Start Your Campaign</a>
+                <Link href={routes.auth.login} className="inline-block bg-coral text-white px-8 py-3.5 rounded-full font-bold text-base shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl transition-all">Start Your Campaign</Link>
               )}
               <p className="mt-3.5 text-[0.82rem] text-white/[0.45]">No contracts. Cancel anytime. Results within 30 days.</p>
             </div>
