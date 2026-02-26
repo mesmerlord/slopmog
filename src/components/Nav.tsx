@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import LogoBlob from "@/components/LogoBlob";
+import { routes } from "@/lib/constants";
 
 type NavVariant = "landing" | "app";
 
@@ -43,13 +44,9 @@ export default function Nav({ variant = "app", onScrollTo }: NavProps) {
         { label: "FAQ", href: "#faq", onClick: handleNavClick("faq") },
       ]
     : [
-        { label: "Dashboard", href: "/dashboard" },
-        { label: "Pricing", href: "/pricing" },
+        { label: "Dashboard", href: routes.dashboard.index },
+        { label: "Pricing", href: routes.pricing },
       ];
-
-  const ctaLink = isLanding
-    ? { label: "Get Started", href: "#cta", onClick: handleNavClick("cta") }
-    : null;
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-[1000] bg-bg/[0.92] backdrop-blur-xl border-b border-charcoal/[0.06] transition-shadow duration-300${navScrolled ? " shadow-brand-sm" : ""}`}>
@@ -114,7 +111,7 @@ export default function Nav({ variant = "app", onScrollTo }: NavProps) {
                     <div className="px-4 py-2 text-sm text-charcoal-light border-b border-charcoal/[0.06] truncate">
                       {session.user.email}
                     </div>
-                    <Link href="/dashboard" className="block px-4 py-2 text-sm text-charcoal hover:bg-teal-bg transition-colors" onClick={() => setUserMenuOpen(false)}>
+                    <Link href={routes.dashboard.index} className="block px-4 py-2 text-sm text-charcoal hover:bg-teal-bg transition-colors" onClick={() => setUserMenuOpen(false)}>
                       Dashboard
                     </Link>
                     <button
@@ -129,22 +126,12 @@ export default function Nav({ variant = "app", onScrollTo }: NavProps) {
             </li>
           ) : (
             <li>
-              {ctaLink ? (
-                <a
-                  href={ctaLink.href}
-                  className="bg-coral text-white px-6 py-2.5 rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all"
-                  onClick={ctaLink.onClick}
-                >
-                  {ctaLink.label}
-                </a>
-              ) : (
-                <Link
-                  href="/auth/login"
-                  className="bg-coral text-white px-6 py-2.5 rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all"
-                >
-                  Sign In
-                </Link>
-              )}
+              <Link
+                href={routes.auth.login}
+                className="bg-coral text-white px-6 py-2.5 rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all"
+              >
+                Get Started
+              </Link>
             </li>
           )}
         </ul>
@@ -184,15 +171,13 @@ export default function Nav({ variant = "app", onScrollTo }: NavProps) {
             </li>
           ) : (
             <li>
-              {ctaLink ? (
-                <a href={ctaLink.href} className="bg-coral text-white px-8 py-2.5 rounded-full font-bold text-sm hover:bg-coral-dark transition-all" onClick={ctaLink.onClick}>
-                  {ctaLink.label}
-                </a>
-              ) : (
-                <Link href="/auth/login" className="bg-coral text-white px-8 py-2.5 rounded-full font-bold text-sm hover:bg-coral-dark transition-all" onClick={() => setMobileNavOpen(false)}>
-                  Sign In
-                </Link>
-              )}
+              <Link
+                href={routes.auth.login}
+                className="bg-coral text-white px-8 py-2.5 rounded-full font-bold text-sm hover:bg-coral-dark transition-all"
+                onClick={() => setMobileNavOpen(false)}
+              >
+                Get Started
+              </Link>
             </li>
           )}
         </ul>

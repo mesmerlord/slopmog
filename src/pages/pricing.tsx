@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import MascotBlob from "@/components/MascotBlob";
 import { trpc } from "@/utils/trpc";
 import { planList, CREDIT_PRICES } from "@/constants/pricing";
+import { routes } from "@/lib/constants";
 
 function CheckIcon() {
   return (
@@ -91,7 +92,7 @@ export default function PricingPage() {
 
   const handleSubscribe = (planName: string) => {
     if (!session) {
-      router.push(`/auth/login?callbackUrl=${encodeURIComponent(`/pricing`)}`);
+      router.push(`${routes.auth.login}?callbackUrl=${encodeURIComponent(routes.pricing)}`);
       return;
     }
     createSubscription.mutate({ planName, interval });
@@ -99,7 +100,7 @@ export default function PricingPage() {
 
   const handleBuyCredits = (credits: number) => {
     if (!session) {
-      router.push(`/auth/login?callbackUrl=${encodeURIComponent(`/pricing`)}`);
+      router.push(`${routes.auth.login}?callbackUrl=${encodeURIComponent(routes.pricing)}`);
       return;
     }
     createOneTime.mutate({ credits: credits.toString() });
