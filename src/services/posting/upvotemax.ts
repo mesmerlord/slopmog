@@ -75,6 +75,7 @@ const upvoteMaxProvider: PostingProvider = {
   name: "upvotemax",
 
   async createCommentOrder(params: PostCommentParams): Promise<CreateOrderResult> {
+    console.log(`[upvotemax] Creating comment order: subreddit=r/${params.subreddit}, url=${params.threadUrl}`);
     try {
       const response = await fetchWithRetry<UMCreateOrderResponse>(
         apiUrl("/orders"),
@@ -91,7 +92,10 @@ const upvoteMaxProvider: PostingProvider = {
         },
       );
 
+      console.log(`[upvotemax] Order response:`, JSON.stringify(response));
+
       if (response.id) {
+        console.log(`[upvotemax] Order created: id=${response.id}, cost=${response.cost}, balance=${response.balance}`);
         return {
           success: true,
           orderId: String(response.id),
@@ -101,6 +105,7 @@ const upvoteMaxProvider: PostingProvider = {
         };
       }
 
+      console.error(`[upvotemax] No order ID in response:`, JSON.stringify(response));
       return {
         success: false,
         error: "No order ID returned from UpvoteMax",
@@ -108,6 +113,7 @@ const upvoteMaxProvider: PostingProvider = {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      console.error(`[upvotemax] createCommentOrder error: ${message}`);
 
       // 401/403 = bad API key, not retryable
       // 402 = insufficient balance, not retryable
@@ -115,6 +121,8 @@ const upvoteMaxProvider: PostingProvider = {
         message.includes("401") ||
         message.includes("403") ||
         message.includes("402");
+
+      console.error(`[upvotemax] Retryable: ${!notRetryable}`);
 
       return {
         success: false,
@@ -125,6 +133,7 @@ const upvoteMaxProvider: PostingProvider = {
   },
 
   async checkOrderStatus(orderId: string): Promise<OrderStatusResult> {
+    console.log(`[upvotemax] Checking order status: ${orderId}`);
     try {
       // Use the status endpoint with order IDs
       const response = await fetchWithRetry<UMStatusResponse>(
@@ -140,12 +149,15 @@ const upvoteMaxProvider: PostingProvider = {
 
       const rawStatus = response[orderId];
       if (!rawStatus) {
+        console.error(`[upvotemax] Order ${orderId} not found in status response:`, JSON.stringify(response));
         return { status: "unknown", error: "Order not found in status response" };
       }
 
+      console.log(`[upvotemax] Order ${orderId} status: ${rawStatus} → ${normalizeStatus(rawStatus)}`);
       return { status: normalizeStatus(rawStatus) };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      console.error(`[upvotemax] checkOrderStatus error for ${orderId}: ${message}`);
       return { status: "unknown", error: message };
     }
   },

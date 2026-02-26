@@ -267,9 +267,8 @@ export const opportunityRouter = router({
         data: { status: "POSTING" },
       });
 
-      // Enqueue posting with smart delay
-      const delay = 30000 + Math.floor(Math.random() * 300000); // 30s - 5.5min
-      await addToPostingQueue({ opportunityId: input.id }, { delay });
+      // Enqueue posting immediately
+      await addToPostingQueue({ opportunityId: input.id });
 
       return updated;
     }),

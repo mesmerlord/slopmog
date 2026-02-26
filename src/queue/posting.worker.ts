@@ -49,6 +49,7 @@ async function handleCreate(job: Job<PostingJobData>) {
   const userId = campaign.userId;
 
   // 1. Deduct 1 credit
+  console.log(`[posting] Deducting 1 credit for user ${userId}`);
   const creditResult = await deductCredits({
     userId,
     amount: 1,
@@ -56,6 +57,7 @@ async function handleCreate(job: Job<PostingJobData>) {
     reasonExtra: `Posted comment for campaign "${campaign.name}" in r/${opportunity.subreddit}`,
     throwOnInsufficient: false,
   });
+  console.log(`[posting] Credit deduction result: ${creditResult.success ? "ok" : "insufficient"}`);
 
   if (!creditResult.success) {
     console.log(`[posting] Insufficient credits for user ${userId}`);
@@ -68,6 +70,7 @@ async function handleCreate(job: Job<PostingJobData>) {
 
   // 2. Get posting provider
   const provider = await postingRegistry.getFirstAvailable();
+  console.log(`[posting] Provider resolved: ${provider?.name ?? "NONE"}`);
   if (!provider) {
     await refundCredits({
       userId,
@@ -91,7 +94,9 @@ async function handleCreate(job: Job<PostingJobData>) {
   });
 
   if (!orderResult.success || !orderResult.orderId) {
+    console.error(`[posting] Order creation failed for ${opportunityId}: ${orderResult.error} (retryable: ${orderResult.retryable})`);
     // Refund credit since the order wasn't created
+    console.log(`[posting] Refunding 1 credit for user ${userId}`);
     await refundCredits({
       userId,
       amount: 1,
@@ -101,9 +106,11 @@ async function handleCreate(job: Job<PostingJobData>) {
 
     if (orderResult.retryable) {
       // Let BullMQ retry the whole job
+      console.log(`[posting] Throwing for BullMQ retry: ${orderResult.error}`);
       throw new Error(orderResult.error || "Order creation failed");
     }
 
+    console.log(`[posting] Non-retryable failure, marking opportunity ${opportunityId} as FAILED`);
     await prisma.opportunity.update({
       where: { id: opportunityId },
       data: { status: "FAILED", metadata: { error: orderResult.error } },
@@ -113,6 +120,7 @@ async function handleCreate(job: Job<PostingJobData>) {
   }
 
   // 4. Save the order ID and enqueue the poll phase
+  console.log(`[posting] Saving order ${orderResult.orderId} to opportunity ${opportunityId}`);
   await prisma.opportunity.update({
     where: { id: opportunityId },
     data: {
@@ -279,6 +287,7 @@ async function checkConsecutiveFailures(campaignId: string) {
 
 const processPosting = async (job: Job<PostingJobData>) => {
   const phase = job.data.phase ?? "create";
+  console.log(`[posting] Job ${job.id} starting phase=${phase} for opportunity=${job.data.opportunityId}`);
   if (phase === "poll") {
     await handlePoll(job);
   } else {

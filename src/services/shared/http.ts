@@ -80,13 +80,22 @@ export async function fetchWithRetry<T>(
   const config = { ...DEFAULT_RETRY, ...retryOpts };
 
   if (rateLimit) {
+    const check = await checkRateLimit(rateLimit);
+    if (!check.allowed) {
+      console.log(`[http] Rate limited on ${rateLimit.key}, waiting ${Math.round(check.resetMs / 1000)}s`);
+    }
     await waitForRateLimit(rateLimit);
   }
 
   let lastError: Error | null = null;
+  const urlPath = new URL(url).pathname;
 
   for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
     try {
+      if (attempt > 0) {
+        console.log(`[http] Retry ${attempt}/${config.maxRetries} for ${fetchOpts.method ?? "GET"} ${urlPath}`);
+      }
+
       const response = await fetch(url, fetchOpts);
 
       if (response.status === 429) {
@@ -94,12 +103,14 @@ export async function fetchWithRetry<T>(
         const delayMs = retryAfter
           ? Number(retryAfter) * 1000
           : computeBackoff(attempt, config);
+        console.log(`[http] 429 on ${urlPath}, retrying in ${Math.round(delayMs / 1000)}s`);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         continue;
       }
 
       if (!response.ok) {
         const body = await response.text().catch(() => "");
+        console.error(`[http] ${response.status} ${response.statusText} on ${fetchOpts.method ?? "GET"} ${urlPath}: ${body.slice(0, 200)}`);
         throw new Error(
           `HTTP ${response.status}: ${response.statusText} - ${body}`,
         );
@@ -111,11 +122,13 @@ export async function fetchWithRetry<T>(
 
       if (attempt < config.maxRetries) {
         const delayMs = computeBackoff(attempt, config);
+        console.log(`[http] Error on ${urlPath}, retrying in ${Math.round(delayMs / 1000)}s: ${lastError.message.slice(0, 100)}`);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
   }
 
+  console.error(`[http] All retries exhausted for ${fetchOpts.method ?? "GET"} ${urlPath}: ${lastError?.message}`);
   throw lastError ?? new Error("fetchWithRetry failed");
 }
 
