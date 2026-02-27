@@ -4,6 +4,7 @@ import { prisma } from "@/server/utils/db";
 import { postingRegistry } from "@/services/posting/provider";
 import "@/services/posting/upvotemax"; // Register the provider on import
 import { deductCredits, refundCredits } from "@/server/utils/credits";
+import { RateLimitError } from "@/services/shared/http";
 import { addToPostingQueue, addToTrackingQueue } from "./queues";
 import type { PostingJobData } from "./queues";
 
@@ -288,10 +289,23 @@ async function checkConsecutiveFailures(campaignId: string) {
 const processPosting = async (job: Job<PostingJobData>) => {
   const phase = job.data.phase ?? "create";
   console.log(`[posting] Job ${job.id} starting phase=${phase} for opportunity=${job.data.opportunityId}`);
-  if (phase === "poll") {
-    await handlePoll(job);
-  } else {
-    await handleCreate(job);
+  try {
+    if (phase === "poll") {
+      await handlePoll(job);
+    } else {
+      await handleCreate(job);
+    }
+  } catch (err) {
+    // Rate limited — re-enqueue with delay instead of blocking the worker
+    if (err instanceof RateLimitError) {
+      console.log(`[posting] Rate limited, re-enqueuing ${job.data.opportunityId} in ${Math.round(err.resetMs / 1000)}s`);
+      await addToPostingQueue(
+        { ...job.data },
+        { delay: err.resetMs + 1000 },
+      );
+      return; // Don't throw — job completes cleanly, new delayed job handles it
+    }
+    throw err;
   }
 };
 

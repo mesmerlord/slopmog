@@ -45,11 +45,14 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<{
   };
 }
 
-export async function waitForRateLimit(config: RateLimitConfig): Promise<void> {
-  const check = await checkRateLimit(config);
-  if (!check.allowed) {
-    await new Promise((resolve) => setTimeout(resolve, check.resetMs + 100));
-    return waitForRateLimit(config);
+// ─── Rate Limit Error ────────────────────────────────────────
+
+export class RateLimitError extends Error {
+  resetMs: number;
+  constructor(message: string, resetMs: number) {
+    super(message);
+    this.name = "RateLimitError";
+    this.resetMs = resetMs;
   }
 }
 
@@ -80,11 +83,24 @@ export async function fetchWithRetry<T>(
   const config = { ...DEFAULT_RETRY, ...retryOpts };
 
   if (rateLimit) {
-    const check = await checkRateLimit(rateLimit);
-    if (!check.allowed) {
-      console.log(`[http] Rate limited on ${rateLimit.key}, waiting ${Math.round(check.resetMs / 1000)}s`);
+    const maxRateLimitWaits = 3;
+    for (let rlAttempt = 0; rlAttempt <= maxRateLimitWaits; rlAttempt++) {
+      const check = await checkRateLimit(rateLimit);
+      if (check.allowed) break;
+
+      if (rlAttempt === maxRateLimitWaits) {
+        throw new RateLimitError(
+          `Rate limited on ${rateLimit.key} after ${maxRateLimitWaits} waits`,
+          check.resetMs,
+        );
+      }
+
+      // Add jitter to stagger concurrent waiters and prevent thundering herd
+      const jitterMs = Math.floor(Math.random() * 3000);
+      const waitMs = check.resetMs + jitterMs;
+      console.log(`[http] Rate limited on ${rateLimit.key}, waiting ${Math.round(waitMs / 1000)}s (attempt ${rlAttempt + 1}/${maxRateLimitWaits})`);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
     }
-    await waitForRateLimit(rateLimit);
   }
 
   let lastError: Error | null = null;

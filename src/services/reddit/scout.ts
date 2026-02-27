@@ -15,6 +15,7 @@ import type {
 
 const SEEN_SET_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 const API_CONCURRENCY = 5;
+const MAX_POST_AGE_HOURS = 48; // Only discover posts from last 2 days
 
 const QUESTION_STARTERS = [
   "how", "what", "which", "best", "recommend", "looking for", "alternative",
@@ -119,7 +120,7 @@ export async function scoutSubreddits(params: {
   await pMap(
     keywords,
     async (keyword) => {
-      const results = await searchReddit(keyword);
+      const results = await searchReddit(keyword, { timeframe: "week" });
       let added = 0;
       for (const post of results) {
         if (!allPosts.has(post.id)) {
@@ -172,9 +173,16 @@ export async function scoutSubreddits(params: {
   await log(`Dedup: ${unseenIds.size} unseen out of ${candidatePosts.length}`);
 
   const threads: DiscoveredThread[] = [];
+  const cutoffUtc = Date.now() / 1000 - MAX_POST_AGE_HOURS * 3600;
+  let tooOldCount = 0;
+
   for (const candidate of candidatePosts) {
     if (!unseenIds.has(candidate.post.id)) continue;
     if (candidate.post.isArchived || candidate.post.isLocked) continue;
+    if (candidate.post.createdUtc > 0 && candidate.post.createdUtc < cutoffUtc) {
+      tooOldCount++;
+      continue;
+    }
     threads.push({
       post: candidate.post,
       matchedKeyword: candidate.keyword,
@@ -182,6 +190,9 @@ export async function scoutSubreddits(params: {
     });
   }
 
+  if (tooOldCount > 0) {
+    await log(`Filtered: ${tooOldCount} posts older than ${MAX_POST_AGE_HOURS}h removed`);
+  }
   await log(`${threads.length} unseen threads`);
 
   // ── Step 4: Parallel comment scanning ─────────────────────────

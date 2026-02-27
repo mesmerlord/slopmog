@@ -104,13 +104,16 @@ export async function mineOpportunities(params: {
     searches.push({ query: kw, keyword: kw, label: `feature: "${kw}"` });
   }
   for (const query of buildCompetitorQueries(competitorKeywords)) {
-    const matched = competitorKeywords.find((ck) =>
-      query.toLowerCase().includes(ck.toLowerCase()),
-    ) ?? query;
+    const matched =
+      competitorKeywords.find((ck) =>
+        query.toLowerCase().includes(ck.toLowerCase()),
+      ) ?? query;
     searches.push({ query, keyword: matched, label: `competitor: "${query}"` });
   }
 
-  await log(`Mining: ${searches.length} Reddit-wide searches (${brandKeywords.length} brand, ${featureKeywords.length} feature, ${competitorKeywords.length} competitor) — ${API_CONCURRENCY} parallel`);
+  await log(
+    `Mining: ${searches.length} Reddit-wide searches (${brandKeywords.length} brand, ${featureKeywords.length} feature, ${competitorKeywords.length} competitor) — ${API_CONCURRENCY} parallel`,
+  );
 
   // Run all searches in parallel with concurrency limit
   const allPosts = new Map<string, { post: RedditPost; keyword: string }>();
@@ -119,7 +122,7 @@ export async function mineOpportunities(params: {
   await pMap(
     searches,
     async (search) => {
-      const results = await searchReddit(search.query);
+      const results = await searchReddit(search.query, { timeframe: "week" });
       let added = 0;
       for (const post of results) {
         if (!allPosts.has(post.id)) {
@@ -128,7 +131,9 @@ export async function mineOpportunities(params: {
         }
       }
       completed++;
-      await log(`  [${completed}/${searches.length}] ${search.label} → ${results.length} results, ${added} new`);
+      await log(
+        `  [${completed}/${searches.length}] ${search.label} → ${results.length} results, ${added} new`,
+      );
     },
     API_CONCURRENCY,
   );
@@ -141,7 +146,9 @@ export async function mineOpportunities(params: {
     campaignId,
     candidatePosts.map((c) => c.post),
   );
-  await log(`Dedup: ${unseenIds.size} unseen out of ${candidatePosts.length} total`);
+  await log(
+    `Dedup: ${unseenIds.size} unseen out of ${candidatePosts.length} total`,
+  );
 
   // Filter archived/locked
   const threads: DiscoveredThread[] = [];

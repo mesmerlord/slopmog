@@ -188,7 +188,7 @@ export async function searchSubreddit(
         sort: options?.sort,
         timeframe: options?.timeframe,
       },
-      3600, // 1 hour cache
+      21600, // 6 hour cache
     );
 
     const rawPosts = data.posts ?? [];
@@ -249,7 +249,7 @@ export async function searchReddit(
         sort: options?.sort,
         timeframe: options?.timeframe,
       },
-      3600, // 1 hour cache
+      21600, // 6 hour cache
     );
 
     return (data.posts ?? []).map(mapStandardPost);
@@ -279,7 +279,7 @@ export async function getPostComments(postUrl: string): Promise<{
   }>(
     "/reddit/post/comments",
     { url: postUrl },
-    1800, // 30 min cache
+    604800, // 1 week cache
   );
 
   const post = mapStandardPost(data.post);
