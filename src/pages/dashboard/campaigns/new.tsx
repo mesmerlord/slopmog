@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/router";
+import { useState, useCallback } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { toast } from "sonner";
 import type { GetServerSideProps } from "next";
@@ -10,12 +9,10 @@ import {
   Check,
   X,
   Plus,
-  Loader2,
   ShieldCheck,
   SlidersHorizontal,
   Rocket,
   Sparkles,
-  Search,
   Hash,
   Users,
   Shield,
@@ -24,10 +21,8 @@ import {
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
-import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
 import { getServerAuthSession } from "@/server/utils/auth";
-import { SubscriptionModal } from "@/components/SubscriptionModal";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -70,44 +65,18 @@ const STEP_LABELS = [
   "Launch",
 ] as const;
 
-const ANALYSIS_MESSAGES = [
-  "Judging your design choices...",
-  "Stalking your landing page...",
-  "Finding your value props...",
-  "Deciding if we'd use your product...",
-  "Reading the fine print so you don't have to...",
-  "Looking for skeletons in your about page...",
-  "Calculating your vibe score...",
-];
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export default function NewCampaignPage() {
-  const router = useRouter();
   const [step, setStep] = useState(0);
-  const [analysisMessage, setAnalysisMessage] = useState(ANALYSIS_MESSAGES[0]);
 
-  // Plan info for keyword limits
-  const planQuery = trpc.user.getPlanInfo.useQuery();
-  const maxKeywords = planQuery.data?.maxKeywords ?? 10;
-  const planName = planQuery.data?.planName ?? "FREE";
+  const maxKeywords = 10;
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Suggested items from analysis (not directly in the form)
   const [suggestedSubreddits, setSuggestedSubreddits] = useState<SubredditEntry[]>([]);
-  const [analysisRaw, setAnalysisRaw] = useState<Record<string, unknown> | null>(null);
-
-  // -------------------------------------------------------------------------
-  // Draft persistence (replaces sessionStorage)
-  // -------------------------------------------------------------------------
-
-  const draftIdRef = useRef<string | null>(null);
-  const draftLoadedRef = useRef(false);
-  const draftQuery = trpc.campaign.getLatestDraft.useQuery(undefined, {
-    refetchOnWindowFocus: false,
-  });
 
   // -------------------------------------------------------------------------
   // Form setup
@@ -139,121 +108,11 @@ export default function NewCampaignPage() {
   const competitorKeywordFields = useFieldArray({ control, name: "competitorKeywords" });
   const subredditFields = useFieldArray({ control, name: "subreddits" });
 
-  // Load draft into form (once)
-  useEffect(() => {
-    if (draftLoadedRef.current || !draftQuery.isSuccess) return;
-    draftLoadedRef.current = true;
-
-    const draft = draftQuery.data;
-    if (!draft) return;
-
-    draftIdRef.current = draft.id;
-    setValue("url", draft.websiteUrl || "");
-    setValue("businessName", draft.businessName || "");
-    setValue("businessDescription", draft.businessDescription || "");
-    setValue("targetAudience", draft.targetAudience || "");
-    setValue("valueProps", ((draft.valueProps as string[]) || []).map((v) => ({ value: v })));
-    setValue("automationMode", (draft.automationMode as WizardForm["automationMode"]) || "SEMI_AUTO");
-    setValue("featureStrategyEnabled", draft.featureStrategyEnabled);
-    setValue("brandStrategyEnabled", draft.brandStrategyEnabled);
-    setValue("competitorStrategyEnabled", draft.competitorStrategyEnabled);
-
-    const featureKw = draft.keywords.filter((k) => k.strategy === "FEATURE").map((k) => ({ value: k.keyword, enabled: k.enabled }));
-    const brandKw = draft.keywords.filter((k) => k.strategy === "BRAND").map((k) => ({ value: k.keyword, enabled: k.enabled }));
-    const compKw = draft.keywords.filter((k) => k.strategy === "COMPETITOR").map((k) => ({ value: k.keyword, enabled: k.enabled }));
-    setValue("featureKeywords", featureKw);
-    setValue("brandKeywords", brandKw);
-    setValue("competitorKeywords", compKw);
-
-    setValue("subreddits", draft.subreddits.map((s) => ({
-      name: s.subreddit,
-      memberCount: s.memberCount ?? undefined,
-      expectedTone: s.expectedTone ?? undefined,
-    })));
-
-    if (draft.siteAnalysisData) {
-      setAnalysisRaw(draft.siteAnalysisData as Record<string, unknown>);
-    }
-
-    // Determine which step to resume at
-    const hasKeywords = draft.keywords.length > 0;
-    const hasSubreddits = draft.subreddits.length > 0;
-    if (hasKeywords && hasSubreddits) setStep(4);
-    else if (hasKeywords) setStep(3);
-    else if (draft.businessName) setStep(1);
-  }, [draftQuery.isSuccess, draftQuery.data, setValue]);
-
   // -------------------------------------------------------------------------
-  // Rotate analysis loading messages
+  // Step 0: Analyze site (no-op -- shows toast)
   // -------------------------------------------------------------------------
 
-  const analyzeSite = trpc.campaign.analyzeSite.useMutation();
-
-  useEffect(() => {
-    if (!analyzeSite.isPending) return;
-    let idx = 0;
-    const interval = setInterval(() => {
-      idx = (idx + 1) % ANALYSIS_MESSAGES.length;
-      setAnalysisMessage(ANALYSIS_MESSAGES[idx]);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, [analyzeSite.isPending]);
-
-  // -------------------------------------------------------------------------
-  // Draft save + activate mutations
-  // -------------------------------------------------------------------------
-
-  const saveDraftMutation = trpc.campaign.saveDraft.useMutation();
-
-  const activateMutation = trpc.campaign.activate.useMutation({
-    onSuccess: (data) => {
-      toast.success("Campaign created! Let's go shill.");
-      router.push(routes.dashboard.campaigns.detail(data.id));
-    },
-    onError: (err) => {
-      toast.error(err.message || "Something went wrong launching the campaign.");
-    },
-  });
-
-  const saveDraft = useCallback(async (analysisData?: Record<string, unknown>) => {
-    try {
-      const vals = getValues();
-      const allKeywords = [
-        ...vals.featureKeywords.map((k) => ({ keyword: k.value, strategy: "FEATURE" as const, enabled: k.enabled })),
-        ...vals.brandKeywords.map((k) => ({ keyword: k.value, strategy: "BRAND" as const, enabled: k.enabled })),
-        ...vals.competitorKeywords.map((k) => ({ keyword: k.value, strategy: "COMPETITOR" as const, enabled: k.enabled })),
-      ].filter((k) => k.keyword);
-
-      const result = await saveDraftMutation.mutateAsync({
-        id: draftIdRef.current ?? undefined,
-        websiteUrl: vals.url || undefined,
-        businessName: vals.businessName || undefined,
-        businessDescription: vals.businessDescription || undefined,
-        valueProps: vals.valueProps.map((v) => v.value).filter(Boolean),
-        targetAudience: vals.targetAudience || undefined,
-        automationMode: vals.automationMode,
-        featureStrategyEnabled: vals.featureStrategyEnabled,
-        brandStrategyEnabled: vals.brandStrategyEnabled,
-        competitorStrategyEnabled: vals.competitorStrategyEnabled,
-        siteAnalysisData: (analysisData ?? analysisRaw) ?? undefined,
-        keywords: allKeywords,
-        subreddits: vals.subreddits.filter((s) => s.name).map((s) => ({
-          name: s.name,
-          memberCount: s.memberCount,
-          expectedTone: s.expectedTone,
-        })),
-      });
-      draftIdRef.current = result.id;
-    } catch {
-      // Don't block wizard navigation on draft save failure
-    }
-  }, [getValues, analysisRaw, saveDraftMutation]);
-
-  // -------------------------------------------------------------------------
-  // Step 0: Analyze site
-  // -------------------------------------------------------------------------
-
-  const handleAnalyzeSite = useCallback(async () => {
+  const handleAnalyzeSite = useCallback(() => {
     const url = getValues("url").trim();
     if (!url) {
       toast.error("Please enter a URL first.");
@@ -263,7 +122,7 @@ export default function NewCampaignPage() {
     // Ensure it starts with http
     const normalizedUrl = url.startsWith("http") ? url : `https://${url}`;
 
-    // Basic format check before hitting the backend
+    // Basic format check
     try {
       const parsed = new URL(normalizedUrl);
       if (!parsed.hostname.includes(".")) {
@@ -276,72 +135,8 @@ export default function NewCampaignPage() {
     }
 
     setValue("url", normalizedUrl);
-
-    try {
-      const result = await analyzeSite.mutateAsync({ url: normalizedUrl });
-
-      // Populate form
-      setValue("businessName", result.businessName || "");
-      setValue("businessDescription", result.description || "");
-      setValue(
-        "valueProps",
-        (result.valueProps || []).map((v) => ({ value: v }))
-      );
-      setValue("targetAudience", result.targetAudience || "");
-
-      // Feature keywords: primary + problem + long-tail
-      const featureKw = [
-        ...(result.primaryKeywords || []),
-        ...(result.problemKeywords || []),
-        ...(result.longTailKeywords || []),
-      ];
-      const brandKw = result.brandKeywords || [];
-      const compKw = result.competitorKeywords || [];
-
-      // All keywords are kept — first N (within plan limit) are enabled, rest disabled.
-      // Priority: brand > feature > competitor (brand is most critical for identity).
-      const limit = planQuery.data?.maxKeywords ?? 10;
-      let slotsLeft = limit === Infinity ? Infinity : limit;
-
-      const tagEnabled = (arr: string[]) =>
-        arr.map((k) => {
-          const on = slotsLeft > 0;
-          if (on && slotsLeft !== Infinity) slotsLeft--;
-          return { value: k, enabled: on };
-        });
-
-      const taggedBrand = tagEnabled(brandKw);
-      const taggedFeature = tagEnabled(featureKw);
-      const taggedComp = tagEnabled(compKw);
-
-      setValue("brandKeywords", taggedBrand);
-      setValue("featureKeywords", taggedFeature);
-      setValue("competitorKeywords", taggedComp);
-
-      // Subreddits
-      const subs = (result.suggestedSubreddits || []).map((s) => ({
-        name: s.name,
-        memberCount: s.memberCount,
-        expectedTone: s.expectedTone,
-        reason: s.reason,
-      }));
-      // Put first 5 as active, rest as suggested
-      setValue("subreddits", subs.slice(0, 5));
-      setSuggestedSubreddits(subs.slice(5));
-
-      // Store raw analysis
-      const rawData = result as unknown as Record<string, unknown>;
-      setAnalysisRaw(rawData);
-
-      setStep(1);
-
-      // Save draft so analysis data isn't lost
-      await saveDraft(rawData);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : typeof err === "object" && err !== null && "message" in err ? String((err as { message: unknown }).message) : "";
-      toast.error(message || "Failed to analyze site. Please check the URL and try again.");
-    }
-  }, [analyzeSite, getValues, setValue, saveDraft]);
+    toast("Campaign creation coming soon");
+  }, [getValues, setValue]);
 
   // -------------------------------------------------------------------------
   // Step navigation
@@ -359,18 +154,17 @@ export default function NewCampaignPage() {
       if (fromStep === 3) return vals.subreddits.length >= 1;
       return true;
     },
-    [getValues, maxKeywords]
+    [getValues]
   );
 
-  const goNext = useCallback(async () => {
+  const goNext = useCallback(() => {
     if (!canProceed(step)) {
       if (step === 2) toast.error("Add at least one keyword to continue.");
       if (step === 3) toast.error("Add at least one subreddit to continue.");
       return;
     }
-    await saveDraft();
     setStep((s) => Math.min(s + 1, 5));
-  }, [step, canProceed, saveDraft]);
+  }, [step, canProceed]);
 
   const goBack = useCallback(() => {
     setStep((s) => Math.max(s - 1, 0));
@@ -385,18 +179,12 @@ export default function NewCampaignPage() {
   );
 
   // -------------------------------------------------------------------------
-  // Submit
+  // Submit (no-op -- shows toast)
   // -------------------------------------------------------------------------
 
-  const onLaunch = useCallback(async () => {
-    await saveDraft();
-    const id = draftIdRef.current;
-    if (!id) {
-      toast.error("Please complete the wizard steps first.");
-      return;
-    }
-    activateMutation.mutate({ id });
-  }, [saveDraft, activateMutation]);
+  const onLaunch = useCallback(() => {
+    toast("Campaign creation coming soon");
+  }, []);
 
   // -------------------------------------------------------------------------
   // Tag input helpers
@@ -435,7 +223,7 @@ export default function NewCampaignPage() {
       const kw = keywords[idx];
       if (!kw) return;
       if (!kw.enabled) {
-        // Trying to enable — check limit
+        // Trying to enable -- check limit
         if (isAtKeywordLimit()) { setShowUpgradeModal(true); return; }
       }
       setValue(`${field}.${idx}.enabled`, !kw.enabled);
@@ -519,17 +307,6 @@ export default function NewCampaignPage() {
   // Render
   // -------------------------------------------------------------------------
 
-  // Show loading while checking for existing draft
-  if (draftQuery.isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 size={32} className="text-teal animate-spin" />
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   return (
     <DashboardLayout>
       <Seo title="New Campaign -- SlopMog" noIndex />
@@ -601,26 +378,14 @@ export default function NewCampaignPage() {
                 }}
               />
 
-              {analyzeSite.isPending ? (
-                <div className="flex flex-col items-center py-6">
-                  <Loader2
-                    size={32}
-                    className="text-teal animate-spin mb-3"
-                  />
-                  <p className="text-sm text-charcoal-light font-medium animate-pulse">
-                    {analysisMessage}
-                  </p>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleAnalyzeSite}
-                  disabled={!urlValue?.trim()}
-                  className="w-full bg-coral text-white py-3.5 rounded-full font-bold text-[0.95rem] shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl hover:shadow-coral/30 transition-all disabled:opacity-40 disabled:hover:translate-y-0 disabled:shadow-none"
-                >
-                  Analyze My Site
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleAnalyzeSite}
+                disabled={!urlValue?.trim()}
+                className="w-full bg-coral text-white py-3.5 rounded-full font-bold text-[0.95rem] shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl hover:shadow-coral/30 transition-all disabled:opacity-40 disabled:hover:translate-y-0 disabled:shadow-none"
+              >
+                Analyze My Site
+              </button>
 
               <button
                 type="button"
@@ -780,7 +545,7 @@ export default function NewCampaignPage() {
             <StrategyBucket
               icon={<Sparkles size={18} className="text-teal" />}
               label="Feature Keywords"
-              description="What your product does — problems it solves, features it offers. Searched Reddit-wide and in your subreddits."
+              description="What your product does -- problems it solves, features it offers. Searched Reddit-wide and in your subreddits."
               color="teal"
               enabled={featureStrategyEnabled}
               onToggle={() => setValue("featureStrategyEnabled", !featureStrategyEnabled)}
@@ -830,32 +595,14 @@ export default function NewCampaignPage() {
 
           {/* Keyword usage counter */}
           <div className="text-center mt-4">
-            {maxKeywords === Infinity ? (
-              <span className="text-[0.82rem] font-semibold text-charcoal-light">
-                {totalKeywords} keyword{totalKeywords !== 1 ? "s" : ""}
-              </span>
-            ) : (
-              <span className={`text-[0.82rem] font-semibold ${
-                activeKeywords >= maxKeywords ? "text-teal" : "text-charcoal-light"
-              }`}>
-                {activeKeywords} / {maxKeywords} active keywords
-                {activeKeywords < totalKeywords && (
-                  <span className="text-charcoal-light/50"> ({totalKeywords - activeKeywords} locked)</span>
-                )}
-                {activeKeywords >= maxKeywords && (
-                  <>
-                    {" "}&middot;{" "}
-                    <button
-                      type="button"
-                      onClick={() => setShowUpgradeModal(true)}
-                      className="text-coral hover:text-coral-dark font-bold underline underline-offset-2 transition-colors"
-                    >
-                      Unlock more
-                    </button>
-                  </>
-                )}
-              </span>
-            )}
+            <span className={`text-[0.82rem] font-semibold ${
+              activeKeywords >= maxKeywords ? "text-teal" : "text-charcoal-light"
+            }`}>
+              {activeKeywords} / {maxKeywords} active keywords
+              {activeKeywords < totalKeywords && (
+                <span className="text-charcoal-light/50"> ({totalKeywords - activeKeywords} locked)</span>
+              )}
+            </span>
           </div>
           {activeKeywords === 0 && (
             <p className="text-center text-[0.82rem] text-coral font-medium mt-1">
@@ -1209,7 +956,7 @@ export default function NewCampaignPage() {
 
           {/* Keywords */}
           <ReviewCard
-            title={maxKeywords === Infinity ? `Keywords (${activeKeywords})` : `Keywords (${activeKeywords} active${totalKeywords > activeKeywords ? `, ${totalKeywords - activeKeywords} locked` : ""})`}
+            title={`Keywords (${activeKeywords} active${totalKeywords > activeKeywords ? `, ${totalKeywords - activeKeywords} locked` : ""})`}
             onEdit={() => setStep(2)}
           >
             <div className="space-y-2">
@@ -1285,31 +1032,14 @@ export default function NewCampaignPage() {
             <button
               type="button"
               onClick={onLaunch}
-              disabled={activateMutation.isPending}
-              className="inline-flex items-center gap-2 bg-coral text-white px-8 py-3 rounded-full font-bold text-[0.95rem] shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl hover:shadow-coral/30 transition-all disabled:opacity-50 disabled:hover:translate-y-0"
+              className="inline-flex items-center gap-2 bg-coral text-white px-8 py-3 rounded-full font-bold text-[0.95rem] shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl hover:shadow-coral/30 transition-all"
             >
-              {activateMutation.isPending ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  Launching...
-                </>
-              ) : (
-                <>
-                  <Rocket size={18} />
-                  Launch Campaign
-                </>
-              )}
+              <Rocket size={18} />
+              Launch Campaign
             </button>
           </div>
         </div>
       )}
-      {/* Subscription upgrade modal */}
-      <SubscriptionModal
-        open={showUpgradeModal}
-        onOpenChange={setShowUpgradeModal}
-        title="Need more keywords?"
-        description={`Your ${planName} plan supports ${maxKeywords} keywords. Upgrade for more keyword slots and extra posting credits.`}
-      />
     </DashboardLayout>
   );
 }

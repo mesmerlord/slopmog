@@ -76,9 +76,10 @@ function normalizeStatus(raw: string): OrderStatus {
 
 const upvoteMaxProvider: PostingProvider = {
   name: "upvotemax",
+  platform: "REDDIT" as const,
 
   async createCommentOrder(params: PostCommentParams): Promise<CreateOrderResult> {
-    console.log(`[upvotemax] Creating comment order: subreddit=r/${params.subreddit}, url=${params.threadUrl}`);
+    console.log(`[upvotemax] Creating comment order: context=${params.sourceContext}, url=${params.contentUrl}`);
     try {
       const response = await fetchWithRetry<UMCreateOrderResponse>(
         apiUrl("/orders"),
@@ -87,7 +88,7 @@ const upvoteMaxProvider: PostingProvider = {
           headers: authHeaders(),
           body: JSON.stringify({
             service: CUSTOM_COMMENTS_SERVICE_KEY,
-            link: params.threadUrl,
+            link: params.contentUrl,
             comments: params.commentText,
           }),
           rateLimit: RATE_LIMIT,
@@ -165,6 +166,39 @@ const upvoteMaxProvider: PostingProvider = {
       console.error(`[upvotemax] checkOrderStatus error for ${orderId}: ${message}`);
       return { status: "unknown", error: message };
     }
+  },
+
+  async checkMultipleOrderStatuses(orderIds: string[]): Promise<Map<string, OrderStatusResult>> {
+    console.log(`[upvotemax] Checking status for ${orderIds.length} orders: ${orderIds.join(", ")}`);
+    const results = new Map<string, OrderStatusResult>();
+    try {
+      const response = await fetchWithRetry<UMStatusResponse>(
+        apiUrl("/status"),
+        {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ orders: orderIds }),
+          rateLimit: RATE_LIMIT,
+          retry: { maxRetries: 1, baseDelayMs: 2000, maxDelayMs: 10000 },
+        },
+      );
+
+      for (const id of orderIds) {
+        const entry = response.results?.find((r) => String(r.orderId) === id);
+        if (entry) {
+          results.set(id, { status: normalizeStatus(entry.status) });
+        } else {
+          results.set(id, { status: "unknown", error: "Order not found in status response" });
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[upvotemax] checkMultipleOrderStatuses error: ${message}`);
+      for (const id of orderIds) {
+        results.set(id, { status: "unknown", error: message });
+      }
+    }
+    return results;
   },
 
   async isAvailable(): Promise<boolean> {

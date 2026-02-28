@@ -6,8 +6,10 @@ import type {
 
 export interface PostingProvider {
   name: string;
+  platform: "REDDIT" | "YOUTUBE" | "TWITTER";
   createCommentOrder(params: PostCommentParams): Promise<CreateOrderResult>;
   checkOrderStatus(orderId: string): Promise<OrderStatusResult>;
+  checkMultipleOrderStatuses?(orderIds: string[]): Promise<Map<string, OrderStatusResult>>;
   isAvailable(): Promise<boolean>;
   getBalance?(): Promise<number>;
 }
@@ -29,6 +31,10 @@ class PostingProviderRegistry {
       if (available) return provider;
     }
     return undefined;
+  }
+
+  getForPlatform(platform: string): PostingProvider | undefined {
+    return this.providers.find((p) => p.platform === platform);
   }
 
   getAll(): PostingProvider[] {

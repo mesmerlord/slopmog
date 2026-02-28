@@ -37,3 +37,6 @@ next-env.d.ts
 .env.production
 .playwright-mcp
 .cache/
+
+# scripts output data
+scripts/data/*.json

@@ -26,7 +26,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture Overview
 
-This is a Next.js application with a tRPC backend for SlopMog - a service that creates Reddit comments to boost AI search rankings. The brand is fun/irreverent.
+This is a Next.js application with a tRPC backend for SlopMog - a social media marketing platform (multi-platform rebuild in progress). The brand is fun/irreverent.
 
 ### Tech Stack
 
@@ -56,6 +56,7 @@ This is a Next.js application with a tRPC backend for SlopMog - a service that c
 
 #### Background Processing
 
+- Workers have been removed and will be rebuilt as part of the multi-platform refactor
 - Redis available at localhost:6406 for future queue/caching needs
 
 ## Code Style & Conventions

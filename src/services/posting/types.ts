@@ -1,7 +1,7 @@
 export interface PostCommentParams {
-  threadUrl: string;
+  contentUrl: string;
   commentText: string;
-  subreddit: string;
+  sourceContext: string;
   parentCommentId?: string; // If replying to a comment instead of top-level
 }
 

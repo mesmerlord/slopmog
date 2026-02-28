@@ -27,7 +27,11 @@ interface ChatCompletionResponse {
     message: { role: string; content: string };
     finish_reason: string;
   }>;
-  usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
 }
 
 function getHeaders() {
@@ -122,4 +126,5 @@ function stripMarkdownCodeBlocks(text: string): string {
 export const MODELS = {
   GEMINI_FLASH: "google/gemini-3-flash-preview",
   CLAUDE_OPUS: "anthropic/claude-opus-4-6",
+  CLAUDE_SONNET: "anthropic/claude-sonnet-4.6",
 } as const;

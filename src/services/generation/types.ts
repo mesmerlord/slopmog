@@ -2,7 +2,8 @@ export interface CommentGenerationInput {
   // Post context
   postTitle: string;
   postBody: string;
-  subreddit: string;
+  sourceContext: string;  // subreddit name, channel name, twitter handle
+  platform?: "REDDIT" | "YOUTUBE" | "TWITTER";
   existingComments: Array<{
     author: string;
     body: string;
