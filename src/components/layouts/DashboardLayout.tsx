@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import { useSession, signOut } from "next-auth/react";
 import {
   LayoutDashboard,
-  Megaphone,
+  Globe,
   Inbox,
   MessageSquare,
   CreditCard,
@@ -20,10 +20,10 @@ import { trpc } from "@/utils/trpc";
 const routes = {
   dashboard: {
     index: "/dashboard",
-    campaigns: {
-      index: "/dashboard/campaigns",
-      new: "/dashboard/campaigns/new",
-      detail: (id: string) => `/dashboard/campaigns/${id}` as const,
+    sites: {
+      index: "/dashboard/sites",
+      new: "/dashboard/sites/new",
+      detail: (id: string) => `/dashboard/sites/${id}` as const,
     },
     queue: "/dashboard/queue",
     comments: "/dashboard/comments",
@@ -42,7 +42,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: routes.dashboard.index, icon: LayoutDashboard, exact: true },
-  { label: "Campaigns", href: routes.dashboard.campaigns.index, icon: Megaphone },
+  { label: "Sites", href: routes.dashboard.sites.index, icon: Globe },
   { label: "Queue", href: routes.dashboard.queue, icon: Inbox },
   { label: "Comments", href: routes.dashboard.comments, icon: MessageSquare },
   { label: "Billing", href: routes.dashboard.billing, icon: CreditCard },

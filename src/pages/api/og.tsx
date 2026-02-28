@@ -4,8 +4,15 @@ export const config = {
   runtime: "edge",
 };
 
-export default async function handler() {
+export default async function handler(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+
+    // Dynamic params with fallbacks
+    const title = searchParams.get("title") || "Get Your Brand Into AI Recommendations";
+    const description =
+      searchParams.get("description") || "The name is ridiculous. The results aren't.";
+
     return new ImageResponse(
       (
         <div
@@ -13,444 +20,278 @@ export default async function handler() {
             height: "100%",
             width: "100%",
             display: "flex",
-            flexDirection: "column",
+            flexDirection: "row",
             position: "relative",
-            backgroundColor: "#2D3047",
+            backgroundColor: "#FFF8F0", // Brand cream background
             overflow: "hidden",
+            fontFamily: 'system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
           }}
         >
-          {/* ── Decorative background elements ── */}
-
-          {/* Coral blob circles (mascot vibes) */}
+          {/* Background decorative grid */}
           <div
             style={{
               position: "absolute",
-              top: 40,
-              left: 80,
-              width: 120,
-              height: 120,
-              borderRadius: "50%",
-              backgroundColor: "#FF6B6B",
-              opacity: 0.15,
-              display: "flex",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              top: 160,
-              right: 140,
-              width: 80,
-              height: 80,
-              borderRadius: "50%",
-              backgroundColor: "#FF6B6B",
-              opacity: 0.12,
-              display: "flex",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              top: 60,
-              right: 320,
-              width: 50,
-              height: 50,
-              borderRadius: "50%",
-              backgroundColor: "#FF6B6B",
-              opacity: 0.1,
-              display: "flex",
+              inset: 0,
+              opacity: 0.5,
+              backgroundImage: "radial-gradient(#2D3047 1px, transparent 1px)",
+              backgroundSize: "40px 40px",
+              zIndex: 0,
             }}
           />
 
-          {/* Teal dashed circles */}
-          <svg
-            width="90"
-            height="90"
-            viewBox="0 0 90 90"
-            style={{ position: "absolute", top: 30, right: 80 }}
-          >
-            <circle
-              cx="45"
-              cy="45"
-              r="40"
-              stroke="#2EC4B6"
-              strokeWidth="2.5"
-              strokeDasharray="8 6"
-              fill="none"
-              opacity="0.25"
-            />
-          </svg>
-          <svg
-            width="60"
-            height="60"
-            viewBox="0 0 60 60"
-            style={{ position: "absolute", top: 180, left: 300 }}
-          >
-            <circle
-              cx="30"
-              cy="30"
-              r="26"
-              stroke="#2EC4B6"
-              strokeWidth="2"
-              strokeDasharray="6 5"
-              fill="none"
-              opacity="0.2"
-            />
-          </svg>
-
-          {/* Yellow stars/sparkles */}
-          <svg
-            width="28"
-            height="28"
-            viewBox="0 0 28 28"
-            style={{ position: "absolute", top: 50, left: 350 }}
-          >
-            <path
-              d="M14 2l3 8.5h9l-7.3 5.3 2.8 8.7L14 19.5l-7.5 5 2.8-8.7L2 10.5h9z"
-              fill="#FFD93D"
-              opacity="0.3"
-            />
-          </svg>
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 28 28"
-            style={{ position: "absolute", top: 140, right: 380 }}
-          >
-            <path
-              d="M14 2l3 8.5h9l-7.3 5.3 2.8 8.7L14 19.5l-7.5 5 2.8-8.7L2 10.5h9z"
-              fill="#FFD93D"
-              opacity="0.25"
-            />
-          </svg>
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 28 28"
-            style={{ position: "absolute", top: 90, right: 200 }}
-          >
-            <path
-              d="M14 2l3 8.5h9l-7.3 5.3 2.8 8.7L14 19.5l-7.5 5 2.8-8.7L2 10.5h9z"
-              fill="#FFD93D"
-              opacity="0.2"
-            />
-          </svg>
-
-          {/* Lavender rounded rects */}
+          {/* Top-right teal glow */}
           <div
             style={{
               position: "absolute",
-              top: 100,
-              left: 600,
-              width: 70,
-              height: 35,
-              borderRadius: 12,
-              backgroundColor: "#B197FC",
-              opacity: 0.12,
-              display: "flex",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              top: 40,
-              left: 500,
-              width: 45,
-              height: 25,
-              borderRadius: 10,
-              backgroundColor: "#B197FC",
-              opacity: 0.1,
-              display: "flex",
+              top: "-20%",
+              right: "-10%",
+              width: "70%",
+              height: "140%",
+              background: "radial-gradient(circle, rgba(46,196,182,0.12) 0%, rgba(255,248,240,0) 65%)",
+              zIndex: 0,
             }}
           />
 
-          {/* Speech bubble shapes */}
-          <svg
-            width="70"
-            height="55"
-            viewBox="0 0 70 55"
-            style={{ position: "absolute", top: 120, left: 140 }}
-          >
-            <rect
-              x="2"
-              y="2"
-              width="66"
-              height="40"
-              rx="12"
-              fill="none"
-              stroke="#2EC4B6"
-              strokeWidth="2"
-              opacity="0.15"
-            />
-            <path
-              d="M18 42l8-0 -4 10z"
-              fill="none"
-              stroke="#2EC4B6"
-              strokeWidth="2"
-              opacity="0.15"
-            />
-          </svg>
-          <svg
-            width="55"
-            height="45"
-            viewBox="0 0 55 45"
-            style={{ position: "absolute", top: 50, right: 500 }}
-          >
-            <rect
-              x="2"
-              y="2"
-              width="51"
-              height="32"
-              rx="10"
-              fill="none"
-              stroke="#FF6B6B"
-              strokeWidth="2"
-              opacity="0.12"
-            />
-            <path
-              d="M14 34l6-0 -3 8z"
-              fill="none"
-              stroke="#FF6B6B"
-              strokeWidth="2"
-              opacity="0.12"
-            />
-          </svg>
-
-          {/* Reddit upvote arrow */}
-          <svg
-            width="30"
-            height="40"
-            viewBox="0 0 30 40"
-            style={{ position: "absolute", top: 160, left: 500 }}
-          >
-            <path
-              d="M15 4l10 12h-6v16h-8V16H5z"
-              fill="#FF6B6B"
-              opacity="0.18"
-            />
-          </svg>
-          <svg
-            width="24"
-            height="32"
-            viewBox="0 0 30 40"
-            style={{ position: "absolute", top: 80, left: 780 }}
-          >
-            <path
-              d="M15 4l10 12h-6v16h-8V16H5z"
-              fill="#FF6B6B"
-              opacity="0.14"
-            />
-          </svg>
-
-          {/* ── Gradient overlay for bottom content area ── */}
+          {/* ── Left Content Column ── */}
           <div
             style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: 400,
-              background:
-                "linear-gradient(to bottom, rgba(45,48,71,0) 0%, rgba(45,48,71,0.85) 40%, rgba(45,48,71,1) 70%)",
-              display: "flex",
-            }}
-          />
-
-          {/* ── Content section ── */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: 50,
-              left: 70,
-              right: 70,
               display: "flex",
               flexDirection: "column",
-              gap: 20,
+              justifyContent: "center",
+              width: "55%",
+              paddingLeft: "80px",
+              paddingRight: "20px",
+              zIndex: 10,
+              height: "100%",
             }}
           >
-            {/* Logo blob + brand name */}
+            {/* Logo area */}
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 16,
+                gap: "16px",
+                marginBottom: "40px",
               }}
             >
-              {/* Mascot blob SVG */}
-              <svg
-                width="56"
-                height="56"
-                viewBox="0 0 56 56"
-              >
-                {/* Antenna */}
-                <line
-                  x1="28"
-                  y1="6"
-                  x2="28"
-                  y2="14"
-                  stroke="#FF6B6B"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-                <circle cx="28" cy="4" r="3" fill="#FFD93D" />
-                {/* Body */}
-                <ellipse
-                  cx="28"
-                  cy="33"
-                  rx="22"
-                  ry="20"
-                  fill="#FF6B6B"
-                />
-                {/* Eyes */}
-                <circle cx="20" cy="29" r="5" fill="white" />
-                <circle cx="36" cy="29" r="5" fill="white" />
-                <circle cx="21" cy="30" r="2.5" fill="#2D3047" />
-                <circle cx="37" cy="30" r="2.5" fill="#2D3047" />
-                {/* Eye shine */}
-                <circle cx="19" cy="28" r="1.2" fill="white" opacity="0.8" />
-                <circle cx="35" cy="28" r="1.2" fill="white" opacity="0.8" />
-                {/* Smile */}
-                <path
-                  d="M22 37 Q28 42, 34 37"
-                  stroke="#2D3047"
-                  strokeWidth="2"
-                  fill="none"
-                  strokeLinecap="round"
-                />
-                {/* Arms */}
-                <ellipse
-                  cx="5"
-                  cy="35"
-                  rx="5"
-                  ry="3.5"
-                  fill="#e55a5a"
-                  transform="rotate(-20, 5, 35)"
-                />
-                <ellipse
-                  cx="51"
-                  cy="35"
-                  rx="5"
-                  ry="3.5"
-                  fill="#e55a5a"
-                  transform="rotate(20, 51, 35)"
-                />
+              <svg width="48" height="48" viewBox="0 0 100 100">
+                <line x1="50" y1="15" x2="50" y2="30" stroke="#FF6B6B" strokeWidth="5" strokeLinecap="round" />
+                <circle cx="50" cy="12" r="6" fill="#FFD93D" />
+                <ellipse cx="15" cy="65" rx="10" ry="7" fill="#e55a5a" transform="rotate(-20, 15, 65)" />
+                <ellipse cx="85" cy="65" rx="10" ry="7" fill="#e55a5a" transform="rotate(20, 85, 65)" />
+                <ellipse cx="50" cy="60" rx="40" ry="36" fill="#FF6B6B" />
+                <circle cx="35" cy="52" r="10" fill="white" />
+                <circle cx="65" cy="52" r="10" fill="white" />
+                <circle cx="37" cy="52" r="4.5" fill="#2D3047" />
+                <circle cx="67" cy="52" r="4.5" fill="#2D3047" />
+                <circle cx="34" cy="49" r="2.5" fill="white" />
+                <circle cx="64" cy="49" r="2.5" fill="white" />
+                <path d="M 40 70 Q 50 78, 60 70" stroke="#2D3047" strokeWidth="3" fill="none" strokeLinecap="round" />
               </svg>
-              <div
+              <span
                 style={{
-                  fontSize: 38,
-                  fontWeight: 700,
-                  color: "white",
+                  fontSize: 32,
+                  fontWeight: 800,
+                  color: "#2D3047",
                   letterSpacing: "-0.5px",
                 }}
               >
                 SlopMog
-              </div>
+              </span>
             </div>
 
             {/* Headline */}
             <div
               style={{
-                fontSize: 52,
-                fontWeight: 700,
-                color: "white",
-                lineHeight: 1.15,
-                maxWidth: 800,
+                fontSize: 64,
+                fontWeight: 800,
+                color: "#2D3047",
+                lineHeight: 1.1,
+                letterSpacing: "-1.5px",
+                marginBottom: "24px",
+                maxWidth: "600px",
               }}
             >
-              Get Your Brand Into AI Recommendations
+              {title}
             </div>
 
-            {/* Social proof line */}
+            {/* Subtitle */}
             <div
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 24,
-                marginTop: 4,
+                fontSize: 32,
+                color: "#4a4d63",
+                fontWeight: 500,
+                lineHeight: 1.4,
+                marginBottom: "48px",
+                maxWidth: "520px",
               }}
             >
+              {description}
+            </div>
+
+            {/* Feature Badges Row */}
+            <div style={{ display: "flex", gap: "16px" }}>
               <div
                 style={{
-                  fontSize: 20,
-                  color: "#2EC4B6",
-                  fontWeight: 600,
                   display: "flex",
                   alignItems: "center",
-                  gap: 8,
+                  gap: "10px",
+                  padding: "12px 24px",
+                  backgroundColor: "white",
+                  borderRadius: "50px",
+                  border: "2px solid rgba(46,196,182,0.3)",
+                  boxShadow: "0 4px 20px rgba(45,48,71,0.06)",
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 18 18">
-                  <circle cx="9" cy="9" r="8" fill="#2EC4B6" />
-                  <path
-                    d="M6 9l2 2 4-4"
-                    stroke="white"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                  />
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" fill="#2EC4B6" />
+                  <path d="M8 12L11 15L16 9" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                10,000+ comments placed
+                <span style={{ fontSize: 20, color: "#2D3047", fontWeight: 700 }}>AI Optimized</span>
               </div>
+              
               <div
                 style={{
-                  width: 4,
-                  height: 4,
-                  borderRadius: "50%",
-                  backgroundColor: "#4a4d63",
-                  display: "flex",
-                }}
-              />
-              <div
-                style={{
-                  fontSize: 20,
-                  color: "#2EC4B6",
-                  fontWeight: 600,
                   display: "flex",
                   alignItems: "center",
-                  gap: 8,
+                  gap: "10px",
+                  padding: "12px 24px",
+                  backgroundColor: "white",
+                  borderRadius: "50px",
+                  border: "2px solid rgba(255,107,107,0.3)",
+                  boxShadow: "0 4px 20px rgba(45,48,71,0.06)",
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 18 18">
-                  <circle cx="9" cy="9" r="8" fill="#2EC4B6" />
-                  <path
-                    d="M6 9l2 2 4-4"
-                    stroke="white"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    fill="none"
-                  />
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2L15 8.5L22 9.5L17 14.5L18.5 21.5L12 18L5.5 21.5L7 14.5L2 9.5L9 8.5L12 2Z" fill="#FFD93D" />
                 </svg>
-                400+ brands boosted
+                <span style={{ fontSize: 20, color: "#2D3047", fontWeight: 700 }}>5x Visibility</span>
               </div>
-              <div
-                style={{
-                  width: 4,
-                  height: 4,
-                  borderRadius: "50%",
-                  backgroundColor: "#4a4d63",
-                  display: "flex",
-                }}
-              />
-              <div
-                style={{
-                  fontSize: 20,
-                  color: "#FFD93D",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 28 28">
-                  <path
-                    d="M14 2l3 8.5h9l-7.3 5.3 2.8 8.7L14 19.5l-7.5 5 2.8-8.7L2 10.5h9z"
-                    fill="#FFD93D"
-                  />
-                </svg>
-                5x avg. visibility lift
+            </div>
+          </div>
+
+          {/* ── Right Floating Composition Column ── */}
+          <div
+            style={{
+              width: "45%",
+              height: "100%",
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10,
+            }}
+          >
+            {/* Center Coral Glow Behind Mascot */}
+            <div
+              style={{
+                position: "absolute",
+                top: "15%",
+                left: "15%",
+                width: "70%",
+                height: "70%",
+                background: "radial-gradient(circle, rgba(255,107,107,0.15) 0%, rgba(255,248,240,0) 70%)",
+                borderRadius: "50%",
+                zIndex: 0,
+              }}
+            />
+
+            {/* Giant Mascot Blob */}
+            <div style={{ display: "flex", position: "relative", zIndex: 20 }}>
+              <svg width="340" height="340" viewBox="0 0 100 100">
+                <line x1="50" y1="12" x2="50" y2="30" stroke="#FF6B6B" strokeWidth="5" strokeLinecap="round" />
+                <circle cx="50" cy="9" r="6" fill="#FFD93D" />
+                <ellipse cx="12" cy="65" rx="11" ry="8" fill="#e55a5a" transform="rotate(-20, 12, 65)" />
+                <ellipse cx="88" cy="65" rx="11" ry="8" fill="#e55a5a" transform="rotate(20, 88, 65)" />
+                <ellipse cx="50" cy="60" rx="42" ry="38" fill="#FF6B6B" />
+                <circle cx="34" cy="52" r="11" fill="white" />
+                <circle cx="66" cy="52" r="11" fill="white" />
+                <circle cx="36" cy="52" r="5" fill="#2D3047" />
+                <circle cx="68" cy="52" r="5" fill="#2D3047" />
+                <circle cx="33" cy="48" r="3" fill="white" />
+                <circle cx="65" cy="48" r="3" fill="white" />
+                <path d="M 38 72 Q 50 82, 62 72" stroke="#2D3047" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+              </svg>
+            </div>
+
+            {/* User Prompt Bubble */}
+            <div
+              style={{
+                position: "absolute",
+                top: "22%",
+                left: "-5%",
+                backgroundColor: "white",
+                padding: "16px 24px",
+                borderRadius: "24px",
+                borderBottomLeftRadius: "6px",
+                border: "2px solid rgba(46,196,182,0.8)", // Teal border
+                boxShadow: "0 12px 40px rgba(45,48,71,0.12)",
+                display: "flex",
+                flexDirection: "column",
+                zIndex: 30,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                <div style={{ width: 14, height: 14, borderRadius: "50%", backgroundColor: "#B197FC" }} />
+                <span style={{ fontSize: 16, color: "#4a4d63", fontWeight: 700 }}>User Request</span>
               </div>
+              <span style={{ fontSize: 24, color: "#2D3047", fontWeight: 700 }}>"Best tool for marketing?"</span>
+            </div>
+
+            {/* AI Response Bubble */}
+            <div
+              style={{
+                position: "absolute",
+                bottom: "22%",
+                right: "5%",
+                backgroundColor: "#2D3047", // Charcoal background
+                padding: "16px 24px",
+                borderRadius: "24px",
+                borderBottomRightRadius: "6px",
+                border: "2px solid #4a4d63",
+                boxShadow: "0 16px 48px rgba(45,48,71,0.25)",
+                display: "flex",
+                flexDirection: "column",
+                zIndex: 30,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                <div style={{ width: 14, height: 14, borderRadius: "50%", backgroundColor: "#FFD93D" }} />
+                <span style={{ fontSize: 16, color: "#B197FC", fontWeight: 700 }}>AI Engine</span>
+              </div>
+              <span style={{ fontSize: 24, color: "white", fontWeight: 700 }}>"I recommend SlopMog!"</span>
+            </div>
+
+            {/* Decorative Sparkles & Upvote Elements */}
+            <svg width="48" height="48" viewBox="0 0 28 28" style={{ position: "absolute", top: "15%", right: "15%", zIndex: 10 }}>
+              <path d="M14 2l3 8.5h9l-7.3 5.3 2.8 8.7L14 19.5l-7.5 5 2.8-8.7L2 10.5h9z" fill="#FFD93D" />
+            </svg>
+            
+            <svg width="32" height="32" viewBox="0 0 28 28" style={{ position: "absolute", bottom: "18%", left: "5%", zIndex: 10 }}>
+              <path d="M14 2l3 8.5h9l-7.3 5.3 2.8 8.7L14 19.5l-7.5 5 2.8-8.7L2 10.5h9z" fill="#2EC4B6" opacity="0.6" />
+            </svg>
+
+            {/* Floating Upvote Token */}
+            <div
+              style={{
+                position: "absolute",
+                top: "50%",
+                right: "-2%",
+                backgroundColor: "white",
+                width: 56,
+                height: 56,
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 8px 24px rgba(45,48,71,0.1)",
+                border: "3px solid #FF6B6B",
+                zIndex: 25,
+              }}
+            >
+              <svg width="28" height="28" viewBox="0 0 30 40">
+                <path d="M15 4l10 12h-6v16h-8V16H5z" fill="#FF6B6B" />
+              </svg>
             </div>
           </div>
         </div>
@@ -463,6 +304,8 @@ export default async function handler() {
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
     console.log(message);
+    
+    // Fallback Image
     return new ImageResponse(
       (
         <div
@@ -470,14 +313,18 @@ export default async function handler() {
             width: "100%",
             height: "100%",
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: "#2D3047",
-            color: "white",
-            fontSize: 24,
+            backgroundColor: "#FFF8F0",
+            color: "#2D3047",
+            fontFamily: 'system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
           }}
         >
-          SlopMog — Get Your Brand Into AI Recommendations
+          <div style={{ fontSize: 48, fontWeight: 800, marginBottom: 16 }}>SlopMog</div>
+          <div style={{ fontSize: 24, fontWeight: 500, color: "#4a4d63" }}>
+            Get Your Brand Into AI Recommendations
+          </div>
         </div>
       ),
       {

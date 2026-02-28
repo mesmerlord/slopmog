@@ -246,7 +246,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start">
               {session ? (
                 <>
-                  <Link href={routes.dashboard.campaigns.new} className="bg-coral text-white px-8 py-3 md:py-3.5 rounded-full font-bold text-sm md:text-base text-center shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl hover:shadow-coral/30 transition-all">New Campaign</Link>
+                  <Link href={routes.dashboard.sites.new} className="bg-coral text-white px-8 py-3 md:py-3.5 rounded-full font-bold text-sm md:text-base text-center shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl hover:shadow-coral/30 transition-all">Add Your Site</Link>
                   <Link href={routes.dashboard.index} className="bg-white text-charcoal px-8 py-3 md:py-3.5 rounded-full font-bold text-sm md:text-base text-center border-2 border-charcoal/10 hover:border-teal hover:text-teal hover:-translate-y-0.5 transition-all">Go to Dashboard</Link>
                 </>
               ) : (
@@ -529,7 +529,7 @@ export default function Home() {
                 <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> AI writes them, you just approve</li>
               </ul>
               {session ? (
-                <Link href={routes.dashboard.campaigns.new} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">New Campaign</Link>
+                <Link href={routes.dashboard.sites.new} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">Add Your Site</Link>
               ) : (
                 <Link href={routes.auth.register} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">Get Started</Link>
               )}
@@ -549,7 +549,7 @@ export default function Home() {
                 <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> Priority support</li>
               </ul>
               {session ? (
-                <Link href={routes.dashboard.campaigns.new} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-coral bg-coral text-white shadow-[0_4px_16px_rgba(255,107,107,0.25)] hover:bg-coral-dark hover:border-coral-dark hover:-translate-y-0.5 transition-all">New Campaign</Link>
+                <Link href={routes.dashboard.sites.new} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-coral bg-coral text-white shadow-[0_4px_16px_rgba(255,107,107,0.25)] hover:bg-coral-dark hover:border-coral-dark hover:-translate-y-0.5 transition-all">Add Your Site</Link>
               ) : (
                 <Link href={routes.auth.register} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-coral bg-coral text-white shadow-[0_4px_16px_rgba(255,107,107,0.25)] hover:bg-coral-dark hover:border-coral-dark hover:-translate-y-0.5 transition-all">Get Started</Link>
               )}
@@ -571,7 +571,7 @@ export default function Home() {
                 <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> Priority support + strategy call</li>
               </ul>
               {session ? (
-                <Link href={routes.dashboard.campaigns.new} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">New Campaign</Link>
+                <Link href={routes.dashboard.sites.new} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">Add Your Site</Link>
               ) : (
                 <Link href={routes.auth.register} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">Get Started</Link>
               )}
@@ -646,7 +646,7 @@ export default function Home() {
               <h2 className="text-[clamp(1.6rem,3.5vw,2.2rem)] max-md:text-[1.5rem] text-white mb-4">The name is ridiculous. The results aren&apos;t.</h2>
               <p className="text-white/70 text-[1.05rem] max-md:text-[0.95rem] mb-7 max-md:mb-6 leading-[1.7]">Your competitors are already showing up in AI recommendations. Every day you wait is another day they&apos;re getting picked instead of you.</p>
               {session ? (
-                <Link href={routes.dashboard.campaigns.new} className="inline-block bg-coral text-white px-8 py-3.5 rounded-full font-bold text-base shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl transition-all">New Campaign</Link>
+                <Link href={routes.dashboard.sites.new} className="inline-block bg-coral text-white px-8 py-3.5 rounded-full font-bold text-base shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl transition-all">Add Your Site</Link>
               ) : (
                 <Link href={routes.auth.login} className="inline-block bg-coral text-white px-8 py-3.5 rounded-full font-bold text-base shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl transition-all">Start Your Campaign</Link>
               )}

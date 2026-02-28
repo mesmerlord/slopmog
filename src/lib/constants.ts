@@ -5,10 +5,10 @@ export const routes = {
   },
   dashboard: {
     index: "/dashboard",
-    campaigns: {
-      index: "/dashboard/campaigns",
-      new: "/dashboard/campaigns/new",
-      detail: (id: string) => `/dashboard/campaigns/${id}` as const,
+    sites: {
+      index: "/dashboard/sites",
+      new: "/dashboard/sites/new",
+      detail: (id: string) => `/dashboard/sites/${id}` as const,
     },
     queue: "/dashboard/queue",
     comments: "/dashboard/comments",
@@ -16,7 +16,6 @@ export const routes = {
     settings: "/dashboard/settings",
   },
   pricing: "/pricing",
-  campaigns: "/campaigns",
   tools: {
     redditCommentGenerator: "/tools/reddit-comment-generator",
   },

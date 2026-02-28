@@ -12,7 +12,8 @@
     "migratedev": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "tsc": "tsc --noEmit",
-    "stripe:products": "tsx scripts/create-stripe-products.ts"
+    "stripe:products": "tsx scripts/create-stripe-products.ts",
+    "queue:worker": "NODE_ENV=development nodemon --watch src/queue -e ts,js --exec ts-node --project tsconfig.worker.json src/queue/worker.ts"
   },
   "dependencies": {
     "@bull-board/api": "^6.19.0",

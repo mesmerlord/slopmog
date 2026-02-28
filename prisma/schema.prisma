@@ -69,6 +69,7 @@ model User {
   sessions       Session[]
   stripeCustomer StripeCustomer?
   creditHistory  UserCreditHistory[]
+  sites          Site[]
 
   role      UserRole @default(USER)
   createdAt DateTime @default(now())
@@ -193,5 +194,153 @@ model UserCreditHistory {
   updatedAt       DateTime     @updatedAt
 
   @@index([userId])
+}
+
+// ─── Discovery Pipeline ──────────────────────────────────────
+
+enum Platform {
+  REDDIT
+  YOUTUBE
+}
+
+enum OpportunityStatus {
+  DISCOVERED
+  GENERATING
+  PENDING_REVIEW
+  APPROVED
+  POSTING
+  POSTED
+  SKIPPED
+  FAILED
+}
+
+enum CommentStatus {
+  DRAFT
+  APPROVED
+  POSTED
+  FAILED
+  SKIPPED
+}
+
+enum DiscoveryRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum SiteMode {
+  MANUAL
+  AUTO
+}
+
+model Site {
+  id          String     @id @default(cuid())
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  url         String
+  name        String
+  description String     @db.Text
+  valueProps  String[]
+  keywords    String[]
+  brandTone   String
+  mode        SiteMode   @default(MANUAL)
+  platforms   Platform[]
+  active      Boolean    @default(true)
+
+  discoveryRuns DiscoveryRun[]
+  opportunities Opportunity[]
+  comments      Comment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, active])
+}
+
+model DiscoveryRun {
+  id             String             @id @default(cuid())
+  site           Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId         String
+  platform       Platform
+  status         DiscoveryRunStatus
+  keywordsUsed   String[]
+  foundCount     Int                @default(0)
+  scoredCount    Int                @default(0)
+  generatedCount Int                @default(0)
+  postedCount    Int                @default(0)
+  errorMessage   String?            @db.Text
+  startedAt      DateTime           @default(now())
+  completedAt    DateTime?
+
+  opportunities Opportunity[]
+
+  @@index([siteId])
+  @@index([siteId, platform, startedAt])
+}
+
+model Opportunity {
+  id             String            @id @default(cuid())
+  site           Site              @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId         String
+  discoveryRun   DiscoveryRun      @relation(fields: [discoveryRunId], references: [id], onDelete: Cascade)
+  discoveryRunId String
+  platform       Platform
+  status         OpportunityStatus @default(DISCOVERED)
+
+  // Content
+  externalId     String
+  contentUrl     String
+  title          String
+  body           String?  @db.Text
+  sourceContext  String // subreddit or channel name
+  author         String?
+  viewCount      Int?
+  commentCount   Int?
+  publishedAt    DateTime?
+  matchedKeyword String
+
+  // Scoring
+  relevanceScore       Float
+  postType             String
+  scoreReason          String? @db.Text
+  existingBrandMention Boolean @default(false)
+
+  comments Comment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([siteId, externalId])
+  @@index([siteId, status])
+  @@index([siteId, platform, status])
+  @@index([discoveryRunId])
+}
+
+model Comment {
+  id            String        @id @default(cuid())
+  opportunity   Opportunity   @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  opportunityId String
+  site          Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId        String
+  status        CommentStatus @default(DRAFT)
+
+  // Content
+  text         String   @db.Text
+  persona      String
+  qualityScore Float
+  scoreReasons String[]
+
+  // Posting
+  providerId   String?
+  orderId      String?
+  postedAt     DateTime?
+  errorMessage String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([opportunityId])
+  @@index([siteId, status])
 }
 

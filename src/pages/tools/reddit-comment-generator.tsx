@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
   ArrowRight,
   Copy,
@@ -9,7 +10,6 @@ import {
   Sparkles,
   MessageSquare,
   Search,
-  Loader2,
   ArrowLeft,
   ExternalLink,
 } from "lucide-react";
@@ -21,11 +21,10 @@ import AITrackingAnimation from "@/components/illustrations/AITrackingAnimation"
 import HumanWritingAnimation from "@/components/illustrations/HumanWritingAnimation";
 import RedditStrategyAnimation from "@/components/illustrations/RedditStrategyAnimation";
 import BrandMentionAnimation from "@/components/illustrations/BrandMentionAnimation";
-import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
 import { PERSONAS } from "@/constants/personas";
 
-/* ─── Types ─── */
+/* --- Types --- */
 
 interface ScrapedPost {
   title: string;
@@ -51,7 +50,7 @@ interface GeneratedResult {
   variants: { text: string; qualityScore: number }[];
 }
 
-/* ─── Data ─── */
+/* --- Data --- */
 
 const TOOL_PERSONAS = PERSONAS.filter((p) => p.id !== "auto");
 
@@ -93,7 +92,7 @@ const SEO_SECTIONS: {
     title: "AI chatbots pull recommendations from Reddit",
     subtitle: "ChatGPT, Gemini, and Perplexity scrape Reddit threads to answer product questions. Your brand needs to be in those threads.",
     bullets: [
-      "\"What's the best analytics tool?\" — AI answers with whatever Reddit upvoted",
+      "\"What's the best analytics tool?\" -- AI answers with whatever Reddit upvoted",
       "One comment in a high-traffic thread = recurring AI recommendations",
       "No Reddit presence means AI literally can't recommend you",
     ],
@@ -133,7 +132,7 @@ const SEO_SECTIONS: {
   },
 ];
 
-/* ─── Component ─── */
+/* --- Component --- */
 
 type Step = "url" | "configure" | "result";
 
@@ -149,26 +148,15 @@ export default function RedditCommentGenerator() {
   const [noLink, setNoLink] = useState(true);
   const [persona, setPersona] = useState("chill");
   const [result, setResult] = useState<GeneratedResult | null>(null);
-  const [noRelevantComment, setNoRelevantComment] = useState(false);
   const [copied, setCopied] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [activeVariant, setActiveVariant] = useState(0);
 
   const toolRef = useRef<HTMLDivElement>(null);
 
-  const scrape = trpc.tools.scrapePost.useMutation();
-  const generate = trpc.tools.generateFreeComment.useMutation();
-
-  const handleScrape = async () => {
+  const handleScrape = () => {
     if (!url.trim()) return;
-    try {
-      const data = await scrape.mutateAsync({ url: url.trim() });
-      setPost(data.post);
-      setComments(data.comments);
-      setStep("configure");
-    } catch {
-      // error handled by mutation state
-    }
+    toast("Comment generation coming soon");
   };
 
   const derivedBrandName = () => {
@@ -187,36 +175,12 @@ export default function RedditCommentGenerator() {
 
   const canGenerate = !!post && !!derivedBrandName();
 
-  const handleGenerate = async () => {
-    const name = derivedBrandName();
-    if (!post || !name) return;
-    setNoRelevantComment(false);
-    try {
-      const data = await generate.mutateAsync({
-        post,
-        comments,
-        websiteUrl: (!noLink && websiteUrl.trim())
-          ? (!/^https?:\/\//i.test(websiteUrl.trim()) ? `https://${websiteUrl.trim()}` : websiteUrl.trim())
-          : undefined,
-        brandName: name,
-        brandDescription: brandDescription.trim(),
-        persona,
-      });
-      if (data.success && data.comment) {
-        setResult(data.comment);
-        setActiveVariant(0);
-        setStep("result");
-      } else {
-        setNoRelevantComment(true);
-      }
-    } catch {
-      // error handled by mutation state
-    }
+  const handleGenerate = () => {
+    toast("Comment generation coming soon");
   };
 
-  const handleRegenerate = async () => {
-    setResult(null);
-    await handleGenerate();
+  const handleRegenerate = () => {
+    toast("Comment generation coming soon");
   };
 
   const handleCopy = async () => {
@@ -239,7 +203,6 @@ export default function RedditCommentGenerator() {
     setNoLink(true);
     setPersona("chill");
     setResult(null);
-    setNoRelevantComment(false);
     setActiveVariant(0);
     toolRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -272,7 +235,7 @@ export default function RedditCommentGenerator() {
       <Nav variant="app" />
 
       <main className="pt-20 md:pt-24">
-        {/* ─── Hero ─── */}
+        {/* --- Hero --- */}
         <section className="px-4 md:px-6 text-center max-w-3xl mx-auto mb-10 md:mb-14">
           <div className="inline-flex items-center gap-2 bg-teal/8 text-teal px-4 py-1.5 rounded-full text-sm font-semibold mb-5">
             <Sparkles className="w-4 h-4" />
@@ -289,7 +252,7 @@ export default function RedditCommentGenerator() {
           </p>
         </section>
 
-        {/* ─── Tool Card ─── */}
+        {/* --- Tool Card --- */}
         <section ref={toolRef} className="px-4 md:px-6 max-w-2xl mx-auto mb-16 md:mb-24">
           {/* Step indicators */}
           <div className="flex items-center justify-center gap-2 mb-8">
@@ -314,7 +277,7 @@ export default function RedditCommentGenerator() {
           </div>
 
           <div className="bg-white rounded-2xl shadow-brand-md border border-charcoal/[0.06] p-6 md:p-8">
-            {/* ─── Step 1: URL Input ─── */}
+            {/* --- Step 1: URL Input --- */}
             {step === "url" && (
               <div>
                 <div className="flex items-center gap-3 mb-5">
@@ -338,23 +301,17 @@ export default function RedditCommentGenerator() {
                   />
                   <button
                     onClick={handleScrape}
-                    disabled={scrape.isPending || !url.trim()}
+                    disabled={!url.trim()}
                     className="px-6 py-3 bg-coral text-white rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none flex items-center gap-2 shrink-0"
                   >
-                    {scrape.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    <Search className="w-4 h-4" />
                     Analyze
                   </button>
                 </div>
-
-                {scrape.error && (
-                  <p className="mt-3 text-sm text-coral bg-coral/5 px-4 py-2 rounded-lg">
-                    {scrape.error.message}
-                  </p>
-                )}
               </div>
             )}
 
-            {/* ─── Step 2: Configure ─── */}
+            {/* --- Step 2: Configure --- */}
             {step === "configure" && post && (
               <div>
                 <button
@@ -381,7 +338,7 @@ export default function RedditCommentGenerator() {
                   </div>
                 </div>
 
-                {/* Website URL — primary input */}
+                {/* Website URL -- primary input */}
                 <div className="mb-4">
                   <label className="block text-sm font-semibold text-charcoal mb-1.5">Your Website</label>
                   <input
@@ -403,7 +360,7 @@ export default function RedditCommentGenerator() {
                   {showAdvanced ? "Hide" : "Override"} brand name & description
                 </button>
 
-                {/* Advanced fields — collapsed by default */}
+                {/* Advanced fields -- collapsed by default */}
                 <div className={`overflow-hidden transition-all duration-300 ${showAdvanced ? "max-h-60 opacity-100 mb-4" : "max-h-0 opacity-0"}`}>
                   <div className="space-y-3">
                     <div>
@@ -464,39 +421,18 @@ export default function RedditCommentGenerator() {
                   <span className="text-sm text-charcoal">Don't include a link in the comment</span>
                 </label>
 
-                {noRelevantComment && (
-                  <p className="mb-4 text-sm text-coral bg-coral/5 px-4 py-2 rounded-lg">
-                    The AI couldn't find a natural way to mention your brand in this thread. Try a different post or adjust your brand description.
-                  </p>
-                )}
-
-                {generate.error && (
-                  <p className="mb-4 text-sm text-coral bg-coral/5 px-4 py-2 rounded-lg">
-                    {generate.error.message}
-                  </p>
-                )}
-
                 <button
                   onClick={handleGenerate}
-                  disabled={generate.isPending || !canGenerate}
+                  disabled={!canGenerate}
                   className="w-full py-3 bg-coral text-white rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none flex items-center justify-center gap-2"
                 >
-                  {generate.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4" />
-                      Generate Comment
-                    </>
-                  )}
+                  <Sparkles className="w-4 h-4" />
+                  Generate Comment
                 </button>
               </div>
             )}
 
-            {/* ─── Step 3: Result ─── */}
+            {/* --- Step 3: Result --- */}
             {step === "result" && result && (
               <div>
                 <button
@@ -582,10 +518,9 @@ export default function RedditCommentGenerator() {
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={handleRegenerate}
-                    disabled={generate.isPending}
-                    className="flex items-center gap-2 px-5 py-2.5 border-2 border-teal text-teal rounded-full font-bold text-sm hover:bg-teal/5 transition-all disabled:opacity-50"
+                    className="flex items-center gap-2 px-5 py-2.5 border-2 border-teal text-teal rounded-full font-bold text-sm hover:bg-teal/5 transition-all"
                   >
-                    {generate.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    <RefreshCw className="w-4 h-4" />
                     Regenerate
                   </button>
                   <button
@@ -600,7 +535,7 @@ export default function RedditCommentGenerator() {
           </div>
         </section>
 
-        {/* ─── CTA Banner ─── */}
+        {/* --- CTA Banner --- */}
         <section className="px-4 md:px-6 max-w-3xl mx-auto mb-16 md:mb-24">
           <div className="relative bg-charcoal rounded-2xl px-8 py-8 md:px-12 md:py-10 text-center overflow-hidden">
             <div className="absolute top-4 right-6 opacity-20">
@@ -623,7 +558,7 @@ export default function RedditCommentGenerator() {
           </div>
         </section>
 
-        {/* ─── SEO Content Sections ─── */}
+        {/* --- SEO Content Sections --- */}
         {SEO_SECTIONS.map((section, i) => {
           const isReversed = i % 2 !== 0;
           return (
@@ -664,7 +599,7 @@ export default function RedditCommentGenerator() {
           );
         })}
 
-        {/* ─── Mid-page CTA ─── */}
+        {/* --- Mid-page CTA --- */}
         <section className="px-4 md:px-6 max-w-2xl mx-auto mb-16 md:mb-20">
           <div className="bg-teal/[0.06] rounded-2xl px-6 py-6 md:px-10 md:py-8 text-center border border-teal/10">
             <p className="font-heading font-bold text-lg md:text-xl text-charcoal mb-2">
@@ -681,7 +616,7 @@ export default function RedditCommentGenerator() {
           </div>
         </section>
 
-        {/* ─── FAQ ─── */}
+        {/* --- FAQ --- */}
         <section className="px-4 md:px-6 max-w-2xl mx-auto mb-16 md:mb-24">
           <h2 className="font-heading font-bold text-2xl md:text-3xl text-charcoal text-center mb-8">
             Frequently Asked Questions
@@ -709,7 +644,7 @@ export default function RedditCommentGenerator() {
           </div>
         </section>
 
-        {/* ─── Final CTA ─── */}
+        {/* --- Final CTA --- */}
         <section className="px-4 md:px-6 max-w-xl mx-auto text-center mb-16 md:mb-24">
           <h2 className="font-heading font-bold text-2xl md:text-3xl text-charcoal mb-3">
             Ready to scale your Reddit presence?
