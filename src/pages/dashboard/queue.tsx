@@ -8,6 +8,8 @@ import {
   Pencil,
   ExternalLink,
   RefreshCw,
+  Search,
+  ArrowUpDown,
 } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -43,6 +45,9 @@ function formatPostedDate(value: Date | string | null | undefined): string {
     minute: "2-digit",
   });
 }
+
+type PlatformFilter = "ALL" | "REDDIT" | "YOUTUBE";
+type QueueSort = "best_match" | "posted_newest" | "posted_oldest" | "queue_newest" | "queue_oldest";
 
 interface QueueItemProps {
   opportunity: {
@@ -235,8 +240,26 @@ export default function QueuePage() {
   const utils = trpc.useUtils();
   const [actingOn, setActingOn] = useState<string | null>(null);
   const [regeneratingOn, setRegeneratingOn] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("ALL");
+  const [sortBy, setSortBy] = useState<QueueSort>("best_match");
 
-  const pendingQuery = trpc.opportunity.listPending.useQuery({ limit: 20 });
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm.trim());
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const pendingQuery = trpc.opportunity.listPending.useQuery({
+    limit: 20,
+    search: debouncedSearchTerm || undefined,
+    platform: platformFilter === "ALL" ? undefined : platformFilter,
+    sortBy,
+  }, {
+    placeholderData: (previousData) => previousData,
+  });
 
   const approveMutation = trpc.comment.approve.useMutation({
     onSuccess: () => {
@@ -273,6 +296,24 @@ export default function QueuePage() {
     onSettled: () => setRegeneratingOn(null),
   });
 
+  const queryData = pendingQuery.data;
+  const queueItems = queryData?.items ?? [];
+  const filteredCount = queryData?.filteredCount ?? 0;
+  const totalPendingCount = queryData?.totalPendingCount ?? 0;
+
+  const hasActiveControls =
+    searchTerm.trim().length > 0 ||
+    platformFilter !== "ALL" ||
+    sortBy !== "best_match";
+  const hasAnyPending = totalPendingCount > 0;
+
+  const resetControls = () => {
+    setSearchTerm("");
+    setDebouncedSearchTerm("");
+    setPlatformFilter("ALL");
+    setSortBy("best_match");
+  };
+
   return (
     <DashboardLayout>
       <Seo title="Queue -- SlopMog" noIndex />
@@ -286,9 +327,9 @@ export default function QueuePage() {
         ]}
       />
 
-      {pendingQuery.isLoading ? (
+      {!queryData && pendingQuery.isLoading ? (
         <LoadingState variant="spinner" text="Loading queue..." />
-      ) : !pendingQuery.data?.items.length ? (
+      ) : !hasAnyPending ? (
         <EmptyState
           icon={Inbox}
           title="Queue is clear"
@@ -298,7 +339,89 @@ export default function QueuePage() {
         />
       ) : (
         <div className="space-y-4">
-          {pendingQuery.data.items.map((opp) => (
+          <div className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="relative flex-1 min-w-0">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-charcoal-light" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search title, keyword, source..."
+                  className="h-9 w-full rounded-full border border-charcoal/[0.12] bg-white pl-9 pr-3 text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                {(["ALL", "REDDIT", "YOUTUBE"] as const).map((platform) => (
+                  <button
+                    key={platform}
+                    onClick={() => setPlatformFilter(platform)}
+                    className={`h-8 rounded-full px-3 text-xs font-bold transition-all ${
+                      platformFilter === platform
+                        ? "bg-teal text-white"
+                        : "border border-charcoal/[0.12] text-charcoal-light hover:border-charcoal/[0.2] hover:text-charcoal"
+                    }`}
+                  >
+                    {platform === "ALL" ? "All" : platform === "REDDIT" ? "Reddit" : "YouTube"}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-charcoal-light">
+                  <ArrowUpDown size={12} />
+                  Sort
+                </div>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as QueueSort)}
+                  className="h-8 rounded-full border border-charcoal/[0.12] bg-white px-3 text-xs font-semibold text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30"
+                >
+                  <option value="best_match">Best Match</option>
+                  <option value="posted_newest">Posted Date: Newest</option>
+                  <option value="posted_oldest">Posted Date: Oldest</option>
+                  <option value="queue_newest">Added To Queue: Newest</option>
+                  <option value="queue_oldest">Added To Queue: Oldest</option>
+                </select>
+                <button
+                  onClick={resetControls}
+                  disabled={!hasActiveControls}
+                  className={`h-8 rounded-full border border-charcoal/[0.12] px-3 text-xs font-bold transition-all ${
+                    hasActiveControls
+                      ? "text-charcoal-light hover:text-charcoal hover:border-charcoal/[0.2]"
+                      : "opacity-0 pointer-events-none"
+                  }`}
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-charcoal-light">
+              {hasActiveControls
+                ? `Showing ${queueItems.length} of ${filteredCount} matches (${totalPendingCount} total pending)`
+                : `Showing ${queueItems.length} of ${totalPendingCount}`}
+              {pendingQuery.isFetching ? " · Updating..." : ""}
+            </p>
+          </div>
+
+          {!queueItems.length ? (
+            <div className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-8 text-center">
+              <p className="text-sm font-semibold text-charcoal">No queue items match these filters.</p>
+              <p className="text-xs text-charcoal-light mt-1">Try broadening your search or resetting filters.</p>
+              <button
+                onClick={resetControls}
+                disabled={!hasActiveControls}
+                className={`mt-3 inline-flex h-8 items-center rounded-full border border-charcoal/[0.12] px-3 text-xs font-bold transition-all ${
+                  hasActiveControls
+                    ? "text-charcoal-light hover:text-charcoal hover:border-charcoal/[0.2]"
+                    : "opacity-50"
+                }`}
+              >
+                Reset Filters
+              </button>
+            </div>
+          ) : queueItems.map((opp) => (
             <QueueItem
               key={opp.id}
               opportunity={opp}

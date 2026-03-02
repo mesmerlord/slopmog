@@ -7,25 +7,64 @@ export const opportunityRouter = router({
       z.object({
         cursor: z.string().optional(),
         limit: z.number().min(1).max(50).default(20),
+        search: z.string().trim().max(120).optional(),
+        platform: z.enum(["REDDIT", "YOUTUBE"]).optional(),
+        sortBy: z.enum([
+          "best_match",
+          "posted_newest",
+          "posted_oldest",
+          "queue_newest",
+          "queue_oldest",
+        ]).default("best_match"),
       }),
     )
     .query(async ({ ctx, input }) => {
-      const opportunities = await ctx.prisma.opportunity.findMany({
-        where: {
-          site: { userId: ctx.session.user.id },
-          status: "PENDING_REVIEW",
-        },
-        include: {
-          site: { select: { id: true, name: true, url: true } },
-          comments: {
-            where: { status: "DRAFT" },
-            take: 1,
+      const baseWhere = {
+        site: { userId: ctx.session.user.id },
+        status: "PENDING_REVIEW" as const,
+      };
+
+      const where: Record<string, unknown> = { ...baseWhere };
+      if (input.platform) where.platform = input.platform;
+
+      const normalizedSearch = input.search?.trim();
+      if (normalizedSearch) {
+        where.OR = [
+          { title: { contains: normalizedSearch, mode: "insensitive" } },
+          { sourceContext: { contains: normalizedSearch, mode: "insensitive" } },
+          { matchedKeyword: { contains: normalizedSearch, mode: "insensitive" } },
+          { site: { name: { contains: normalizedSearch, mode: "insensitive" } } },
+        ];
+      }
+
+      const orderBy =
+        input.sortBy === "best_match"
+          ? [{ relevanceScore: "desc" as const }, { createdAt: "desc" as const }]
+          : input.sortBy === "posted_newest"
+            ? [{ publishedAt: "desc" as const }, { relevanceScore: "desc" as const }]
+            : input.sortBy === "posted_oldest"
+              ? [{ publishedAt: "asc" as const }, { relevanceScore: "desc" as const }]
+              : input.sortBy === "queue_newest"
+                ? [{ createdAt: "desc" as const }]
+                : [{ createdAt: "asc" as const }];
+
+      const [opportunities, filteredCount, totalPendingCount] = await Promise.all([
+        ctx.prisma.opportunity.findMany({
+          where,
+          include: {
+            site: { select: { id: true, name: true, url: true } },
+            comments: {
+              where: { status: "DRAFT" },
+              take: 1,
+            },
           },
-        },
-        orderBy: { relevanceScore: "desc" },
-        take: input.limit + 1,
-        cursor: input.cursor ? { id: input.cursor } : undefined,
-      });
+          orderBy,
+          take: input.limit + 1,
+          cursor: input.cursor ? { id: input.cursor } : undefined,
+        }),
+        ctx.prisma.opportunity.count({ where }),
+        ctx.prisma.opportunity.count({ where: baseWhere }),
+      ]);
 
       let nextCursor: string | undefined;
       if (opportunities.length > input.limit) {
@@ -33,7 +72,7 @@ export const opportunityRouter = router({
         nextCursor = next?.id;
       }
 
-      return { items: opportunities, nextCursor };
+      return { items: opportunities, nextCursor, filteredCount, totalPendingCount };
     }),
 
   list: protectedProcedure
