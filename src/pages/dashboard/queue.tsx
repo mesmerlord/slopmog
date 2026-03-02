@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import type { GetServerSideProps } from "next";
 import { toast } from "sonner";
 import {
@@ -7,12 +7,15 @@ import {
   X,
   Pencil,
   ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
 import EmptyState from "@/components/shared/EmptyState";
 import LoadingState from "@/components/shared/LoadingState";
+import GeneratingMascotV1 from "@/components/illustrations/GeneratingMascotV1";
+import { PERSONAS } from "@/constants/personas";
 import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
 import { getServerAuthSession } from "@/server/utils/auth";
@@ -28,6 +31,19 @@ function PlatformBadge({ platform }: { platform: string }) {
   );
 }
 
+function formatPostedDate(value: Date | string | null | undefined): string {
+  if (!value) return "Unknown";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown";
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 interface QueueItemProps {
   opportunity: {
     id: string;
@@ -35,6 +51,7 @@ interface QueueItemProps {
     contentUrl: string;
     platform: string;
     sourceContext: string;
+    publishedAt: Date | string | null;
     relevanceScore: number;
     matchedKeyword: string;
     site: { id: string; name: string; url: string };
@@ -43,15 +60,30 @@ interface QueueItemProps {
   onApprove: (commentId: string) => void;
   onSkip: (commentId: string) => void;
   onEdit: (commentId: string, text: string) => void;
+  onRegenerate: (commentId: string, persona: string) => void;
   isActing: boolean;
+  isRegenerating: boolean;
 }
 
-function QueueItem({ opportunity, onApprove, onSkip, onEdit, isActing }: QueueItemProps) {
+function QueueItem({
+  opportunity,
+  onApprove,
+  onSkip,
+  onEdit,
+  onRegenerate,
+  isActing,
+  isRegenerating,
+}: QueueItemProps) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState("");
+  const [persona, setPersona] = useState("auto");
   const comment = opportunity.comments[0];
 
   if (!comment) return null;
+
+  useEffect(() => {
+    setPersona(comment.persona || "auto");
+  }, [comment.persona, comment.id]);
 
   const handleStartEdit = () => {
     setEditText(comment.text);
@@ -63,6 +95,8 @@ function QueueItem({ opportunity, onApprove, onSkip, onEdit, isActing }: QueueIt
     setEditing(false);
   };
 
+  const disabled = isActing || isRegenerating;
+
   return (
     <div className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-5 min-h-[280px] flex flex-col">
       <div className="flex items-start justify-between mb-3">
@@ -73,6 +107,10 @@ function QueueItem({ opportunity, onApprove, onSkip, onEdit, isActing }: QueueIt
             <span className="text-xs text-charcoal-light/50">|</span>
             <span className="text-xs text-charcoal-light">
               Score: {(opportunity.relevanceScore * 100).toFixed(0)}%
+            </span>
+            <span className="text-xs text-charcoal-light/50">|</span>
+            <span className="text-xs font-semibold text-charcoal">
+              Posted: {formatPostedDate(opportunity.publishedAt)}
             </span>
           </div>
           <a
@@ -94,14 +132,43 @@ function QueueItem({ opportunity, onApprove, onSkip, onEdit, isActing }: QueueIt
       {/* Comment */}
       <div className="bg-charcoal/[0.02] rounded-brand-sm border border-charcoal/[0.06] p-4 mb-4 flex-1">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-charcoal-light uppercase">
-            Generated Comment ({comment.persona})
-          </span>
-          <span className="text-xs text-charcoal-light">
-            Quality: {(comment.qualityScore * 100).toFixed(0)}%
-          </span>
-        </div>
-        {editing ? (
+            <span className="text-xs font-semibold text-charcoal-light uppercase">
+              Generated Comment ({comment.persona})
+            </span>
+            <span className="text-xs text-charcoal-light">
+              Quality: {(comment.qualityScore * 100).toFixed(0)}%
+            </span>
+          </div>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <select
+              value={persona}
+              onChange={(e) => setPersona(e.target.value)}
+              disabled={disabled}
+              className="h-8 rounded-full border border-charcoal/[0.12] bg-white px-3 text-xs font-semibold text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30 disabled:opacity-60"
+            >
+              {PERSONAS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => onRegenerate(comment.id, persona)}
+              disabled={disabled}
+              className="inline-flex items-center gap-1.5 rounded-full border border-teal/30 px-3 py-1.5 text-xs font-bold text-teal hover:bg-teal/5 transition-all disabled:opacity-50"
+            >
+              <RefreshCw size={13} className={isRegenerating ? "animate-spin" : ""} />
+              Regenerate
+            </button>
+          </div>
+          {isRegenerating ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-4">
+              <div className="h-20 w-20">
+                <GeneratingMascotV1 className="h-full w-full" />
+              </div>
+              <p className="text-xs font-semibold text-charcoal-light">Regenerating comment...</p>
+            </div>
+          ) : editing ? (
           <div>
             <textarea
               value={editText}
@@ -112,12 +179,14 @@ function QueueItem({ opportunity, onApprove, onSkip, onEdit, isActing }: QueueIt
             <div className="flex gap-2 mt-2">
               <button
                 onClick={handleSaveEdit}
+                disabled={disabled}
                 className="px-3 py-1.5 bg-teal text-white rounded-full text-xs font-bold hover:bg-teal-dark transition-all"
               >
                 Save
               </button>
               <button
                 onClick={() => setEditing(false)}
+                disabled={disabled}
                 className="px-3 py-1.5 border border-charcoal/[0.1] text-charcoal-light rounded-full text-xs font-bold hover:bg-charcoal/[0.04] transition-all"
               >
                 Cancel
@@ -133,7 +202,7 @@ function QueueItem({ opportunity, onApprove, onSkip, onEdit, isActing }: QueueIt
       <div className="flex gap-2">
         <button
           onClick={() => onApprove(comment.id)}
-          disabled={isActing}
+          disabled={disabled}
           className="inline-flex items-center gap-1.5 bg-teal text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-teal-dark transition-all disabled:opacity-50"
         >
           <Check size={14} />
@@ -142,6 +211,7 @@ function QueueItem({ opportunity, onApprove, onSkip, onEdit, isActing }: QueueIt
         {!editing && (
           <button
             onClick={handleStartEdit}
+            disabled={disabled}
             className="inline-flex items-center gap-1.5 border border-charcoal/[0.12] text-charcoal px-4 py-2 rounded-full text-sm font-bold hover:bg-charcoal/[0.04] transition-all"
           >
             <Pencil size={14} />
@@ -150,7 +220,7 @@ function QueueItem({ opportunity, onApprove, onSkip, onEdit, isActing }: QueueIt
         )}
         <button
           onClick={() => onSkip(comment.id)}
-          disabled={isActing}
+          disabled={disabled}
           className="inline-flex items-center gap-1.5 border border-coral/30 text-coral px-4 py-2 rounded-full text-sm font-bold hover:bg-coral/5 transition-all disabled:opacity-50"
         >
           <X size={14} />
@@ -164,6 +234,7 @@ function QueueItem({ opportunity, onApprove, onSkip, onEdit, isActing }: QueueIt
 export default function QueuePage() {
   const utils = trpc.useUtils();
   const [actingOn, setActingOn] = useState<string | null>(null);
+  const [regeneratingOn, setRegeneratingOn] = useState<string | null>(null);
 
   const pendingQuery = trpc.opportunity.listPending.useQuery({ limit: 20 });
 
@@ -191,6 +262,15 @@ export default function QueuePage() {
       utils.opportunity.listPending.invalidate();
     },
     onError: (err) => toast.error(err.message),
+  });
+
+  const regenerateMutation = trpc.comment.regenerate.useMutation({
+    onSuccess: () => {
+      toast.success("Comment regenerated.");
+      utils.opportunity.listPending.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+    onSettled: () => setRegeneratingOn(null),
   });
 
   return (
@@ -233,7 +313,12 @@ export default function QueuePage() {
               onEdit={(commentId, text) => {
                 editMutation.mutate({ commentId, text });
               }}
+              onRegenerate={(commentId, persona) => {
+                setRegeneratingOn(commentId);
+                regenerateMutation.mutate({ commentId, persona });
+              }}
               isActing={actingOn !== null}
+              isRegenerating={regeneratingOn === opp.comments[0]?.id}
             />
           ))}
         </div>

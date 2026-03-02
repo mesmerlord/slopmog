@@ -9,13 +9,15 @@ import type {
 
 const GenerationSchema = z.object({
   noRelevantComment: z.boolean(),
-  variants: z.array(
-    z.object({
-      text: z.string(),
-      qualityScore: z.number().min(0).max(1),
-      reasons: z.array(z.string()),
-    }),
-  ),
+  variants: z
+    .array(
+      z.object({
+        text: z.string(),
+        qualityScore: z.number().min(0).max(1),
+        reasons: z.array(z.string()),
+      }),
+    )
+    .length(5),
 });
 
 function selectPersona(postType: string, specifiedPersona?: string): string {
@@ -105,7 +107,7 @@ ANTI-AI-SLOP RULES (these are dead giveaways that get comments flagged):
 - Real people make typos, use incomplete thoughts, and trail off
 - Real Reddit comments are messy, opinionated, and sometimes tangential
 
-Generate 2-3 comment variants. For each, include:
+Generate exactly 5 comment variants. For each, include:
 - text: the comment text
 - qualityScore: 0.0-1.0 self-assessment (0.8+ = sounds genuinely human, 0.5-0.8 = decent, <0.5 = feels like an ad)
 - reasons: 2-3 bullet points explaining the score

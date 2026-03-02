@@ -196,6 +196,19 @@ model UserCreditHistory {
   @@index([userId])
 }
 
+model ProviderCredential {
+  id       String @id @default(cuid())
+  provider String
+  key      String
+  value    String @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, key])
+  @@index([provider])
+}
+
 // ─── Discovery Pipeline ──────────────────────────────────────
 
 enum Platform {
@@ -344,4 +357,3 @@ model Comment {
   @@index([opportunityId])
   @@index([siteId, status])
 }
-

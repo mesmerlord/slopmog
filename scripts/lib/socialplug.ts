@@ -1,10 +1,11 @@
 import { requireEnv } from "./env";
+import { PrismaClient } from "@prisma/client";
 
 // ─── SocialPlug Panel Form Submission ───────────────────────
 //
 // Replicates the browser form submission to panel.socialplug.io.
-// Uses session cookies stored in env. Update SOCIALPLUG_COOKIES
-// when they expire (copy from browser dev tools Network tab).
+// Uses session cookies from ProviderCredential table in DB
+// (provider="socialplug", key="cookies").
 //
 // YouTube comment order fields (from captured request):
 //   orderform = "youtube-services"
@@ -14,10 +15,14 @@ import { requireEnv } from "./env";
 //   field_5 = <video URL>
 //   field_10 = <comments, newline-separated>
 //   dynamic-radio = "5 Comments"
+//   email = <your SocialPlug account email>
 //   processor = balance
 //   payment-method = balance
 
 const PANEL_BASE = "https://panel.socialplug.io";
+const YOUTUBE_SERVICE_COMMENT_COUNT = 5;
+const SOCIALPLUG_PROVIDER = "socialplug";
+const COOKIE_KEY = "cookies";
 
 // Shared headers that mimic the browser
 const BROWSER_HEADERS: Record<string, string> = {
@@ -32,8 +37,79 @@ const BROWSER_HEADERS: Record<string, string> = {
   "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
 };
 
-function getCookies(): string {
-  return requireEnv("SOCIALPLUG_COOKIES");
+let prismaClient: PrismaClient | null = null;
+let missingCookieStorageWarned = false;
+
+function getPrisma(): PrismaClient {
+  if (!prismaClient) prismaClient = new PrismaClient();
+  return prismaClient;
+}
+
+process.once("beforeExit", async () => {
+  if (prismaClient) {
+    await prismaClient.$disconnect();
+    prismaClient = null;
+  }
+});
+
+async function getCookies(): Promise<string> {
+  try {
+    const rows = await getPrisma().$queryRaw<Array<{ value: string }>>`
+      SELECT "value"
+      FROM "ProviderCredential"
+      WHERE "provider" = ${SOCIALPLUG_PROVIDER}
+        AND "key" = ${COOKIE_KEY}
+      ORDER BY "updatedAt" DESC
+      LIMIT 1
+    `;
+    const dbCookies = rows[0]?.value?.trim();
+    if (dbCookies) return dbCookies;
+  } catch (error) {
+    if (!missingCookieStorageWarned) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn(`[socialplug] ProviderCredential lookup failed (${msg}). Falling back to env for now.`);
+      missingCookieStorageWarned = true;
+    }
+  }
+
+  throw new Error(
+    "Missing SocialPlug cookies. Set ProviderCredential(provider='socialplug', key='cookies') in Prisma Studio.",
+  );
+}
+
+function getOrderEmail(): string {
+  return requireEnv("SOCIALPLUG_EMAIL");
+}
+
+function normalizeCommentsForService(comments: string[]): string[] {
+  const lines = comments
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const sanitized = lines
+    .map((line) =>
+      line
+        .normalize("NFKD")
+        .replace(/https?:\/\/\S+/gi, "")
+        .replace(/[^\x20-\x7E]/g, "")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(Boolean)
+    .map((line) => (line.length > 120 ? `${line.slice(0, 117).trimEnd()}...` : line));
+
+  if (sanitized.length === 0) return [];
+
+  const normalized = [...sanitized];
+  if (normalized.length > YOUTUBE_SERVICE_COMMENT_COUNT) {
+    return normalized.slice(0, YOUTUBE_SERVICE_COMMENT_COUNT);
+  }
+
+  while (normalized.length < YOUTUBE_SERVICE_COMMENT_COUNT) {
+    normalized.push(sanitized[normalized.length % sanitized.length]);
+  }
+
+  return normalized;
 }
 
 // ─── CSRF Token ─────────────────────────────────────────────
@@ -41,10 +117,11 @@ function getCookies(): string {
 async function fetchCsrfToken(orderPagePath: string): Promise<string> {
   const url = `${PANEL_BASE}${orderPagePath}`;
   console.log(`[socialplug] Fetching CSRF token from ${url}`);
+  const cookies = await getCookies();
 
   const res = await fetch(url, {
     headers: {
-      "cookie": getCookies(),
+      "cookie": cookies,
       "user-agent": BROWSER_HEADERS["user-agent"],
     },
   });
@@ -87,11 +164,12 @@ export interface OrderResult {
 export async function submitYouTubeComments(order: YouTubeCommentOrder): Promise<OrderResult> {
   const { videoUrl, comments } = order;
 
-  if (comments.length === 0) {
+  const serviceComments = normalizeCommentsForService(comments);
+  if (serviceComments.length === 0) {
     return { success: false, error: "No comments provided" };
   }
 
-  console.log(`[socialplug] Posting ${comments.length} YouTube comments to ${videoUrl}`);
+  console.log(`[socialplug] Posting ${serviceComments.length} YouTube comments to ${videoUrl}`);
 
   // Get fresh CSRF token
   const csrfToken = await fetchCsrfToken("/order/youtube-services/portal?ref=youtubecomments");
@@ -99,12 +177,13 @@ export async function submitYouTubeComments(order: YouTubeCommentOrder): Promise
   // Map comment count to the right tier
   // From the captured request: field_1[3] = 144 for "5 Custom Comments"
   // We'll use field index [3] and service 144 as the default
-  const commentCountLabel = `${comments.length} Comments`;
-  const commentsText = comments.join("\n");
+  const commentCountLabel = `${YOUTUBE_SERVICE_COMMENT_COUNT} Comments`;
+  const commentsText = serviceComments.join("\n");
 
   const formData = new URLSearchParams();
   formData.set("_token", csrfToken);
   formData.set("orderform", "youtube-services");
+  formData.set("email", getOrderEmail());
   formData.set("dynamic-radio", commentCountLabel);
   formData.set("field_1[3]", "144");
   formData.set("options_1[3][0]", commentCountLabel);
@@ -124,7 +203,7 @@ export async function submitYouTubeComments(order: YouTubeCommentOrder): Promise
     method: "POST",
     headers: {
       ...BROWSER_HEADERS,
-      "cookie": getCookies(),
+      "cookie": await getCookies(),
       "referer": `${PANEL_BASE}/order/youtube-services/portal?ref=youtubecomments`,
     },
     body: formData.toString(),
@@ -192,10 +271,11 @@ export async function submitTwitterComments(_order: TwitterCommentOrder): Promis
 
 export async function checkBalance(): Promise<string> {
   console.log(`[socialplug] Checking balance...`);
+  const cookies = await getCookies();
 
   const res = await fetch(`${PANEL_BASE}/dashboard`, {
     headers: {
-      "cookie": getCookies(),
+      "cookie": cookies,
       "user-agent": BROWSER_HEADERS["user-agent"],
     },
   });

@@ -21,6 +21,42 @@ import type { KeywordConfig } from "@/services/discovery/site-analyzer";
 const MIN_YOUTUBE_VIEWS = 1000;
 const MAX_YOUTUBE_AGE_DAYS = 90;
 
+function parsePublishedAt(raw: string | undefined): Date | null {
+  if (!raw) return null;
+  const value = raw.trim();
+  if (!value) return null;
+
+  const asNumber = Number(value);
+  if (!Number.isNaN(asNumber) && Number.isFinite(asNumber)) {
+    // Handle UNIX timestamps from APIs that return seconds or milliseconds.
+    const millis = asNumber > 1e12 ? asNumber : asNumber * 1000;
+    const parsed = new Date(millis);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) return parsed;
+
+  // YouTube may return relative dates like "3 days ago" or "streamed 2 weeks ago".
+  const relativeMatch = value.match(/(\d+)\s+(minute|hour|day|week|month|year)s?\s+ago/i);
+  if (!relativeMatch) return null;
+
+  const amount = Number(relativeMatch[1]);
+  const unit = relativeMatch[2].toLowerCase();
+  if (Number.isNaN(amount) || amount <= 0) return null;
+
+  const date = new Date();
+  if (unit === "minute") date.setMinutes(date.getMinutes() - amount);
+  else if (unit === "hour") date.setHours(date.getHours() - amount);
+  else if (unit === "day") date.setDate(date.getDate() - amount);
+  else if (unit === "week") date.setDate(date.getDate() - amount * 7);
+  else if (unit === "month") date.setMonth(date.getMonth() - amount);
+  else if (unit === "year") date.setFullYear(date.getFullYear() - amount);
+  else return null;
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function getKeywordsForPlatform(
   keywordConfig: KeywordConfig | null | undefined,
   fallbackKeywords: string[],
@@ -36,6 +72,12 @@ function getKeywordsForPlatform(
 
 async function processDiscovery(job: Job<DiscoveryJobData>) {
   const { siteId } = job.data;
+  if (!siteId) {
+    const msg = "[discovery] Invalid job payload: missing siteId";
+    console.error(msg, job.data);
+    job.discard();
+    throw new Error(msg);
+  }
 
   const site = await prisma.site.findUniqueOrThrow({
     where: { id: siteId },
@@ -69,7 +111,7 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
     });
 
     try {
-      let allItems: ScoreInput[] = [];
+      let allItems: DiscoveryItem[] = [];
 
       if (platform === "REDDIT") {
         allItems = await discoverReddit(keywords, site.id);
@@ -90,6 +132,7 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
       for (const item of passing) {
         const source = allItems.find((i) => i.externalId === item.externalId);
         if (!source) continue;
+        const publishedAt = parsePublishedAt(source.publishedAtRaw);
 
         const opportunity = await prisma.opportunity.upsert({
           where: {
@@ -108,12 +151,14 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
             relevanceScore: item.relevanceScore,
             postType: item.postType,
             scoreReason: item.scoreReason,
+            ...(publishedAt ? { publishedAt } : {}),
             status: "DISCOVERED",
           },
           update: {
             relevanceScore: item.relevanceScore,
             postType: item.postType,
             scoreReason: item.scoreReason,
+            ...(publishedAt ? { publishedAt } : {}),
           },
         });
 
@@ -158,6 +203,7 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
 interface DiscoveryItem extends ScoreInput {
   contentUrl: string;
   matchedKeyword: string;
+  publishedAtRaw?: string;
   author?: string;
   viewCount?: number;
   commentCount?: number;
@@ -207,6 +253,7 @@ async function discoverReddit(keywords: string[], siteId: string): Promise<Disco
         platform: "REDDIT",
         contentUrl: post.url,
         matchedKeyword: keyword,
+        publishedAtRaw: post.createdAt,
         author: post.author,
         commentCount: post.numComments,
       });
@@ -257,6 +304,7 @@ async function discoverYouTube(
         platform: "YOUTUBE",
         contentUrl: video.url,
         matchedKeyword: keyword,
+        publishedAtRaw: video.publishedAt,
         viewCount: video.viewCount,
         commentCount: video.commentCount,
       });

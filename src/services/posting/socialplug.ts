@@ -5,10 +5,16 @@ import type {
   CreateOrderResult,
   OrderStatusResult,
 } from "./types";
+import { prisma } from "@/server/utils/db";
 
 // ─── SocialPlug Panel Config ────────────────────────────────
 
 const PANEL_BASE = "https://panel.socialplug.io";
+const YOUTUBE_SERVICE_COMMENT_COUNT = 5;
+const ORDER_PAGE_PATH = "/order/youtube-services/portal";
+const ORDER_PAGE_PATH_WITH_REF = "/order/youtube-services/portal?ref=youtubecomments";
+const SOCIALPLUG_PROVIDER = "socialplug";
+const COOKIE_KEY = "cookies";
 
 const BROWSER_HEADERS: Record<string, string> = {
   "accept": "*/*",
@@ -23,10 +29,68 @@ const BROWSER_HEADERS: Record<string, string> = {
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
 };
 
-function getCookies(): string {
-  const cookies = process.env.SOCIALPLUG_COOKIES;
-  if (!cookies) throw new Error("Missing required env var: SOCIALPLUG_COOKIES");
-  return cookies;
+let missingCookieStorageWarned = false;
+
+async function getCookies(): Promise<string> {
+  try {
+    const rows = await prisma.$queryRaw<Array<{ value: string }>>`
+      SELECT "value"
+      FROM "ProviderCredential"
+      WHERE "provider" = ${SOCIALPLUG_PROVIDER}
+        AND "key" = ${COOKIE_KEY}
+      ORDER BY "updatedAt" DESC
+      LIMIT 1
+    `;
+    const dbCookies = rows[0]?.value?.trim();
+    if (dbCookies) return dbCookies;
+  } catch (error) {
+    if (!missingCookieStorageWarned) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn(`[socialplug] ProviderCredential lookup failed (${msg}). Falling back to env for now.`);
+      missingCookieStorageWarned = true;
+    }
+  }
+
+  throw new Error(
+    "Missing SocialPlug cookies. Set ProviderCredential(provider='socialplug', key='cookies') in Prisma Studio.",
+  );
+}
+
+function getOrderEmail(): string | undefined {
+  const email = process.env.SOCIALPLUG_EMAIL?.trim();
+  return email && email.length > 0 ? email : undefined;
+}
+
+function normalizeCommentsForService(commentText: string): string[] {
+  const lines = commentText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const sanitized = lines
+    .map((line) =>
+      line
+        .normalize("NFKD")
+        .replace(/https?:\/\/\S+/gi, "")
+        .replace(/[^\x20-\x7E]/g, "")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(Boolean)
+    .map((line) => (line.length > 120 ? `${line.slice(0, 117).trimEnd()}...` : line));
+
+  if (sanitized.length === 0) return [];
+
+  const normalized = [...sanitized];
+  if (normalized.length > YOUTUBE_SERVICE_COMMENT_COUNT) {
+    return normalized.slice(0, YOUTUBE_SERVICE_COMMENT_COUNT);
+  }
+
+  while (normalized.length < YOUTUBE_SERVICE_COMMENT_COUNT) {
+    normalized.push(sanitized[normalized.length % sanitized.length]);
+  }
+
+  return normalized;
 }
 
 // ─── CSRF Token ─────────────────────────────────────────────
@@ -34,10 +98,11 @@ function getCookies(): string {
 async function fetchCsrfToken(orderPagePath: string): Promise<string> {
   const url = `${PANEL_BASE}${orderPagePath}`;
   console.log(`[socialplug] Fetching CSRF token from ${url}`);
+  const cookies = await getCookies();
 
   const res = await fetch(url, {
     headers: {
-      "cookie": getCookies(),
+      "cookie": cookies,
       "user-agent": BROWSER_HEADERS["user-agent"],
     },
   });
@@ -84,43 +149,64 @@ const socialPlugProvider: PostingProvider = {
 
     try {
       // Get fresh CSRF token from the YouTube order page
-      const csrfToken = await fetchCsrfToken(
-        "/order/youtube-services/portal?ref=youtubecomments",
-      );
+      const csrfToken = await fetchCsrfToken(ORDER_PAGE_PATH);
 
-      // Build form payload matching SocialPlug's YouTube comments form
-      const comments = params.commentText.split("\n").filter((c) => c.trim());
+      // Service 144 is a fixed "5 Comments / Custom Comments" tier.
+      const comments = normalizeCommentsForService(params.commentText);
+      if (comments.length === 0) {
+        return {
+          success: false,
+          error: "No valid comment text provided for SocialPlug order",
+          retryable: false,
+        };
+      }
       const commentCountLabel = `${comments.length} Comments`;
+      const commentsText = comments.join("\n");
 
-      const formData = new URLSearchParams();
-      formData.set("_token", csrfToken);
-      formData.set("orderform", "youtube-services");
-      formData.set("dynamic-radio", commentCountLabel);
-      formData.set("field_1[3]", "144");
-      formData.set("options_1[3][0]", commentCountLabel);
-      formData.set("options_1[3][1]", "Custom Comments");
-      formData.set("field_4", "");
-      formData.set("field_5", params.contentUrl);
-      formData.set("field_7", "");
-      formData.set("field_10", params.commentText);
-      formData.set("field_15", "");
-      formData.set("field_18", "");
-      formData.set("field_19", "");
-      formData.set("processor", "balance");
-      formData.set("payment-method", "balance");
-      formData.set("coupon", "");
+      const trySubmit = async (mode: "captured" | "legacy") => {
+        const formData = new URLSearchParams();
+        formData.set("_token", csrfToken);
+        formData.set("orderform", "youtube-services");
+        if (mode === "legacy") {
+          const email = getOrderEmail();
+          if (email) formData.set("email", email);
+          formData.set("dynamic-radio", commentCountLabel);
+        }
+        formData.set("field_1[3]", "144");
+        formData.set("options_1[3][0]", commentCountLabel);
+        formData.set("options_1[3][1]", "Custom Comments");
+        formData.set("field_4", "");
+        formData.set("field_5", params.contentUrl);
+        formData.set("field_7", "");
+        formData.set("field_10", commentsText);
+        formData.set("field_15", "");
+        formData.set("field_18", "");
+        formData.set("field_19", "");
+        formData.set("processor", "balance");
+        formData.set("payment-method", "balance");
+        formData.set("coupon", "");
 
-      const res = await fetch(`${PANEL_BASE}/orderform/submit`, {
-        method: "POST",
-        headers: {
-          ...BROWSER_HEADERS,
-          "cookie": getCookies(),
-          "referer": `${PANEL_BASE}/order/youtube-services/portal?ref=youtubecomments`,
-        },
-        body: formData.toString(),
-      });
+        const res = await fetch(`${PANEL_BASE}/orderform/submit`, {
+          method: "POST",
+          headers: {
+            ...BROWSER_HEADERS,
+            "cookie": await getCookies(),
+            "referer": `${PANEL_BASE}${mode === "captured" ? ORDER_PAGE_PATH : ORDER_PAGE_PATH_WITH_REF}`,
+          },
+          body: formData.toString(),
+        });
+        const responseText = await res.text();
+        return { res, responseText };
+      };
 
-      const responseText = await res.text();
+      // First try to mirror your latest captured request.
+      let { res, responseText } = await trySubmit("captured");
+
+      // Fallback to legacy payload if account/session expects older fields.
+      if (!res.ok && res.status === 422 && responseText.toLowerCase().includes("email")) {
+        console.warn("[socialplug] Captured payload asked for email; retrying with legacy email/dynamic-radio fields");
+        ({ res, responseText } = await trySubmit("legacy"));
+      }
 
       if (!res.ok) {
         console.error(
@@ -186,7 +272,8 @@ const socialPlugProvider: PostingProvider = {
       console.error(`[socialplug] createCommentOrder error: ${message}`);
 
       const notRetryable =
-        message.includes("CSRF") || message.includes("SOCIALPLUG_COOKIES");
+        message.includes("CSRF") ||
+        message.includes("ProviderCredential");
 
       return {
         success: false,
@@ -203,8 +290,7 @@ const socialPlugProvider: PostingProvider = {
 
   async isAvailable(): Promise<boolean> {
     try {
-      const cookies = process.env.SOCIALPLUG_COOKIES;
-      if (!cookies) return false;
+      await getCookies();
 
       // Try to fetch the CSRF token to verify the session is still valid
       await fetchCsrfToken(
@@ -222,9 +308,10 @@ const socialPlugProvider: PostingProvider = {
 
   async getBalance(): Promise<number> {
     try {
+      const cookies = await getCookies();
       const res = await fetch(`${PANEL_BASE}/dashboard`, {
         headers: {
-          "cookie": getCookies(),
+          "cookie": cookies,
           "user-agent": BROWSER_HEADERS["user-agent"],
         },
       });

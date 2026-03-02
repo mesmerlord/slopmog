@@ -8,6 +8,27 @@ import { postingRegistry } from "@/services/posting/provider";
 import "@/services/posting/upvotemax";
 import "@/services/posting/socialplug";
 
+const SOCIALPLUG_YOUTUBE_COMMENT_TARGET = 5;
+
+function normalizeSocialPlugYouTubeCommentText(text: string): string {
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) return text;
+  if (lines.length >= SOCIALPLUG_YOUTUBE_COMMENT_TARGET) {
+    return lines.slice(0, SOCIALPLUG_YOUTUBE_COMMENT_TARGET).join("\n");
+  }
+
+  const padded = [...lines];
+  while (padded.length < SOCIALPLUG_YOUTUBE_COMMENT_TARGET) {
+    padded.push(lines[padded.length % lines.length]);
+  }
+
+  return padded.join("\n");
+}
+
 async function processPosting(job: Job<PostingJobData>) {
   const { commentId } = job.data;
 
@@ -50,9 +71,14 @@ async function processPosting(job: Job<PostingJobData>) {
     return;
   }
 
+  const commentText =
+    opportunity.platform === "YOUTUBE" && provider.name === "socialplug"
+      ? normalizeSocialPlugYouTubeCommentText(comment.text)
+      : comment.text;
+
   const result = await provider.createCommentOrder({
     contentUrl: opportunity.contentUrl,
-    commentText: comment.text,
+    commentText,
     sourceContext: opportunity.sourceContext,
   });
 

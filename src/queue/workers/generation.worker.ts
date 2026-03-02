@@ -10,6 +10,10 @@ import {
 } from "@/services/discovery/scrape-creators";
 import type { CommentGenerationInput } from "@/services/generation/types";
 
+function toSingleLine(text: string): string {
+  return text.replace(/\s*\n+\s*/g, " ").trim();
+}
+
 async function processGeneration(job: Job<GenerationJobData>) {
   const { opportunityId } = job.data;
 
@@ -79,6 +83,12 @@ async function processGeneration(job: Job<GenerationJobData>) {
   }
 
   const best = result.best;
+  const youtubeCombinedText = result.variants
+    .slice(0, 5)
+    .map((variant) => toSingleLine(variant.text))
+    .filter(Boolean)
+    .join("\n");
+  const savedText = opportunity.platform === "YOUTUBE" ? youtubeCombinedText : best.text;
   const commentStatus = site.mode === "AUTO" ? "APPROVED" : "DRAFT";
   const opportunityStatus = site.mode === "AUTO" ? "APPROVED" : "PENDING_REVIEW";
 
@@ -87,7 +97,7 @@ async function processGeneration(job: Job<GenerationJobData>) {
       opportunityId,
       siteId: site.id,
       status: commentStatus,
-      text: best.text,
+      text: savedText,
       persona: input.persona ?? "auto",
       qualityScore: best.qualityScore,
       scoreReasons: best.reasons,
