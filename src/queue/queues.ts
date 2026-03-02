@@ -4,6 +4,7 @@ import { redisConnection } from "@/server/utils/redis";
 export interface DiscoveryJobData {
   siteId: string;
   triggeredBy: "manual" | "schedule";
+  keywordOverrides?: string[];
 }
 
 export interface GenerationJobData {

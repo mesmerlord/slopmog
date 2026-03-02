@@ -20,6 +20,27 @@ import type { KeywordConfig } from "@/services/discovery/site-analyzer";
 
 const MIN_YOUTUBE_VIEWS = 1000;
 const MAX_YOUTUBE_AGE_DAYS = 90;
+const KEYWORD_SEARCH_CONCURRENCY = 4;
+
+function normalizeKeyword(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function dedupeKeywords(keywords: string[]): string[] {
+  const unique: string[] = [];
+  const seen = new Set<string>();
+
+  for (const keyword of keywords) {
+    const normalized = normalizeKeyword(keyword);
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(normalized);
+  }
+
+  return unique;
+}
 
 function parsePublishedAt(raw: string | undefined): Date | null {
   if (!raw) return null;
@@ -61,13 +82,22 @@ function getKeywordsForPlatform(
   keywordConfig: KeywordConfig | null | undefined,
   fallbackKeywords: string[],
   platform: "REDDIT" | "YOUTUBE",
+  overrides?: string[],
 ): string[] {
-  if (!keywordConfig) return fallbackKeywords;
+  const normalizedOverrides = dedupeKeywords(overrides ?? []);
+  if (normalizedOverrides.length > 0) return normalizedOverrides;
 
-  // Platform-specific keywords + brand + competitors (always search those)
+  if (!keywordConfig) return dedupeKeywords(fallbackKeywords);
+
+  // Prioritize platform-specific terms, but include all enabled categories.
   const platformKw = platform === "REDDIT" ? keywordConfig.reddit : keywordConfig.youtube;
-  const all = Array.from(new Set([...platformKw, ...keywordConfig.brand, ...keywordConfig.competitors]));
-  return all.length > 0 ? all : fallbackKeywords;
+  const all = dedupeKeywords([
+    ...platformKw,
+    ...keywordConfig.features,
+    ...keywordConfig.competitors,
+    ...keywordConfig.brand,
+  ]);
+  return all.length > 0 ? all : dedupeKeywords(fallbackKeywords);
 }
 
 async function processDiscovery(job: Job<DiscoveryJobData>) {
@@ -97,9 +127,16 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
 
   const keywordConfig = site.keywordConfig as KeywordConfig | null;
 
+  const keywordOverrides = dedupeKeywords(job.data.keywordOverrides ?? []);
+
   // Process each platform
   for (const platform of site.platforms) {
-    const keywords = getKeywordsForPlatform(keywordConfig, site.keywords, platform);
+    const keywords = getKeywordsForPlatform(
+      keywordConfig,
+      site.keywords,
+      platform,
+      keywordOverrides,
+    );
 
     const run = await prisma.discoveryRun.create({
       data: {
@@ -122,15 +159,19 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
       await job.updateProgress({ phase: "scoring", platform, itemCount: allItems.length });
 
       // Score all items
-      const scored = await scoreOpportunityBatch(allItems, siteContext);
+      const scored = await scoreOpportunityBatch(allItems, {
+        ...siteContext,
+        keywords,
+      });
       const passing = scored.filter((s) => s.relevant);
+      const sourceById = new Map(allItems.map((item) => [item.externalId, item]));
 
       await job.updateProgress({ phase: "saving", platform, passingCount: passing.length });
 
       // Upsert opportunities and enqueue generation
       let generatedCount = 0;
       for (const item of passing) {
-        const source = allItems.find((i) => i.externalId === item.externalId);
+        const source = sourceById.get(item.externalId);
         if (!source) continue;
         const publishedAt = parsePublishedAt(source.publishedAtRaw);
 
@@ -237,7 +278,7 @@ async function discoverReddit(keywords: string[], siteId: string): Promise<Disco
 
       return { keyword, posts: allPagesOfPosts };
     },
-    3,
+    KEYWORD_SEARCH_CONCURRENCY,
   );
 
   for (const { keyword, posts } of keywordResults) {
@@ -286,13 +327,15 @@ async function discoverYouTube(
       const videos = await searchYouTube(keyword);
       return { keyword, videos };
     },
-    3,
+    KEYWORD_SEARCH_CONCURRENCY,
   );
 
   for (const { keyword, videos } of keywordResults) {
     for (const video of videos) {
       if (existingIds.has(video.videoId)) continue;
       if (video.viewCount < MIN_YOUTUBE_VIEWS) continue;
+      const publishedAt = parsePublishedAt(video.publishedAt);
+      if (publishedAt && publishedAt < cutoffDate) continue;
 
       existingIds.add(video.videoId);
 

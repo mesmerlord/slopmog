@@ -3,6 +3,75 @@ import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc";
 import { analyzeSite } from "@/services/discovery/site-analyzer";
 import { discoveryQueue, type DiscoveryJobData } from "@/queue/queues";
+import { getUserPlan } from "@/server/utils/plan";
+
+const KeywordCategorySchema = z.enum(["features", "competitors", "brand"]);
+
+type SiteKeywordConfig = {
+  features: string[];
+  competitors: string[];
+  brand: string[];
+  reddit: string[];
+  youtube: string[];
+};
+
+function normalizeKeyword(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function dedupeKeywords(keywords: string[]): string[] {
+  const unique: string[] = [];
+  const seen = new Set<string>();
+
+  for (const keyword of keywords) {
+    const normalized = normalizeKeyword(keyword);
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(normalized);
+  }
+
+  return unique;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
+}
+
+function parseSiteKeywordConfig(
+  keywordConfig: unknown,
+  fallbackKeywords: string[],
+): SiteKeywordConfig {
+  const raw = keywordConfig && typeof keywordConfig === "object"
+    ? keywordConfig as Record<string, unknown>
+    : {};
+
+  const features = dedupeKeywords(readStringArray(raw.features));
+  const competitors = dedupeKeywords(readStringArray(raw.competitors));
+  const brand = dedupeKeywords(readStringArray(raw.brand));
+  const reddit = dedupeKeywords(readStringArray(raw.reddit));
+  const youtube = dedupeKeywords(readStringArray(raw.youtube));
+
+  if (features.length || competitors.length || brand.length || reddit.length || youtube.length) {
+    return {
+      features,
+      competitors,
+      brand,
+      reddit,
+      youtube,
+    };
+  }
+
+  return {
+    features: dedupeKeywords(fallbackKeywords),
+    competitors: [],
+    brand: [],
+    reddit: [],
+    youtube: [],
+  };
+}
 
 export const siteRouter = router({
   create: protectedProcedure
@@ -18,9 +87,11 @@ export const siteRouter = router({
 
       // Build flat keywords array from all categories for display (deduplicated)
       const kc = analysis.keywordConfig;
-      const allKeywords = Array.from(
-        new Set([...kc.features, ...kc.competitors, ...kc.brand]),
-      );
+      const allKeywords = dedupeKeywords([
+        ...kc.features,
+        ...kc.competitors,
+        ...kc.brand,
+      ]);
 
       const site = await ctx.prisma.site.create({
         data: {
@@ -103,6 +174,107 @@ export const siteRouter = router({
         where: { id },
         data,
       });
+    }),
+
+  addKeywordTerm: protectedProcedure
+    .input(
+      z.object({
+        siteId: z.string(),
+        category: KeywordCategorySchema,
+        term: z.string().min(2).max(80),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const site = await ctx.prisma.site.findFirst({
+        where: { id: input.siteId, userId: ctx.session.user.id },
+        select: {
+          id: true,
+          active: true,
+          keywords: true,
+          keywordConfig: true,
+        },
+      });
+
+      if (!site) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
+      }
+
+      const normalizedTerm = normalizeKeyword(input.term);
+      if (!normalizedTerm) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Keyword cannot be empty" });
+      }
+
+      const keywordConfig = parseSiteKeywordConfig(site.keywordConfig, site.keywords);
+      const categoryKeywords = keywordConfig[input.category];
+      const keywordExistsInCategory = categoryKeywords.some(
+        (keyword) => keyword.toLowerCase() === normalizedTerm.toLowerCase(),
+      );
+
+      const allCurrentKeywords = dedupeKeywords([
+        ...keywordConfig.features,
+        ...keywordConfig.competitors,
+        ...keywordConfig.brand,
+      ]);
+
+      if (!keywordExistsInCategory) {
+        const keywordExistsGlobally = allCurrentKeywords.some(
+          (keyword) => keyword.toLowerCase() === normalizedTerm.toLowerCase(),
+        );
+
+        if (!keywordExistsGlobally) {
+          const plan = await getUserPlan(ctx.session.user.id);
+          if (Number.isFinite(plan.maxKeywords) && allCurrentKeywords.length >= plan.maxKeywords) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: `Keyword limit reached (${plan.maxKeywords}). Upgrade your plan to add more keywords.`,
+            });
+          }
+        }
+
+        keywordConfig[input.category] = dedupeKeywords([
+          ...categoryKeywords,
+          normalizedTerm,
+        ]);
+        keywordConfig.reddit = dedupeKeywords([
+          ...keywordConfig.reddit,
+          normalizedTerm,
+        ]);
+        keywordConfig.youtube = dedupeKeywords([
+          ...keywordConfig.youtube,
+          normalizedTerm,
+        ]);
+      }
+
+      const allKeywords = dedupeKeywords([
+        ...keywordConfig.features,
+        ...keywordConfig.competitors,
+        ...keywordConfig.brand,
+      ]);
+
+      await ctx.prisma.site.update({
+        where: { id: site.id },
+        data: {
+          keywords: allKeywords,
+          keywordConfig,
+        },
+      });
+
+      const queued = !keywordExistsInCategory && site.active;
+      if (queued) {
+        await discoveryQueue.add("discover", {
+          siteId: site.id,
+          triggeredBy: "manual",
+          keywordOverrides: [normalizedTerm],
+        } satisfies DiscoveryJobData);
+      }
+
+      return {
+        term: normalizedTerm,
+        category: input.category,
+        keywordCount: allKeywords.length,
+        alreadyExists: keywordExistsInCategory,
+        queued,
+      };
     }),
 
   triggerDiscovery: protectedProcedure

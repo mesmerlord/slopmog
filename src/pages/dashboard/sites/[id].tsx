@@ -14,15 +14,85 @@ import {
   Tag,
   Zap,
   Trash2,
+  Plus,
 } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
 import LoadingState from "@/components/shared/LoadingState";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import { SubscriptionModal } from "@/components/SubscriptionModal";
 import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
 import { getServerAuthSession } from "@/server/utils/auth";
+
+type KeywordCategory = "features" | "competitors" | "brand";
+
+type SiteKeywordConfig = {
+  features: string[];
+  competitors: string[];
+  brand: string[];
+  reddit: string[];
+  youtube: string[];
+};
+
+function normalizeKeyword(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function dedupeKeywords(keywords: string[]): string[] {
+  const unique: string[] = [];
+  const seen = new Set<string>();
+
+  for (const keyword of keywords) {
+    const normalized = normalizeKeyword(keyword);
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(normalized);
+  }
+
+  return unique;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
+}
+
+function parseSiteKeywordConfig(
+  keywordConfig: unknown,
+  fallbackKeywords: string[],
+): SiteKeywordConfig {
+  const raw = keywordConfig && typeof keywordConfig === "object"
+    ? keywordConfig as Record<string, unknown>
+    : {};
+
+  const features = dedupeKeywords(readStringArray(raw.features));
+  const competitors = dedupeKeywords(readStringArray(raw.competitors));
+  const brand = dedupeKeywords(readStringArray(raw.brand));
+  const reddit = dedupeKeywords(readStringArray(raw.reddit));
+  const youtube = dedupeKeywords(readStringArray(raw.youtube));
+
+  if (features.length || competitors.length || brand.length || reddit.length || youtube.length) {
+    return {
+      features,
+      competitors,
+      brand,
+      reddit,
+      youtube,
+    };
+  }
+
+  return {
+    features: dedupeKeywords(fallbackKeywords),
+    competitors: [],
+    brand: [],
+    reddit: [],
+    youtube: [],
+  };
+}
 
 function RunStatusBadge({ status }: { status: string }) {
   if (status === "RUNNING") {
@@ -47,6 +117,27 @@ function RunStatusBadge({ status }: { status: string }) {
       Failed
     </span>
   );
+}
+
+function getRunScope(keywordsUsed: string[]): { label: string; keyword?: string } {
+  const keywords = dedupeKeywords(keywordsUsed ?? []);
+
+  if (keywords.length === 0) {
+    return {
+      label: "Unknown scope",
+    };
+  }
+
+  if (keywords.length === 1) {
+    return {
+      label: "Targeted keyword scrape",
+      keyword: keywords[0],
+    };
+  }
+
+  return {
+    label: "Full scout",
+  };
 }
 
 export default function SiteDetailPage() {
@@ -89,7 +180,39 @@ export default function SiteDetailPage() {
     onError: (err) => toast.error(err.message),
   });
 
+  const addKeywordTerm = trpc.site.addKeywordTerm.useMutation({
+    onSuccess: (result, variables) => {
+      if (result.alreadyExists) {
+        toast.info(`"${result.term}" is already in this list.`);
+      } else if (result.queued) {
+        toast.success(`Added "${result.term}" and started targeted discovery.`);
+      } else {
+        toast.success(`Added "${result.term}".`);
+      }
+
+      setKeywordDrafts((prev) => ({ ...prev, [variables.category]: "" }));
+      utils.site.getById.invalidate({ id: siteId });
+      utils.site.getDiscoveryRuns.invalidate({ siteId });
+      utils.opportunity.list.invalidate();
+    },
+    onError: (err) => {
+      if (
+        err.data?.code === "FORBIDDEN" &&
+        err.message.toLowerCase().includes("keyword limit")
+      ) {
+        setShowUpgradeModal(true);
+      }
+      toast.error(err.message);
+    },
+  });
+
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [keywordDrafts, setKeywordDrafts] = useState<Record<KeywordCategory, string>>({
+    features: "",
+    competitors: "",
+    brand: "",
+  });
 
   const site = siteQuery.data;
 
@@ -112,6 +235,53 @@ export default function SiteDetailPage() {
   }
 
   const isAuto = site.mode === "AUTO";
+  const keywordConfig = parseSiteKeywordConfig(site.keywordConfig, site.keywords);
+  const trackedKeywordsCount = dedupeKeywords([
+    ...keywordConfig.features,
+    ...keywordConfig.competitors,
+    ...keywordConfig.brand,
+  ]).length;
+
+  const keywordSections: Array<{
+    category: KeywordCategory;
+    label: string;
+    tags: string[];
+    tagClassName: string;
+    placeholder: string;
+  }> = [
+    {
+      category: "features",
+      label: "Features",
+      tags: keywordConfig.features,
+      tagClassName: "bg-teal/5 border-teal/10",
+      placeholder: "Add feature keyword",
+    },
+    {
+      category: "competitors",
+      label: "Competitors",
+      tags: keywordConfig.competitors,
+      tagClassName: "bg-coral/5 border-coral/10",
+      placeholder: "Add competitor keyword",
+    },
+    {
+      category: "brand",
+      label: "Brand",
+      tags: keywordConfig.brand,
+      tagClassName: "bg-sunny/10 border-sunny/20",
+      placeholder: "Add brand keyword",
+    },
+  ];
+
+  const handleAddKeyword = (category: KeywordCategory) => {
+    const term = normalizeKeyword(keywordDrafts[category]);
+    if (!term || addKeywordTerm.isPending) return;
+
+    addKeywordTerm.mutate({
+      siteId: site.id,
+      category,
+      term,
+    });
+  };
 
   return (
     <DashboardLayout>
@@ -191,67 +361,76 @@ export default function SiteDetailPage() {
       </div>
 
       {/* Keywords */}
-      {(() => {
-        const kc = site.keywordConfig as { features?: string[]; competitors?: string[]; brand?: string[]; reddit?: string[]; youtube?: string[] } | null;
-        if (kc) {
-          return (
-            <div className="mb-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {kc.features && kc.features.length > 0 && (
-                <div>
-                  <h3 className="text-[11px] font-bold text-charcoal-light uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <Tag size={10} /> Features
-                  </h3>
-                  <div className="flex flex-wrap gap-1">
-                    {kc.features.map((kw) => (
-                      <span key={kw} className="px-2 py-0.5 rounded-full bg-teal/5 border border-teal/10 text-[11px] text-charcoal font-medium">{kw}</span>
-                    ))}
-                  </div>
+      <div className="mb-6 bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h3 className="text-xs font-bold text-charcoal-light uppercase tracking-wider flex items-center gap-1.5">
+            <Tag size={12} /> Keywords
+          </h3>
+          <span className="text-xs text-charcoal-light">
+            {trackedKeywordsCount} tracked
+          </span>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {keywordSections.map((section) => {
+            const draft = keywordDrafts[section.category];
+            const normalizedDraft = normalizeKeyword(draft);
+            const isAdding = addKeywordTerm.isPending && addKeywordTerm.variables?.category === section.category;
+
+            return (
+              <div key={section.category}>
+                <h4 className="text-[11px] font-bold text-charcoal-light uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                  <Tag size={10} /> {section.label}
+                </h4>
+
+                <div className="flex flex-wrap gap-1 min-h-6">
+                  {section.tags.length > 0 ? section.tags.map((kw) => (
+                    <span
+                      key={kw}
+                      className={`px-2 py-0.5 rounded-full border text-[11px] text-charcoal font-medium ${section.tagClassName}`}
+                    >
+                      {kw}
+                    </span>
+                  )) : (
+                    <span className="text-[11px] text-charcoal-light/60">None yet</span>
+                  )}
                 </div>
-              )}
-              {kc.competitors && kc.competitors.length > 0 && (
-                <div>
-                  <h3 className="text-[11px] font-bold text-charcoal-light uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <Tag size={10} /> Competitors
-                  </h3>
-                  <div className="flex flex-wrap gap-1">
-                    {kc.competitors.map((kw) => (
-                      <span key={kw} className="px-2 py-0.5 rounded-full bg-coral/5 border border-coral/10 text-[11px] text-charcoal font-medium">{kw}</span>
-                    ))}
-                  </div>
+
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={draft}
+                    onChange={(e) => setKeywordDrafts((prev) => ({
+                      ...prev,
+                      [section.category]: e.target.value,
+                    }))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddKeyword(section.category);
+                      }
+                    }}
+                    placeholder={section.placeholder}
+                    className="w-full h-8 rounded-full border border-charcoal/[0.12] bg-white px-3 text-xs text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30"
+                  />
+                  <button
+                    onClick={() => handleAddKeyword(section.category)}
+                    disabled={!normalizedDraft || addKeywordTerm.isPending}
+                    className="inline-flex items-center gap-1.5 h-8 rounded-full bg-teal text-white px-3 text-xs font-bold hover:bg-teal-dark transition-all disabled:opacity-50"
+                  >
+                    {isAdding ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                    Add
+                  </button>
                 </div>
-              )}
-              {kc.brand && kc.brand.length > 0 && (
-                <div>
-                  <h3 className="text-[11px] font-bold text-charcoal-light uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <Tag size={10} /> Brand
-                  </h3>
-                  <div className="flex flex-wrap gap-1">
-                    {kc.brand.map((kw) => (
-                      <span key={kw} className="px-2 py-0.5 rounded-full bg-sunny/10 border border-sunny/20 text-[11px] text-charcoal font-medium">{kw}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        }
-        // Fallback for old sites without keywordConfig
-        if (site.keywords.length > 0) {
-          return (
-            <div className="mb-6">
-              <h3 className="text-xs font-bold text-charcoal-light uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Tag size={12} /> Keywords
-              </h3>
-              <div className="flex flex-wrap gap-1.5">
-                {site.keywords.map((kw) => (
-                  <span key={kw} className="px-2.5 py-1 rounded-full bg-white border border-charcoal/[0.06] text-xs text-charcoal font-medium shadow-brand-sm">{kw}</span>
-                ))}
               </div>
-            </div>
-          );
-        }
-        return null;
-      })()}
+            );
+          })}
+        </div>
+
+        <p className="text-[11px] text-charcoal-light/70 mt-3">
+          Adding a keyword immediately runs targeted discovery and scoring for that term.
+        </p>
+      </div>
 
       {/* Two-column: Runs + Opportunities */}
       <div className="grid lg:grid-cols-2 gap-4">
@@ -272,21 +451,40 @@ export default function SiteDetailPage() {
               {runsQuery.data.map((run) => (
                 <div
                   key={run.id}
-                  className="flex items-center justify-between py-2 px-3 rounded-brand-sm bg-charcoal/[0.015] border border-charcoal/[0.04]"
+                  className="py-2.5 px-3 rounded-brand-sm bg-charcoal/[0.015] border border-charcoal/[0.04]"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <RunStatusBadge status={run.status} />
-                    <span className="text-[11px] font-bold text-charcoal-light uppercase">
-                      {run.platform}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[11px] text-charcoal-light">
-                    <span>{run.foundCount} found</span>
-                    <span className="text-charcoal/10">·</span>
-                    <span>{run.postedCount} posted</span>
-                    <span className="text-charcoal/10">·</span>
-                    <span>{new Date(run.startedAt).toLocaleDateString()}</span>
-                  </div>
+                  {(() => {
+                    const scope = getRunScope(run.keywordsUsed);
+                    return (
+                      <>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex items-center gap-2 flex-wrap">
+                            <RunStatusBadge status={run.status} />
+                            <span className="text-[11px] font-bold text-charcoal-light uppercase">
+                              {run.platform}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full bg-charcoal/[0.05] text-[10px] font-bold text-charcoal-light uppercase tracking-wide">
+                              {scope.label}
+                            </span>
+                          </div>
+
+                          <div className="shrink-0 flex items-center gap-2 text-[11px] text-charcoal-light">
+                            <span>{run.foundCount} found</span>
+                            <span className="text-charcoal/10">·</span>
+                            <span>{run.postedCount} posted</span>
+                            <span className="text-charcoal/10">·</span>
+                            <span>{new Date(run.startedAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+
+                        {scope.keyword && (
+                          <p className="mt-1 text-[11px] text-charcoal-light truncate">
+                            Keyword: <span className="font-semibold text-charcoal">{scope.keyword}</span>
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
@@ -350,6 +548,13 @@ export default function SiteDetailPage() {
         confirmLabel="Delete Site"
         variant="danger"
         onConfirm={() => deleteSite.mutate({ id: site.id })}
+      />
+
+      <SubscriptionModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+        title="Keyword limit reached"
+        description="Upgrade your plan to add more tracked keywords."
       />
     </DashboardLayout>
   );

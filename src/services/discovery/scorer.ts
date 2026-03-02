@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { chatCompletionJSON, MODELS } from "@/lib/openrouter";
+import { pMap } from "@/services/shared/parallel";
 
 export interface ScoreInput {
   externalId: string;
@@ -35,6 +36,7 @@ const ScoreBatchSchema = z.array(
 );
 
 const BATCH_SIZE = 20;
+const SCORE_BATCH_CONCURRENCY = 3;
 const MIN_SCORE = 0.6;
 
 export async function scoreOpportunityBatch(
@@ -43,15 +45,18 @@ export async function scoreOpportunityBatch(
 ): Promise<ScoredItem[]> {
   if (items.length === 0) return [];
 
-  const results: ScoredItem[] = [];
-
+  const batches: ScoreInput[][] = [];
   for (let i = 0; i < items.length; i += BATCH_SIZE) {
-    const batch = items.slice(i, i + BATCH_SIZE);
-    const batchResults = await scoreBatch(batch, siteContext);
-    results.push(...batchResults);
+    batches.push(items.slice(i, i + BATCH_SIZE));
   }
 
-  return results;
+  const scoredBatches = await pMap(
+    batches,
+    (batch) => scoreBatch(batch, siteContext),
+    SCORE_BATCH_CONCURRENCY,
+  );
+
+  return scoredBatches.flat();
 }
 
 async function scoreBatch(
