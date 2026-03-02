@@ -7,18 +7,17 @@ import type {
   GeneratedComment,
 } from "@/services/generation/types";
 
-const GenerationSchema = z.object({
-  noRelevantComment: z.boolean(),
-  variants: z
-    .array(
-      z.object({
-        text: z.string(),
-        qualityScore: z.number().min(0).max(1),
-        reasons: z.array(z.string()),
-      }),
-    )
-    .length(5),
+const VariantSchema = z.object({
+  text: z.string(),
+  qualityScore: z.number().min(0).max(1),
+  reasons: z.array(z.string()),
 });
+
+const GenerationSchema = (count: number) =>
+  z.object({
+    noRelevantComment: z.boolean(),
+    variants: z.array(VariantSchema).length(count),
+  });
 
 function selectPersona(postType: string, specifiedPersona?: string): string {
   if (specifiedPersona && specifiedPersona !== "auto" && PERSONA_MAP[specifiedPersona]) {
@@ -74,6 +73,8 @@ export async function generateComment(
     ? `\nYou are REPLYING to this comment by ${input.replyTarget.commentAuthor}: "${input.replyTarget.commentBody}"`
     : "";
 
+  const variantCount = input.platform === "YOUTUBE" ? 5 : 1;
+
   const result = await chatCompletionJSON({
     model: MODELS.CLAUDE_OPUS,
     messages: [
@@ -107,7 +108,7 @@ ANTI-AI-SLOP RULES (these are dead giveaways that get comments flagged):
 - Real people make typos, use incomplete thoughts, and trail off
 - Real Reddit comments are messy, opinionated, and sometimes tangential
 
-Generate exactly 5 comment variants. For each, include:
+Generate exactly ${variantCount} comment variant${variantCount > 1 ? "s" : ""}. For each, include:
 - text: the comment text
 - qualityScore: 0.0-1.0 self-assessment (0.8+ = sounds genuinely human, 0.5-0.8 = decent, <0.5 = feels like an ad)
 - reasons: 2-3 bullet points explaining the score
@@ -135,7 +136,7 @@ ${existingCommentsText}`,
       },
     ],
     temperature: 0.85,
-    schema: GenerationSchema,
+    schema: GenerationSchema(variantCount),
   });
 
   if (result.noRelevantComment || result.variants.length === 0) {

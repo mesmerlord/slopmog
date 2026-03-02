@@ -154,6 +154,9 @@ export default function SiteDetailPage() {
     { enabled: !!siteId },
   );
 
+  const planQuery = trpc.user.getPlanInfo.useQuery();
+  const canUseAuto = planQuery.data?.canPost ?? false;
+
   const utils = trpc.useUtils();
 
   const triggerDiscovery = trpc.site.triggerDiscovery.useMutation({
@@ -340,10 +343,16 @@ export default function SiteDetailPage() {
               {triggerDiscovery.isPending ? "Starting..." : "Run Discovery"}
             </button>
             <button
-              onClick={() => updateSite.mutate({
-                id: site.id,
-                mode: isAuto ? "MANUAL" : "AUTO",
-              })}
+              onClick={() => {
+                if (!isAuto && !canUseAuto) {
+                  setShowUpgradeModal(true);
+                  return;
+                }
+                updateSite.mutate({
+                  id: site.id,
+                  mode: isAuto ? "MANUAL" : "AUTO",
+                });
+              }}
               className="inline-flex items-center gap-1.5 border border-charcoal/[0.12] text-charcoal-light px-3 py-2 rounded-full text-xs font-bold hover:text-charcoal hover:border-charcoal/[0.2] transition-all"
             >
               <Zap size={12} />
@@ -553,8 +562,6 @@ export default function SiteDetailPage() {
       <SubscriptionModal
         open={showUpgradeModal}
         onOpenChange={setShowUpgradeModal}
-        title="Keyword limit reached"
-        description="Upgrade your plan to add more tracked keywords."
       />
     </DashboardLayout>
   );

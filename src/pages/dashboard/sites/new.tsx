@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 import type { GetServerSideProps } from "next";
 import { toast } from "sonner";
-import { Globe, Loader2, ArrowRight } from "lucide-react";
+import { Globe, Loader2, ArrowRight, Lock } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
+import { SubscriptionModal } from "@/components/SubscriptionModal";
 import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
 import { getServerAuthSession } from "@/server/utils/auth";
@@ -20,6 +21,10 @@ export default function NewSitePage() {
     "YOUTUBE",
   ]);
   const [mode, setMode] = useState<"MANUAL" | "AUTO">("MANUAL");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  const planQuery = trpc.user.getPlanInfo.useQuery();
+  const canUseAuto = planQuery.data?.canPost ?? false;
 
   const createSite = trpc.site.create.useMutation({
     onSuccess: (site) => {
@@ -180,15 +185,24 @@ export default function NewSitePage() {
                   },
                 ].map((m) => {
                   const selected = mode === m.value;
+                  const locked = m.value === "AUTO" && !canUseAuto;
                   return (
                     <button
                       key={m.value}
                       type="button"
-                      onClick={() => setMode(m.value)}
+                      onClick={() => {
+                        if (locked) {
+                          setShowUpgradeModal(true);
+                          return;
+                        }
+                        setMode(m.value);
+                      }}
                       className={`w-full flex items-center gap-3 p-3.5 rounded-brand-sm border-2 text-left transition-all ${
                         selected
                           ? "border-teal bg-teal/[0.04]"
-                          : "border-charcoal/[0.06] hover:border-charcoal/[0.12]"
+                          : locked
+                            ? "border-charcoal/[0.06] opacity-60 cursor-pointer"
+                            : "border-charcoal/[0.06] hover:border-charcoal/[0.12]"
                       }`}
                     >
                       <span
@@ -210,6 +224,12 @@ export default function NewSitePage() {
                           {m.recommended && (
                             <span className="px-1.5 py-0.5 rounded-full bg-teal/10 text-[10px] font-bold text-teal uppercase tracking-wide">
                               Recommended
+                            </span>
+                          )}
+                          {locked && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-coral/10 text-[10px] font-bold text-coral uppercase tracking-wide">
+                              <Lock size={9} />
+                              Pro
                             </span>
                           )}
                         </div>
@@ -261,6 +281,13 @@ export default function NewSitePage() {
           </p>
         </div>
       </div>
+
+      <SubscriptionModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+        title="Autopilot requires a paid plan"
+        description="Upgrade to let SlopMog find, write, and post comments automatically."
+      />
     </DashboardLayout>
   );
 }

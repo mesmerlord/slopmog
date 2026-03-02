@@ -89,7 +89,8 @@ const upvoteMaxProvider: PostingProvider = {
           body: JSON.stringify({
             service: CUSTOM_COMMENTS_SERVICE_KEY,
             link: params.contentUrl,
-            comments: params.commentText,
+            // UpvoteMax treats \n as separate comments — flatten to a single line
+            comments: params.commentText.replace(/\n+/g, " ").trim(),
           }),
           rateLimit: RATE_LIMIT,
           retry: { maxRetries: 2, baseDelayMs: 5000, maxDelayMs: 30000 },

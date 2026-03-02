@@ -16,6 +16,7 @@ import DashboardLayout from "@/components/layouts/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
 import EmptyState from "@/components/shared/EmptyState";
 import LoadingState from "@/components/shared/LoadingState";
+import { SubscriptionModal } from "@/components/SubscriptionModal";
 import GeneratingMascotV1 from "@/components/illustrations/GeneratingMascotV1";
 import { PERSONAS } from "@/constants/personas";
 import { trpc } from "@/utils/trpc";
@@ -244,6 +245,7 @@ export default function QueuePage() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("ALL");
   const [sortBy, setSortBy] = useState<QueueSort>("best_match");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -266,7 +268,12 @@ export default function QueuePage() {
       toast.success("Comment approved and queued for posting!");
       utils.opportunity.listPending.invalidate();
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      if (err.data?.code === "FORBIDDEN") {
+        setShowUpgradeModal(true);
+      }
+      toast.error(err.message);
+    },
     onSettled: () => setActingOn(null),
   });
 
@@ -446,6 +453,13 @@ export default function QueuePage() {
           ))}
         </div>
       )}
+
+      <SubscriptionModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+        title="Posting requires a paid plan"
+        description="Upgrade to approve and publish comments across platforms."
+      />
     </DashboardLayout>
   );
 }
