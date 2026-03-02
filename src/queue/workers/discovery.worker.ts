@@ -16,9 +16,23 @@ import {
   type SiteContext,
 } from "@/services/discovery/scorer";
 import { pMap } from "@/services/shared/parallel";
+import type { KeywordConfig } from "@/services/discovery/site-analyzer";
 
 const MIN_YOUTUBE_VIEWS = 1000;
 const MAX_YOUTUBE_AGE_DAYS = 90;
+
+function getKeywordsForPlatform(
+  keywordConfig: KeywordConfig | null | undefined,
+  fallbackKeywords: string[],
+  platform: "REDDIT" | "YOUTUBE",
+): string[] {
+  if (!keywordConfig) return fallbackKeywords;
+
+  // Platform-specific keywords + brand + competitors (always search those)
+  const platformKw = platform === "REDDIT" ? keywordConfig.reddit : keywordConfig.youtube;
+  const all = Array.from(new Set([...platformKw, ...keywordConfig.brand, ...keywordConfig.competitors]));
+  return all.length > 0 ? all : fallbackKeywords;
+}
 
 async function processDiscovery(job: Job<DiscoveryJobData>) {
   const { siteId } = job.data;
@@ -39,14 +53,18 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
     keywords: site.keywords,
   };
 
+  const keywordConfig = site.keywordConfig as KeywordConfig | null;
+
   // Process each platform
   for (const platform of site.platforms) {
+    const keywords = getKeywordsForPlatform(keywordConfig, site.keywords, platform);
+
     const run = await prisma.discoveryRun.create({
       data: {
         siteId: site.id,
         platform,
         status: "RUNNING",
-        keywordsUsed: site.keywords,
+        keywordsUsed: keywords,
       },
     });
 
@@ -54,9 +72,9 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
       let allItems: ScoreInput[] = [];
 
       if (platform === "REDDIT") {
-        allItems = await discoverReddit(site.keywords, site.id);
+        allItems = await discoverReddit(keywords, site.id);
       } else if (platform === "YOUTUBE") {
-        allItems = await discoverYouTube(site.keywords, site.id, site.name);
+        allItems = await discoverYouTube(keywords, site.id, site.name);
       }
 
       await job.updateProgress({ phase: "scoring", platform, itemCount: allItems.length });

@@ -64,7 +64,7 @@ function QueueItem({ opportunity, onApprove, onSkip, onEdit, isActing }: QueueIt
   };
 
   return (
-    <div className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-5">
+    <div className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-5 min-h-[280px] flex flex-col">
       <div className="flex items-start justify-between mb-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
@@ -79,9 +79,9 @@ function QueueItem({ opportunity, onApprove, onSkip, onEdit, isActing }: QueueIt
             href={opportunity.contentUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-heading font-bold text-charcoal hover:text-teal transition-colors text-base flex items-center gap-1"
+            className="font-heading font-bold text-charcoal hover:text-teal transition-colors text-base flex items-center gap-1 line-clamp-1"
           >
-            {opportunity.title}
+            <span className="truncate">{opportunity.title}</span>
             <ExternalLink size={14} className="shrink-0 text-charcoal-light" />
           </a>
           <p className="text-xs text-charcoal-light mt-0.5">
@@ -92,7 +92,7 @@ function QueueItem({ opportunity, onApprove, onSkip, onEdit, isActing }: QueueIt
       </div>
 
       {/* Comment */}
-      <div className="bg-charcoal/[0.02] rounded-brand-sm border border-charcoal/[0.06] p-4 mb-4">
+      <div className="bg-charcoal/[0.02] rounded-brand-sm border border-charcoal/[0.06] p-4 mb-4 flex-1">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold text-charcoal-light uppercase">
             Generated Comment ({comment.persona})
@@ -125,7 +125,7 @@ function QueueItem({ opportunity, onApprove, onSkip, onEdit, isActing }: QueueIt
             </div>
           </div>
         ) : (
-          <p className="text-sm text-charcoal whitespace-pre-wrap">{comment.text}</p>
+          <p className="text-sm text-charcoal whitespace-pre-wrap line-clamp-6">{comment.text}</p>
         )}
       </div>
 

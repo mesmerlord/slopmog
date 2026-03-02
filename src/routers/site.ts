@@ -16,6 +16,12 @@ export const siteRouter = router({
     .mutation(async ({ ctx, input }) => {
       const analysis = await analyzeSite(input.url);
 
+      // Build flat keywords array from all categories for display (deduplicated)
+      const kc = analysis.keywordConfig;
+      const allKeywords = Array.from(
+        new Set([...kc.features, ...kc.competitors, ...kc.brand]),
+      );
+
       const site = await ctx.prisma.site.create({
         data: {
           userId: ctx.session.user.id,
@@ -23,7 +29,8 @@ export const siteRouter = router({
           name: analysis.name,
           description: analysis.description,
           valueProps: analysis.valueProps,
-          keywords: analysis.keywords,
+          keywords: allKeywords,
+          keywordConfig: kc,
           brandTone: analysis.brandTone,
           platforms: input.platforms,
           mode: input.mode,
@@ -119,6 +126,22 @@ export const siteRouter = router({
       } satisfies DiscoveryJobData);
 
       return { queued: true };
+    }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const site = await ctx.prisma.site.findFirst({
+        where: { id: input.id, userId: ctx.session.user.id },
+      });
+
+      if (!site) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
+      }
+
+      await ctx.prisma.site.delete({ where: { id: input.id } });
+
+      return { deleted: true };
     }),
 
   getDiscoveryRuns: protectedProcedure
