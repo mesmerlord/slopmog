@@ -21,6 +21,7 @@ import { PrismaClient } from "@prisma/client";
 
 const PANEL_BASE = "https://panel.socialplug.io";
 const YOUTUBE_SERVICE_COMMENT_COUNT = 5;
+const MAX_SOCIALPLUG_COMMENT_LENGTH = 500;
 const SOCIALPLUG_PROVIDER = "socialplug";
 const COOKIE_KEY = "cookies";
 
@@ -96,7 +97,7 @@ function normalizeCommentsForService(comments: string[]): string[] {
         .trim(),
     )
     .filter(Boolean)
-    .map((line) => (line.length > 120 ? `${line.slice(0, 117).trimEnd()}...` : line));
+    .map((line) => line.slice(0, MAX_SOCIALPLUG_COMMENT_LENGTH).trim());
 
   if (sanitized.length === 0) return [];
 

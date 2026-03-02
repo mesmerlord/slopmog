@@ -11,6 +11,7 @@ import { prisma } from "@/server/utils/db";
 
 const PANEL_BASE = "https://panel.socialplug.io";
 const YOUTUBE_SERVICE_COMMENT_COUNT = 5;
+const MAX_SOCIALPLUG_COMMENT_LENGTH = 500;
 const ORDER_PAGE_PATH = "/order/youtube-services/portal";
 const ORDER_PAGE_PATH_WITH_REF = "/order/youtube-services/portal?ref=youtubecomments";
 const SOCIALPLUG_PROVIDER = "socialplug";
@@ -77,7 +78,8 @@ function normalizeCommentsForService(commentText: string): string[] {
         .trim(),
     )
     .filter(Boolean)
-    .map((line) => (line.length > 120 ? `${line.slice(0, 117).trimEnd()}...` : line));
+    // Keep user-provided copy intact; only apply a generous hard cap for panel safety.
+    .map((line) => line.slice(0, MAX_SOCIALPLUG_COMMENT_LENGTH).trim());
 
   if (sanitized.length === 0) return [];
 
