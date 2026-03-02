@@ -4,6 +4,7 @@ import { router, protectedProcedure } from "@/server/trpc";
 import { postingQueue, type PostingJobData } from "@/queue/queues";
 import { PERSONA_MAP } from "@/constants/personas";
 import { generateComment } from "@/services/generation/generator";
+import { getUserPlan } from "@/server/utils/plan";
 import {
   getRedditComments,
   getYouTubeComments,
@@ -29,6 +30,14 @@ export const commentRouter = router({
 
       if (!comment) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Comment not found or not in DRAFT status" });
+      }
+
+      const plan = await getUserPlan(ctx.session.user.id);
+      if (!plan.canPost) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Posting is available on paid plans only. Upgrade to publish comments.",
+        });
       }
 
       await ctx.prisma.$transaction([

@@ -162,7 +162,7 @@ const socialPlugProvider: PostingProvider = {
           retryable: false,
         };
       }
-      const commentCountLabel = `${comments.length} Comments`;
+      const commentCountLabel = `${YOUTUBE_SERVICE_COMMENT_COUNT} Comments`;
       const commentsText = comments.join("\n");
 
       const trySubmit = async (mode: "captured" | "legacy") => {
