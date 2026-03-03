@@ -44,7 +44,9 @@ async function processPosting(job: Job<PostingJobData>) {
 
   const { opportunity } = comment;
 
-  await job.log(`Platform: ${opportunity.platform} | URL: ${opportunity.contentUrl}`);
+  await job.log(
+    `Platform: ${opportunity.platform} | URL: ${opportunity.contentUrl}`,
+  );
 
   // Update statuses to POSTING
   await prisma.$transaction([
@@ -114,7 +116,9 @@ async function processPosting(job: Job<PostingJobData>) {
       data: { postedCount: { increment: 1 } },
     });
 
-    console.log(`[posting] Comment ${commentId} posted via ${provider.name} (order: ${result.orderId})`);
+    console.log(
+      `[posting] Comment ${commentId} posted via ${provider.name} (order: ${result.orderId})`,
+    );
     await job.log(`Posted successfully — order: ${result.orderId}`);
   } else if (result.retryable) {
     // Throw to let BullMQ retry with exponential backoff
@@ -135,7 +139,9 @@ async function processPosting(job: Job<PostingJobData>) {
         data: { status: "FAILED" },
       }),
     ]);
-    console.error(`[posting] Comment ${commentId} failed (non-retryable): ${result.error}`);
+    console.error(
+      `[posting] Comment ${commentId} failed (non-retryable): ${result.error}`,
+    );
     await job.log(`Non-retryable failure: ${result.error}`);
   }
 }
@@ -145,7 +151,7 @@ export const postingWorker = new Worker<PostingJobData>(
   processPosting,
   {
     connection: redisConnection,
-    concurrency: 1,
+    concurrency: 3,
   },
 );
 
