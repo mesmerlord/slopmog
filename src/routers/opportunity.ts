@@ -9,6 +9,7 @@ export const opportunityRouter = router({
         limit: z.number().min(1).max(50).default(20),
         search: z.string().trim().max(120).optional(),
         platform: z.enum(["REDDIT", "YOUTUBE"]).optional(),
+        siteId: z.string().optional(),
         sortBy: z.enum([
           "best_match",
           "posted_newest",
@@ -19,10 +20,11 @@ export const opportunityRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const baseWhere = {
+      const baseWhere: Record<string, unknown> = {
         site: { userId: ctx.session.user.id },
         status: "PENDING_REVIEW" as const,
       };
+      if (input.siteId) baseWhere.siteId = input.siteId;
 
       const where: Record<string, unknown> = { ...baseWhere };
       if (input.platform) where.platform = input.platform;

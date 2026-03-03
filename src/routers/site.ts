@@ -83,6 +83,20 @@ export const siteRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Check site limit
+      const plan = await getUserPlan(ctx.session.user.id);
+      if (Number.isFinite(plan.maxSites)) {
+        const siteCount = await ctx.prisma.site.count({
+          where: { userId: ctx.session.user.id },
+        });
+        if (siteCount >= plan.maxSites) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Site limit reached (${plan.maxSites}). Upgrade your plan to add more sites.`,
+          });
+        }
+      }
+
       const analysis = await analyzeSite(input.url);
 
       // Build flat keywords array from all categories for display (deduplicated)
@@ -107,6 +121,12 @@ export const siteRouter = router({
           mode: input.mode,
         },
       });
+
+      // Auto-trigger discovery on site creation
+      await discoveryQueue.add("discover", {
+        siteId: site.id,
+        triggeredBy: "manual",
+      } satisfies DiscoveryJobData);
 
       return site;
     }),
@@ -338,6 +358,135 @@ export const siteRouter = router({
         orderBy: { startedAt: "desc" },
         take: input.limit,
       });
+    }),
+
+  hasRunningDiscovery: protectedProcedure.query(async ({ ctx }) => {
+    const runs = await ctx.prisma.discoveryRun.findMany({
+      where: {
+        status: "RUNNING",
+        site: { userId: ctx.session.user.id },
+      },
+      select: {
+        id: true,
+        platform: true,
+        startedAt: true,
+        site: { select: { id: true, name: true } },
+      },
+    });
+
+    return {
+      isRunning: runs.length > 0,
+      runs: runs.map((r) => ({
+        id: r.id,
+        platform: r.platform,
+        site: r.site,
+        startedAt: r.startedAt.toISOString(),
+      })),
+    };
+  }),
+
+  getGlobalActivityFeed: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(50).default(5),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const [runs, comments] = await Promise.all([
+        ctx.prisma.discoveryRun.findMany({
+          where: { site: { userId: ctx.session.user.id } },
+          orderBy: { startedAt: "desc" },
+          take: input.limit,
+          include: { site: { select: { name: true } } },
+        }),
+        ctx.prisma.comment.findMany({
+          where: { site: { userId: ctx.session.user.id }, status: "POSTED" },
+          orderBy: { postedAt: "desc" },
+          take: input.limit,
+          include: {
+            site: { select: { name: true } },
+            opportunity: {
+              select: {
+                title: true,
+                sourceContext: true,
+                platform: true,
+                contentUrl: true,
+              },
+            },
+          },
+        }),
+      ]);
+
+      type GlobalActivityItem =
+        | {
+            type: "discovery_completed";
+            id: string;
+            timestamp: string;
+            platform: string;
+            siteName: string;
+            foundCount: number;
+            generatedCount: number;
+          }
+        | {
+            type: "discovery_running";
+            id: string;
+            timestamp: string;
+            platform: string;
+            siteName: string;
+          }
+        | {
+            type: "comment_posted";
+            id: string;
+            timestamp: string;
+            platform: string;
+            siteName: string;
+            title: string;
+            sourceContext: string;
+            contentUrl: string;
+          };
+
+      const items: GlobalActivityItem[] = [];
+
+      for (const run of runs) {
+        if (run.status === "RUNNING") {
+          items.push({
+            type: "discovery_running",
+            id: run.id,
+            timestamp: run.startedAt.toISOString(),
+            platform: run.platform,
+            siteName: run.site.name,
+          });
+        } else if (run.status === "COMPLETED") {
+          items.push({
+            type: "discovery_completed",
+            id: run.id,
+            timestamp: (run.completedAt ?? run.startedAt).toISOString(),
+            platform: run.platform,
+            siteName: run.site.name,
+            foundCount: run.foundCount,
+            generatedCount: run.generatedCount,
+          });
+        }
+      }
+
+      for (const comment of comments) {
+        items.push({
+          type: "comment_posted",
+          id: comment.id,
+          timestamp: (comment.postedAt ?? comment.createdAt).toISOString(),
+          platform: comment.opportunity.platform,
+          siteName: comment.site.name,
+          title: comment.opportunity.title,
+          sourceContext: comment.opportunity.sourceContext,
+          contentUrl: comment.opportunity.contentUrl,
+        });
+      }
+
+      items.sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      );
+
+      return items.slice(0, input.limit);
     }),
 
   getActivityFeed: protectedProcedure

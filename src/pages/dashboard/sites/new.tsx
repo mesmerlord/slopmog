@@ -29,11 +29,16 @@ export default function NewSitePage() {
   const createSite = trpc.site.create.useMutation({
     onSuccess: (site) => {
       toast.success(
-        `${site.name} added! We found ${site.keywords.length} keywords to monitor.`,
+        `${site.name} added! Discovery is running — we'll find opportunities for you.`,
       );
-      router.push(routes.dashboard.sites.detail(site.id));
+      router.push(routes.dashboard.sites.detail(site.id) + "?new=1");
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      if (err.data?.code === "FORBIDDEN" && err.message.toLowerCase().includes("site limit")) {
+        setShowUpgradeModal(true);
+      }
+      toast.error(err.message);
+    },
   });
 
   const togglePlatform = (p: "REDDIT" | "YOUTUBE") => {
@@ -285,8 +290,6 @@ export default function NewSitePage() {
       <SubscriptionModal
         open={showUpgradeModal}
         onOpenChange={setShowUpgradeModal}
-        title="Autopilot requires a paid plan"
-        description="Upgrade to let SlopMog find, write, and post comments automatically."
       />
     </DashboardLayout>
   );

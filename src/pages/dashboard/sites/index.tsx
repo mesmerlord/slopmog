@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import type { GetServerSideProps } from "next";
 import { toast } from "sonner";
 import {
@@ -10,6 +11,7 @@ import {
   Eye,
   Trash2,
   MoreVertical,
+  Plus,
 } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -17,13 +19,16 @@ import PageHeader from "@/components/shared/PageHeader";
 import EmptyState from "@/components/shared/EmptyState";
 import LoadingState from "@/components/shared/LoadingState";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import { SubscriptionModal } from "@/components/SubscriptionModal";
 import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
 import { getServerAuthSession } from "@/server/utils/auth";
 
 export default function SitesListPage() {
+  const router = useRouter();
   const utils = trpc.useUtils();
   const sitesQuery = trpc.site.list.useQuery();
+  const planQuery = trpc.user.getPlanInfo.useQuery();
 
   const triggerDiscovery = trpc.site.triggerDiscovery.useMutation({
     onSuccess: () => {
@@ -43,6 +48,17 @@ export default function SitesListPage() {
   const [runningId, setRunningId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  const handleAddSite = () => {
+    const maxSites = planQuery.data?.maxSites ?? 1;
+    const currentSites = sitesQuery.data?.length ?? 0;
+    if (Number.isFinite(maxSites) && currentSites >= maxSites) {
+      setShowUpgradeModal(true);
+      return;
+    }
+    router.push(routes.dashboard.sites.new);
+  };
 
   const handleRunDiscovery = (siteId: string) => {
     setRunningId(siteId);
@@ -176,6 +192,19 @@ export default function SitesListPage() {
               </Link>
             );
           })}
+
+          {/* Add Site card */}
+          <button
+            onClick={handleAddSite}
+            className="group flex flex-col items-center justify-center gap-3 bg-white rounded-brand border-2 border-dashed border-charcoal/[0.12] hover:border-teal/40 hover:bg-teal/[0.02] hover:-translate-y-0.5 transition-all p-8 min-h-[200px] cursor-pointer"
+          >
+            <div className="w-12 h-12 rounded-full bg-charcoal/[0.04] group-hover:bg-teal/10 flex items-center justify-center transition-colors">
+              <Plus size={20} className="text-charcoal-light group-hover:text-teal transition-colors" />
+            </div>
+            <span className="text-sm font-bold text-charcoal-light group-hover:text-teal transition-colors">
+              Add a site
+            </span>
+          </button>
         </div>
       )}
 
@@ -189,6 +218,13 @@ export default function SitesListPage() {
         onConfirm={() => {
           if (deleteTarget) deleteSite.mutate({ id: deleteTarget.id });
         }}
+      />
+
+      <SubscriptionModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+        title="Site limit reached"
+        description="Upgrade your plan to add more sites."
       />
     </DashboardLayout>
   );

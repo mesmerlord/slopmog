@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/router";
 import type { GetServerSideProps } from "next";
 import { toast } from "sonner";
@@ -15,6 +15,8 @@ import {
   Trash2,
   Plus,
   Activity,
+  X,
+  ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
 import Seo from "@/components/Seo";
@@ -146,7 +148,7 @@ function ActivityTimelineItem({ item, isLast }: { item: ActivityItem; isLast: bo
     if (item.type === "discovery_completed")
       return `Scouted ${item.platform} — found ${item.foundCount ?? 0} threads, generated ${item.generatedCount ?? 0} for review`;
     if (item.type === "discovery_failed")
-      return `Discovery failed${item.error ? `: ${item.error}` : ""}`;
+      return "Discovery hit a snag — we'll retry automatically";
     return `Posted on ${item.sourceContext}: ${item.title}`;
   })();
 
@@ -204,11 +206,40 @@ export default function SiteDetailPage() {
   const router = useRouter();
   const siteId = router.query.id as string;
 
+  const isNewSite = router.query.new === "1";
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Set onboarding banner on first render when ?new=1 is present
+  const onboardingInitRef = useRef(false);
+  useEffect(() => {
+    if (isNewSite && !onboardingInitRef.current) {
+      onboardingInitRef.current = true;
+      setShowOnboarding(true);
+      // Clean up the query param
+      router.replace(routes.dashboard.sites.detail(siteId), undefined, { shallow: true });
+    }
+  }, [isNewSite, siteId, router]);
+
   const siteQuery = trpc.site.getById.useQuery({ id: siteId }, { enabled: !!siteId });
   const activityQuery = trpc.site.getActivityFeed.useQuery(
     { siteId, limit: 15 },
     { enabled: !!siteId },
   );
+
+  const activityItems = (activityQuery.data ?? []) as ActivityItem[];
+  const hasRunningDiscovery = activityItems.some((i) => i.type === "discovery_running");
+  const hasAnyDiscovery = activityItems.some((i) =>
+    i.type === "discovery_completed" || i.type === "discovery_failed" || i.type === "discovery_running",
+  );
+
+  // Poll activity while discovery is running
+  useEffect(() => {
+    if (!hasRunningDiscovery || !siteId) return;
+    const interval = setInterval(() => {
+      activityQuery.refetch();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [hasRunningDiscovery, siteId, activityQuery]);
 
   const planQuery = trpc.user.getPlanInfo.useQuery();
   const canUseAuto = planQuery.data?.canPost ?? false;
@@ -353,6 +384,34 @@ export default function SiteDetailPage() {
         ]}
       />
 
+      {/* Onboarding banner for new sites */}
+      {showOnboarding && (
+        <div className="relative bg-teal/[0.06] border border-teal/20 rounded-brand p-5 mb-6">
+          <button
+            onClick={() => setShowOnboarding(false)}
+            className="absolute top-3 right-3 p-1 rounded-full text-charcoal-light hover:text-charcoal hover:bg-charcoal/[0.06] transition-colors"
+          >
+            <X size={16} />
+          </button>
+          <h3 className="font-heading font-bold text-charcoal mb-1">
+            Your site is all set up
+          </h3>
+          <p className="text-sm text-charcoal-light mb-4 max-w-lg">
+            We're scouting Reddit and YouTube for conversations about your brand. Once we find matches, we'll generate comment drafts for you to review.
+          </p>
+          <Link
+            href={routes.dashboard.queue}
+            className="inline-flex items-center gap-2 bg-coral text-white px-5 py-2.5 rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all"
+          >
+            Go to Review Queue
+            <ArrowRight size={14} />
+          </Link>
+          <p className="text-xs text-charcoal-light/70 mt-2">
+            Items will appear there as discovery completes
+          </p>
+        </div>
+      )}
+
       {/* Top bar: meta + actions in one line */}
       <div className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-4 mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -391,11 +450,25 @@ export default function SiteDetailPage() {
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => triggerDiscovery.mutate({ siteId: site.id })}
-              disabled={triggerDiscovery.isPending}
+              disabled={triggerDiscovery.isPending || hasRunningDiscovery}
               className="inline-flex items-center gap-1.5 bg-coral text-white px-4 py-2 rounded-full font-bold text-xs hover:bg-coral-dark transition-all disabled:opacity-40"
             >
-              <Play size={12} fill="currentColor" />
-              {triggerDiscovery.isPending ? "Starting..." : "Run Discovery"}
+              {hasRunningDiscovery ? (
+                <>
+                  <Loader2 size={12} className="animate-spin" />
+                  Discovery Running...
+                </>
+              ) : triggerDiscovery.isPending ? (
+                <>
+                  <Loader2 size={12} className="animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <Play size={12} fill="currentColor" />
+                  {hasAnyDiscovery ? "Re-run Discovery" : "Run Discovery"}
+                </>
+              )}
             </button>
             <button
               onClick={() => {
@@ -442,16 +515,16 @@ export default function SiteDetailPage() {
             const isAdding = addKeywordTerm.isPending && addKeywordTerm.variables?.category === section.category;
 
             return (
-              <div key={section.category}>
+              <div key={section.category} className="flex flex-col">
                 <h4 className="text-[11px] font-bold text-charcoal-light uppercase tracking-wider mb-1.5 flex items-center gap-1">
                   <Tag size={10} /> {section.label}
                 </h4>
 
-                <div className="flex flex-wrap gap-1 min-h-6">
+                <div className="flex flex-wrap gap-1 min-h-6 flex-1">
                   {section.tags.length > 0 ? section.tags.map((kw) => (
                     <span
                       key={kw}
-                      className={`px-2 py-0.5 rounded-full border text-[11px] text-charcoal font-medium ${section.tagClassName}`}
+                      className={`px-2 py-0.5 rounded-full border text-[11px] text-charcoal font-medium self-start ${section.tagClassName}`}
                     >
                       {kw}
                     </span>
@@ -506,7 +579,7 @@ export default function SiteDetailPage() {
           <LoadingState variant="skeleton" />
         ) : !activityQuery.data?.length ? (
           <p className="text-sm text-charcoal-light/60 py-6 text-center">
-            No activity yet — hit &quot;Run Discovery&quot; to get started
+            No activity yet — discovery will kick off shortly
           </p>
         ) : (
           <div>

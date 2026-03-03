@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { GetServerSideProps } from "next";
 import { toast } from "sonner";
 import {
@@ -10,6 +10,8 @@ import {
   RefreshCw,
   Search,
   ArrowUpDown,
+  Globe,
+  Loader2,
 } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -244,8 +246,32 @@ export default function QueuePage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("ALL");
+  const [siteFilter, setSiteFilter] = useState<string>("ALL");
   const [sortBy, setSortBy] = useState<QueueSort>("best_match");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  const sitesQuery = trpc.site.list.useQuery();
+  const discoveryStatusQuery = trpc.site.hasRunningDiscovery.useQuery();
+  const discoveryRunning = discoveryStatusQuery.data?.isRunning ?? false;
+  const discoveryRuns = discoveryStatusQuery.data?.runs ?? [];
+
+  // Poll discovery status while running
+  useEffect(() => {
+    if (!discoveryRunning) return;
+    const interval = setInterval(() => {
+      discoveryStatusQuery.refetch();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [discoveryRunning, discoveryStatusQuery]);
+
+  // Auto-invalidate pending list when discovery finishes
+  const prevRunningRef = useRef(discoveryRunning);
+  useEffect(() => {
+    if (prevRunningRef.current && !discoveryRunning) {
+      utils.opportunity.listPending.invalidate();
+    }
+    prevRunningRef.current = discoveryRunning;
+  }, [discoveryRunning, utils]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -258,6 +284,7 @@ export default function QueuePage() {
     limit: 20,
     search: debouncedSearchTerm || undefined,
     platform: platformFilter === "ALL" ? undefined : platformFilter,
+    siteId: siteFilter === "ALL" ? undefined : siteFilter,
     sortBy,
   }, {
     placeholderData: (previousData) => previousData,
@@ -311,6 +338,7 @@ export default function QueuePage() {
   const hasActiveControls =
     searchTerm.trim().length > 0 ||
     platformFilter !== "ALL" ||
+    siteFilter !== "ALL" ||
     sortBy !== "best_match";
   const hasAnyPending = totalPendingCount > 0;
 
@@ -318,6 +346,7 @@ export default function QueuePage() {
     setSearchTerm("");
     setDebouncedSearchTerm("");
     setPlatformFilter("ALL");
+    setSiteFilter("ALL");
     setSortBy("best_match");
   };
 
@@ -334,8 +363,36 @@ export default function QueuePage() {
         ]}
       />
 
+      {/* Discovery in-progress banner */}
+      {discoveryRunning && (
+        <div className="bg-teal/[0.06] border border-teal/20 rounded-brand p-4 mb-4 flex items-start gap-3">
+          <Loader2 size={18} className="animate-spin text-teal mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-bold text-charcoal">Discovery in progress</p>
+            {discoveryRuns.map((run) => (
+              <p key={run.id} className="text-xs text-charcoal-light mt-0.5">
+                Scanning {run.platform === "REDDIT" ? "Reddit" : "YouTube"} for {run.site.name}
+              </p>
+            ))}
+            <p className="text-xs text-charcoal-light/60 mt-1">
+              New opportunities will appear here automatically
+            </p>
+          </div>
+        </div>
+      )}
+
       {!queryData && pendingQuery.isLoading ? (
         <LoadingState variant="spinner" text="Loading queue..." />
+      ) : !hasAnyPending && discoveryRunning ? (
+        <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06]">
+          <Loader2 size={32} className="animate-spin text-teal mb-4" />
+          <h3 className="font-heading text-lg font-bold text-charcoal mb-1">
+            Discovery is working its magic
+          </h3>
+          <p className="text-sm text-charcoal-light max-w-sm">
+            We're scanning platforms for conversations about your brand. Items will start appearing here shortly.
+          </p>
+        </div>
       ) : !hasAnyPending ? (
         <EmptyState
           icon={Inbox}
@@ -374,6 +431,22 @@ export default function QueuePage() {
                   </button>
                 ))}
               </div>
+
+              {sitesQuery.data && sitesQuery.data.length > 1 && (
+                <div className="flex items-center gap-2">
+                  <Globe size={12} className="text-charcoal-light shrink-0" />
+                  <select
+                    value={siteFilter}
+                    onChange={(e) => setSiteFilter(e.target.value)}
+                    className="h-8 rounded-full border border-charcoal/[0.12] bg-white px-3 text-xs font-semibold text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30"
+                  >
+                    <option value="ALL">All Sites</option>
+                    {sitesQuery.data.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="flex items-center gap-2">
                 <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-charcoal-light">

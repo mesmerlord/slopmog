@@ -4,20 +4,22 @@ interface UserPlan {
   planName: string;
   isPaid: boolean;
   maxKeywords: number;
+  maxSites: number;
   canPost: boolean;
 }
 
 // TODO: Refactor plan limits for multi-platform rebuild
-const PLAN_LIMITS: Record<string, { maxKeywords: number; canPost: boolean }> = {
-  Starter: { maxKeywords: 3, canPost: true },
-  Growth: { maxKeywords: 10, canPost: true },
-  Pro: { maxKeywords: Infinity, canPost: true },
+const PLAN_LIMITS: Record<string, { maxKeywords: number; maxSites: number; canPost: boolean }> = {
+  Starter: { maxKeywords: 3, maxSites: 3, canPost: true },
+  Growth: { maxKeywords: 10, maxSites: 10, canPost: true },
+  Pro: { maxKeywords: Infinity, maxSites: Infinity, canPost: true },
 };
 
 const ADMIN_PLAN: UserPlan = {
   planName: "ADMIN",
   isPaid: true,
   maxKeywords: 25,
+  maxSites: Infinity,
   canPost: true,
 };
 
@@ -25,6 +27,7 @@ const FREE_PLAN: UserPlan = {
   planName: "FREE",
   isPaid: false,
   maxKeywords: 10,
+  maxSites: 1,
   canPost: false,
 };
 
@@ -68,6 +71,7 @@ export async function getUserPlan(userId: string): Promise<UserPlan> {
     planName: productName,
     isPaid: true,
     maxKeywords: limits.maxKeywords,
+    maxSites: limits.maxSites,
     canPost: limits.canPost,
   };
 }
