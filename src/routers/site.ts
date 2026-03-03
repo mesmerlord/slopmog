@@ -339,4 +339,132 @@ export const siteRouter = router({
         take: input.limit,
       });
     }),
+
+  getActivityFeed: protectedProcedure
+    .input(
+      z.object({
+        siteId: z.string(),
+        limit: z.number().min(1).max(50).default(15),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const site = await ctx.prisma.site.findFirst({
+        where: { id: input.siteId, userId: ctx.session.user.id },
+        select: { id: true },
+      });
+
+      if (!site) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
+      }
+
+      const [runs, comments] = await Promise.all([
+        ctx.prisma.discoveryRun.findMany({
+          where: { siteId: input.siteId },
+          orderBy: { startedAt: "desc" },
+          take: input.limit,
+        }),
+        ctx.prisma.comment.findMany({
+          where: { siteId: input.siteId, status: "POSTED" },
+          orderBy: { postedAt: "desc" },
+          take: input.limit,
+          include: {
+            opportunity: {
+              select: {
+                title: true,
+                sourceContext: true,
+                platform: true,
+                contentUrl: true,
+              },
+            },
+          },
+        }),
+      ]);
+
+      type ActivityItem =
+        | {
+            type: "discovery_running";
+            id: string;
+            timestamp: string;
+            platform: string;
+            keywords: string[];
+          }
+        | {
+            type: "discovery_completed";
+            id: string;
+            timestamp: string;
+            platform: string;
+            keywords: string[];
+            foundCount: number;
+            generatedCount: number;
+          }
+        | {
+            type: "discovery_failed";
+            id: string;
+            timestamp: string;
+            platform: string;
+            keywords: string[];
+            error: string | null;
+          }
+        | {
+            type: "comment_posted";
+            id: string;
+            timestamp: string;
+            platform: string;
+            title: string;
+            sourceContext: string;
+            contentUrl: string;
+          };
+
+      const items: ActivityItem[] = [];
+
+      for (const run of runs) {
+        const ts = (run.completedAt ?? run.startedAt).toISOString();
+        if (run.status === "RUNNING") {
+          items.push({
+            type: "discovery_running",
+            id: run.id,
+            timestamp: run.startedAt.toISOString(),
+            platform: run.platform,
+            keywords: run.keywordsUsed,
+          });
+        } else if (run.status === "COMPLETED") {
+          items.push({
+            type: "discovery_completed",
+            id: run.id,
+            timestamp: ts,
+            platform: run.platform,
+            keywords: run.keywordsUsed,
+            foundCount: run.foundCount,
+            generatedCount: run.generatedCount,
+          });
+        } else {
+          items.push({
+            type: "discovery_failed",
+            id: run.id,
+            timestamp: ts,
+            platform: run.platform,
+            keywords: run.keywordsUsed,
+            error: run.errorMessage,
+          });
+        }
+      }
+
+      for (const comment of comments) {
+        items.push({
+          type: "comment_posted",
+          id: comment.id,
+          timestamp: (comment.postedAt ?? comment.createdAt).toISOString(),
+          platform: comment.opportunity.platform,
+          title: comment.opportunity.title,
+          sourceContext: comment.opportunity.sourceContext,
+          contentUrl: comment.opportunity.contentUrl,
+        });
+      }
+
+      items.sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      );
+
+      return items.slice(0, input.limit);
+    }),
 });

@@ -7,15 +7,16 @@ import {
   ExternalLink,
   Eye,
   MessageSquare,
-  Clock,
-  CheckCircle2,
-  XCircle,
+  Search,
+  AlertTriangle,
   Loader2,
   Tag,
   Zap,
   Trash2,
   Plus,
+  Activity,
 } from "lucide-react";
+import Link from "next/link";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
@@ -24,6 +25,7 @@ import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { SubscriptionModal } from "@/components/SubscriptionModal";
 import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
+import { timeAgo } from "@/utils/format-time";
 import { getServerAuthSession } from "@/server/utils/auth";
 
 type KeywordCategory = "features" | "competitors" | "brand";
@@ -94,50 +96,108 @@ function parseSiteKeywordConfig(
   };
 }
 
-function RunStatusBadge({ status }: { status: string }) {
-  if (status === "RUNNING") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-sunny/20 text-sunny-dark">
-        <Loader2 size={12} className="animate-spin" />
-        Running
-      </span>
-    );
-  }
-  if (status === "COMPLETED") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-teal/10 text-teal-dark">
-        <CheckCircle2 size={12} />
-        Done
-      </span>
-    );
-  }
+type ActivityItem = {
+  type: "discovery_running" | "discovery_completed" | "discovery_failed" | "comment_posted";
+  id: string;
+  timestamp: string;
+  platform: string;
+  keywords?: string[];
+  foundCount?: number;
+  generatedCount?: number;
+  error?: string | null;
+  title?: string;
+  sourceContext?: string;
+  contentUrl?: string;
+};
+
+function ActivityTimelineItem({ item, isLast }: { item: ActivityItem; isLast: boolean }) {
+  const config = {
+    discovery_running: {
+      icon: <Loader2 size={14} className="animate-spin" />,
+      bg: "bg-sunny/20",
+      text: "text-sunny-dark",
+    },
+    discovery_completed: {
+      icon: <Search size={14} />,
+      bg: "bg-teal/10",
+      text: "text-teal-dark",
+    },
+    discovery_failed: {
+      icon: <AlertTriangle size={14} />,
+      bg: "bg-coral/10",
+      text: "text-coral-dark",
+    },
+    comment_posted: {
+      icon: <MessageSquare size={14} />,
+      bg: "bg-lavender/15",
+      text: "text-lavender-dark",
+    },
+  }[item.type];
+
+  const keywordLabel = item.keywords?.length
+    ? item.keywords.length === 1
+      ? `"${item.keywords[0]}"`
+      : `${item.keywords.length} keywords`
+    : "";
+
+  const description = (() => {
+    if (item.type === "discovery_running")
+      return `Scouting ${item.platform} for ${keywordLabel}...`;
+    if (item.type === "discovery_completed")
+      return `Scouted ${item.platform} — found ${item.foundCount ?? 0} threads, generated ${item.generatedCount ?? 0} for review`;
+    if (item.type === "discovery_failed")
+      return `Discovery failed${item.error ? `: ${item.error}` : ""}`;
+    return `Posted on ${item.sourceContext}: ${item.title}`;
+  })();
+
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-coral/10 text-coral-dark">
-      <XCircle size={12} />
-      Failed
-    </span>
+    <div className="relative flex gap-3">
+      {/* Connector line */}
+      {!isLast && (
+        <div className="absolute left-[13px] top-8 bottom-0 w-px bg-charcoal/[0.08]" />
+      )}
+
+      {/* Icon circle */}
+      <div className={`relative z-10 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${config.bg} ${config.text}`}>
+        {config.icon}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0 pb-4">
+        <p className="text-sm text-charcoal leading-snug">
+          {item.type === "comment_posted" && item.contentUrl ? (
+            <>
+              Posted on {item.sourceContext}:{" "}
+              <a
+                href={item.contentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-charcoal hover:text-teal transition-colors"
+              >
+                {item.title}
+                <ExternalLink size={10} className="inline ml-1 -mt-0.5" />
+              </a>
+            </>
+          ) : item.type === "discovery_completed" ? (
+            <>
+              {description}{" "}
+              <Link
+                href={routes.dashboard.queue}
+                className="text-teal hover:text-teal-dark font-semibold transition-colors"
+              >
+                View queue
+              </Link>
+            </>
+          ) : (
+            description
+          )}
+        </p>
+        <p className="text-[11px] text-charcoal-light mt-0.5">
+          {timeAgo(item.timestamp)}
+        </p>
+      </div>
+    </div>
   );
-}
-
-function getRunScope(keywordsUsed: string[]): { label: string; keyword?: string } {
-  const keywords = dedupeKeywords(keywordsUsed ?? []);
-
-  if (keywords.length === 0) {
-    return {
-      label: "Unknown scope",
-    };
-  }
-
-  if (keywords.length === 1) {
-    return {
-      label: "Targeted keyword scrape",
-      keyword: keywords[0],
-    };
-  }
-
-  return {
-    label: "Full scout",
-  };
 }
 
 export default function SiteDetailPage() {
@@ -145,12 +205,8 @@ export default function SiteDetailPage() {
   const siteId = router.query.id as string;
 
   const siteQuery = trpc.site.getById.useQuery({ id: siteId }, { enabled: !!siteId });
-  const runsQuery = trpc.site.getDiscoveryRuns.useQuery(
-    { siteId, limit: 5 },
-    { enabled: !!siteId },
-  );
-  const opportunitiesQuery = trpc.opportunity.list.useQuery(
-    { siteId, limit: 5 },
+  const activityQuery = trpc.site.getActivityFeed.useQuery(
+    { siteId, limit: 15 },
     { enabled: !!siteId },
   );
 
@@ -162,7 +218,7 @@ export default function SiteDetailPage() {
   const triggerDiscovery = trpc.site.triggerDiscovery.useMutation({
     onSuccess: () => {
       toast.success("Discovery started!");
-      utils.site.getDiscoveryRuns.invalidate({ siteId });
+      utils.site.getActivityFeed.invalidate({ siteId });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -195,8 +251,7 @@ export default function SiteDetailPage() {
 
       setKeywordDrafts((prev) => ({ ...prev, [variables.category]: "" }));
       utils.site.getById.invalidate({ id: siteId });
-      utils.site.getDiscoveryRuns.invalidate({ siteId });
-      utils.opportunity.list.invalidate();
+      utils.site.getActivityFeed.invalidate({ siteId });
     },
     onError: (err) => {
       if (
@@ -441,112 +496,29 @@ export default function SiteDetailPage() {
         </p>
       </div>
 
-      {/* Two-column: Runs + Opportunities */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        {/* Discovery Runs */}
-        <div className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-5">
-          <h3 className="text-xs font-bold text-charcoal-light uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <Clock size={12} />
-            Recent Runs
-          </h3>
-          {runsQuery.isLoading ? (
-            <LoadingState variant="skeleton" />
-          ) : !runsQuery.data?.length ? (
-            <p className="text-sm text-charcoal-light/60 py-4 text-center">
-              No runs yet — hit "Run Discovery" above
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {runsQuery.data.map((run) => (
-                <div
-                  key={run.id}
-                  className="py-2.5 px-3 rounded-brand-sm bg-charcoal/[0.015] border border-charcoal/[0.04]"
-                >
-                  {(() => {
-                    const scope = getRunScope(run.keywordsUsed);
-                    return (
-                      <>
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0 flex items-center gap-2 flex-wrap">
-                            <RunStatusBadge status={run.status} />
-                            <span className="text-[11px] font-bold text-charcoal-light uppercase">
-                              {run.platform}
-                            </span>
-                            <span className="px-2 py-0.5 rounded-full bg-charcoal/[0.05] text-[10px] font-bold text-charcoal-light uppercase tracking-wide">
-                              {scope.label}
-                            </span>
-                          </div>
-
-                          <div className="shrink-0 flex items-center gap-2 text-[11px] text-charcoal-light">
-                            <span>{run.foundCount} found</span>
-                            <span className="text-charcoal/10">·</span>
-                            <span>{run.postedCount} posted</span>
-                            <span className="text-charcoal/10">·</span>
-                            <span>{new Date(run.startedAt).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-
-                        {scope.keyword && (
-                          <p className="mt-1 text-[11px] text-charcoal-light truncate">
-                            Keyword: <span className="font-semibold text-charcoal">{scope.keyword}</span>
-                          </p>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Opportunities */}
-        <div className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-5">
-          <h3 className="text-xs font-bold text-charcoal-light uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <Eye size={12} />
-            Recent Opportunities
-          </h3>
-          {opportunitiesQuery.isLoading ? (
-            <LoadingState variant="skeleton" />
-          ) : !opportunitiesQuery.data?.items.length ? (
-            <p className="text-sm text-charcoal-light/60 py-4 text-center">
-              No opportunities discovered yet
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {opportunitiesQuery.data.items.map((opp) => (
-                <div
-                  key={opp.id}
-                  className="py-2 px-3 rounded-brand-sm bg-charcoal/[0.015] border border-charcoal/[0.04]"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <a
-                      href={opp.contentUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-semibold text-charcoal hover:text-teal transition-colors line-clamp-1 flex-1 min-w-0"
-                    >
-                      {opp.title}
-                    </a>
-                    <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      opp.status === "POSTED" ? "bg-teal/10 text-teal-dark"
-                        : opp.status === "PENDING_REVIEW" ? "bg-sunny/20 text-sunny-dark"
-                        : opp.status === "FAILED" ? "bg-coral/10 text-coral-dark"
-                        : "bg-charcoal/[0.04] text-charcoal-light"
-                    }`}>
-                      {opp.status === "PENDING_REVIEW" ? "PENDING" : opp.status}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1 text-[11px] text-charcoal-light">
-                    <span>{opp.sourceContext}</span>
-                    <span className="text-charcoal/10">·</span>
-                    <span>{(opp.relevanceScore * 100).toFixed(0)}% match</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* Site Activity */}
+      <div className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-5">
+        <h3 className="text-xs font-bold text-charcoal-light uppercase tracking-wider mb-4 flex items-center gap-1.5">
+          <Activity size={12} />
+          Site Activity
+        </h3>
+        {activityQuery.isLoading ? (
+          <LoadingState variant="skeleton" />
+        ) : !activityQuery.data?.length ? (
+          <p className="text-sm text-charcoal-light/60 py-6 text-center">
+            No activity yet — hit &quot;Run Discovery&quot; to get started
+          </p>
+        ) : (
+          <div>
+            {(activityQuery.data as ActivityItem[]).map((item, i) => (
+              <ActivityTimelineItem
+                key={item.id}
+                item={item}
+                isLast={i === activityQuery.data!.length - 1}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <ConfirmDialog
