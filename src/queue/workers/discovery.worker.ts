@@ -105,6 +105,7 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
   if (!siteId) {
     const msg = "[discovery] Invalid job payload: missing siteId";
     console.error(msg, job.data);
+    await job.log(`ERROR: ${msg}`);
     job.discard();
     throw new Error(msg);
   }
@@ -113,8 +114,11 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
     where: { id: siteId },
   });
 
+  await job.log(`Starting discovery for site "${site.name}" (${siteId}), platforms: ${site.platforms.join(", ")}`);
+
   if (!site.active) {
     console.log(`[discovery] Site ${site.name} is inactive, skipping`);
+    await job.log(`Site "${site.name}" is inactive — skipping`);
     return;
   }
 
@@ -148,6 +152,8 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
     });
 
     try {
+      await job.log(`[${platform}] Searching with ${keywords.length} keywords: ${keywords.slice(0, 5).join(", ")}${keywords.length > 5 ? ` (+${keywords.length - 5} more)` : ""}`);
+
       let allItems: DiscoveryItem[] = [];
 
       if (platform === "REDDIT") {
@@ -156,6 +162,7 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
         allItems = await discoverYouTube(keywords, site.id, site.name);
       }
 
+      await job.log(`[${platform}] Search complete — ${allItems.length} new items found`);
       await job.updateProgress({ phase: "scoring", platform, itemCount: allItems.length });
 
       // Score all items
@@ -166,6 +173,7 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
       const passing = scored.filter((s) => s.relevant);
       const sourceById = new Map(allItems.map((item) => [item.externalId, item]));
 
+      await job.log(`[${platform}] Scoring complete — ${passing.length}/${scored.length} items passed relevance filter`);
       await job.updateProgress({ phase: "saving", platform, passingCount: passing.length });
 
       // Upsert opportunities and enqueue generation
@@ -223,7 +231,9 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
         },
       });
 
+      const summary = `[${platform}] Done — ${allItems.length} found, ${passing.length} passed, ${generatedCount} generation jobs enqueued`;
       console.log(`[discovery] ${platform} complete for ${site.name}: ${allItems.length} found, ${passing.length} passed, ${generatedCount} enqueued`);
+      await job.log(summary);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await prisma.discoveryRun.update({
@@ -235,6 +245,7 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
         },
       });
       console.error(`[discovery] ${platform} failed for ${site.name}:`, err);
+      await job.log(`ERROR [${platform}]: ${message}`);
       throw err;
     }
   }

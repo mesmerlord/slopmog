@@ -17,10 +17,14 @@ function toSingleLine(text: string): string {
 async function processGeneration(job: Job<GenerationJobData>) {
   const { opportunityId } = job.data;
 
+  await job.log(`Starting generation for opportunity ${opportunityId}`);
+
   const opportunity = await prisma.opportunity.findUniqueOrThrow({
     where: { id: opportunityId },
     include: { site: true },
   });
+
+  await job.log(`Opportunity loaded: platform=${opportunity.platform}, site="${opportunity.site.name}", keyword="${opportunity.matchedKeyword}"`);
 
   // Set opportunity to GENERATING
   await prisma.opportunity.update({
@@ -53,6 +57,7 @@ async function processGeneration(job: Job<GenerationJobData>) {
     }
   } catch (err) {
     console.warn(`[generation] Failed to fetch existing comments for ${opportunityId}:`, err);
+    await job.log(`Warning: failed to fetch existing comments, proceeding without them`);
   }
 
   const input: CommentGenerationInput = {
@@ -71,6 +76,8 @@ async function processGeneration(job: Job<GenerationJobData>) {
     postType: (opportunity.postType as "question" | "discussion" | "showcase") ?? "discussion",
   };
 
+  await job.log(`Generating comment via AI (${existingComments.length} existing comments as context)`);
+
   const result = await generateComment(input);
 
   if (result.noRelevantComment) {
@@ -79,10 +86,14 @@ async function processGeneration(job: Job<GenerationJobData>) {
       data: { status: "SKIPPED" },
     });
     console.log(`[generation] No relevant comment for opportunity ${opportunityId}, skipped`);
+    await job.log(`No relevant comment generated — opportunity marked SKIPPED`);
     return;
   }
 
   const best = result.best;
+
+  await job.log(`Comment generated: qualityScore=${best.qualityScore}, variants=${result.variants.length}`);
+
   const youtubeCombinedText = result.variants
     .slice(0, 5)
     .map((variant) => toSingleLine(variant.text))
@@ -115,9 +126,11 @@ async function processGeneration(job: Job<GenerationJobData>) {
       commentId: comment.id,
     } satisfies PostingJobData);
     console.log(`[generation] AUTO mode: enqueued comment ${comment.id} for posting`);
+    await job.log(`AUTO mode: comment ${comment.id} enqueued for posting`);
   }
 
   console.log(`[generation] Generated comment for opportunity ${opportunityId} (${commentStatus})`);
+  await job.log(`Done: comment ${comment.id} saved as ${commentStatus}, opportunity set to ${opportunityStatus}`);
 }
 
 export const generationWorker = new Worker<GenerationJobData>(
@@ -135,4 +148,7 @@ generationWorker.on("completed", (job) => {
 
 generationWorker.on("failed", (job, err) => {
   console.error(`[generation] Job ${job?.id} failed:`, err.message);
+  if (job) {
+    job.log(`FAILED: ${err.message}`).catch(() => {});
+  }
 });

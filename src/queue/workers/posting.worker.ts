@@ -32,6 +32,8 @@ function normalizeSocialPlugYouTubeCommentText(text: string): string {
 async function processPosting(job: Job<PostingJobData>) {
   const { commentId } = job.data;
 
+  await job.log(`Processing comment ${commentId}`);
+
   const comment = await prisma.comment.findUniqueOrThrow({
     where: { id: commentId },
     include: {
@@ -41,6 +43,8 @@ async function processPosting(job: Job<PostingJobData>) {
   });
 
   const { opportunity } = comment;
+
+  await job.log(`Platform: ${opportunity.platform} | URL: ${opportunity.contentUrl}`);
 
   // Update statuses to POSTING
   await prisma.$transaction([
@@ -58,6 +62,7 @@ async function processPosting(job: Job<PostingJobData>) {
   if (!provider) {
     const msg = `No posting provider registered for ${opportunity.platform}`;
     console.error(`[posting] ${msg}`);
+    await job.log(`ERROR: ${msg}`);
     await prisma.$transaction([
       prisma.comment.update({
         where: { id: commentId },
@@ -71,10 +76,14 @@ async function processPosting(job: Job<PostingJobData>) {
     return;
   }
 
+  await job.log(`Provider selected: ${provider.name}`);
+
   const commentText =
     opportunity.platform === "YOUTUBE" && provider.name === "socialplug"
       ? normalizeSocialPlugYouTubeCommentText(comment.text)
       : comment.text;
+
+  await job.log(`Submitting order to ${provider.name}`);
 
   const result = await provider.createCommentOrder({
     contentUrl: opportunity.contentUrl,
@@ -106,8 +115,10 @@ async function processPosting(job: Job<PostingJobData>) {
     });
 
     console.log(`[posting] Comment ${commentId} posted via ${provider.name} (order: ${result.orderId})`);
+    await job.log(`Posted successfully — order: ${result.orderId}`);
   } else if (result.retryable) {
     // Throw to let BullMQ retry with exponential backoff
+    await job.log(`Retryable failure: ${result.error}`);
     throw new Error(`Posting failed (retryable): ${result.error}`);
   } else {
     await prisma.$transaction([
@@ -125,6 +136,7 @@ async function processPosting(job: Job<PostingJobData>) {
       }),
     ]);
     console.error(`[posting] Comment ${commentId} failed (non-retryable): ${result.error}`);
+    await job.log(`Non-retryable failure: ${result.error}`);
   }
 }
 
