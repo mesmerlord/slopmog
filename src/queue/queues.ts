@@ -16,7 +16,7 @@ export interface PostingJobData {
 }
 
 export const defaultQueueConfig: DefaultJobOptions = {
-  attempts: 10,
+  attempts: 3,
   backoff: {
     type: "exponential",
     delay: 30000,
