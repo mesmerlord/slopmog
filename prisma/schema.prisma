@@ -255,8 +255,9 @@ model Site {
   description String     @db.Text
   valueProps     String[]
   keywords       String[]
-  keywordConfig  Json?      // Structured: { features, competitors, brand, reddit, youtube }
-  brandTone      String
+  keywordConfig    Json?      // Structured: { features, competitors, brand, reddit, youtube }
+  discoveryConfig  Json?      // Discovery filter thresholds (minRedditUpvotes, minRedditComments, etc.)
+  brandTone        String
   mode           SiteMode   @default(MANUAL)
   dailyAutoLimit Int        @default(20)
   platforms      Platform[]

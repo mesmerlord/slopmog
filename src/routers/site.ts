@@ -6,6 +6,7 @@ import { discoveryQueue, postingQueue, type DiscoveryJobData, type PostingJobDat
 import { getUserPlan } from "@/server/utils/plan";
 import { getTotalCredits } from "@/server/utils/credits";
 import { redis } from "@/server/utils/redis";
+import { DISCOVERY_DEFAULTS, parseDiscoveryConfig } from "@/services/discovery/config";
 
 const KeywordCategorySchema = z.enum(["features", "competitors", "brand"]);
 
@@ -82,6 +83,16 @@ export const siteRouter = router({
         url: z.string().url(),
         platforms: z.array(z.enum(["REDDIT", "YOUTUBE"])).min(1),
         mode: z.enum(["MANUAL", "AUTO"]).default("MANUAL"),
+        discoveryConfig: z.object({
+          minRedditUpvotes: z.number().int().min(0).max(100),
+          minRedditComments: z.number().int().min(0).max(100),
+          minSubredditSubscribers: z.number().int().min(0).max(1_000_000),
+          minYoutubeViews: z.number().int().min(0).max(1_000_000),
+          maxYoutubeAgeDays: z.number().int().min(1).max(365),
+          maxRedditPages: z.number().int().min(1).max(20),
+          autoGenerateTopN: z.number().int().min(0).max(50),
+          autoGenerateMinScore: z.number().min(0).max(1),
+        }).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -121,6 +132,7 @@ export const siteRouter = router({
           brandTone: analysis.brandTone,
           platforms: input.platforms,
           mode: input.mode,
+          ...(input.discoveryConfig ? { discoveryConfig: input.discoveryConfig } : {}),
         },
       });
 
@@ -461,6 +473,61 @@ export const siteRouter = router({
         category: input.category,
         keywordCount: allKeywords.length,
       };
+    }),
+
+  getDiscoveryConfig: protectedProcedure
+    .input(z.object({ siteId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const site = await ctx.prisma.site.findFirst({
+        where: { id: input.siteId, userId: ctx.session.user.id },
+        select: { discoveryConfig: true },
+      });
+
+      if (!site) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
+      }
+
+      return {
+        config: parseDiscoveryConfig(site.discoveryConfig),
+        defaults: DISCOVERY_DEFAULTS,
+      };
+    }),
+
+  updateDiscoveryConfig: protectedProcedure
+    .input(
+      z.object({
+        siteId: z.string(),
+        config: z.object({
+          minRedditUpvotes: z.number().int().min(0).max(100).optional(),
+          minRedditComments: z.number().int().min(0).max(100).optional(),
+          minSubredditSubscribers: z.number().int().min(0).max(1_000_000).optional(),
+          minYoutubeViews: z.number().int().min(0).max(1_000_000).optional(),
+          maxYoutubeAgeDays: z.number().int().min(1).max(365).optional(),
+          maxRedditPages: z.number().int().min(1).max(20).optional(),
+          autoGenerateTopN: z.number().int().min(0).max(50).optional(),
+          autoGenerateMinScore: z.number().min(0).max(1).optional(),
+        }),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const site = await ctx.prisma.site.findFirst({
+        where: { id: input.siteId, userId: ctx.session.user.id },
+        select: { id: true, discoveryConfig: true },
+      });
+
+      if (!site) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
+      }
+
+      const current = parseDiscoveryConfig(site.discoveryConfig);
+      const merged = { ...current, ...input.config };
+
+      await ctx.prisma.site.update({
+        where: { id: site.id },
+        data: { discoveryConfig: merged },
+      });
+
+      return { config: merged };
     }),
 
   triggerDiscovery: protectedProcedure

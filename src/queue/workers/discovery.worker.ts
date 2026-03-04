@@ -17,15 +17,7 @@ import {
 import { pMap } from "@/services/shared/parallel";
 import type { Prisma } from "@prisma/client";
 import type { KeywordConfig } from "@/services/discovery/site-analyzer";
-
-const MIN_YOUTUBE_VIEWS = 1000;
-const MAX_YOUTUBE_AGE_DAYS = 90;
-const AUTO_GENERATE_TOP_N = 10;
-const AUTO_GENERATE_MIN_SCORE = 0.9;
-const MAX_REDDIT_PAGES = 5;
-const MIN_REDDIT_UPVOTES = 3;
-const MIN_REDDIT_COMMENTS = 2;
-const MIN_SUBREDDIT_SUBSCRIBERS = 10_000;
+import { parseDiscoveryConfig, type DiscoveryConfig } from "@/services/discovery/config";
 
 function normalizeKeyword(value: string): string {
   return value.trim().replace(/\s+/g, " ");
@@ -155,20 +147,21 @@ function prioritizeKeywords(
 async function searchRedditKeyword(
   keyword: string,
   existingIds: Set<string>,
+  cfg: DiscoveryConfig,
 ): Promise<DiscoveryItem[]> {
   const items: DiscoveryItem[] = [];
   let after: string | undefined;
 
-  for (let page = 0; page < MAX_REDDIT_PAGES; page++) {
+  for (let page = 0; page < cfg.maxRedditPages; page++) {
     const result = await searchReddit(keyword, { timeframe: "day", after });
 
     for (const post of result.posts) {
       if (existingIds.has(post.id)) continue;
 
       // Pre-filter: skip low-engagement posts and small subreddits
-      const hasMinEngagement = post.score >= MIN_REDDIT_UPVOTES || post.numComments >= MIN_REDDIT_COMMENTS;
+      const hasMinEngagement = post.score >= cfg.minRedditUpvotes || post.numComments >= cfg.minRedditComments;
       if (!hasMinEngagement) continue;
-      if (post.subredditSubscribers > 0 && post.subredditSubscribers < MIN_SUBREDDIT_SUBSCRIBERS) continue;
+      if (post.subredditSubscribers > 0 && post.subredditSubscribers < cfg.minSubredditSubscribers) continue;
 
       existingIds.add(post.id);
 
@@ -199,13 +192,14 @@ async function searchYouTubeKeyword(
   existingIds: Set<string>,
   brandName: string,
   cutoffDate: Date,
+  cfg: DiscoveryConfig,
 ): Promise<DiscoveryItem[]> {
   const items: DiscoveryItem[] = [];
   const videos = await searchYouTube(keyword);
 
   for (const video of videos) {
     if (existingIds.has(video.videoId)) continue;
-    if (video.viewCount < MIN_YOUTUBE_VIEWS) continue;
+    if (video.viewCount < cfg.minYoutubeViews) continue;
     const publishedAt = parsePublishedAt(video.publishedAt);
     if (publishedAt && publishedAt < cutoffDate) continue;
 
@@ -258,6 +252,7 @@ async function processKeywordResults(
   run: { id: string },
   platform: "REDDIT" | "YOUTUBE",
   runState: RunState,
+  cfg: DiscoveryConfig,
 ): Promise<void> {
   if (items.length === 0) return;
 
@@ -319,9 +314,9 @@ async function processKeywordResults(
     });
     runState.savedCount++;
 
-    // Auto-generate for ≥0.90 as they stream in
+    // Auto-generate for items above the auto-generate threshold
     if (
-      item.relevanceScore >= AUTO_GENERATE_MIN_SCORE &&
+      item.relevanceScore >= cfg.autoGenerateMinScore &&
       opportunity.status === "PENDING_REVIEW"
     ) {
       const hasComment = await prisma.comment.count({
@@ -379,6 +374,7 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
   };
 
   const keywordConfig = site.keywordConfig as KeywordConfig | null;
+  const cfg = parseDiscoveryConfig(site.discoveryConfig);
   const keywordOverrides = dedupeKeywords(job.data.keywordOverrides ?? []);
 
   // Process each platform
@@ -423,7 +419,7 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
       );
 
       const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - MAX_YOUTUBE_AGE_DAYS);
+      cutoffDate.setDate(cutoffDate.getDate() - cfg.maxYoutubeAgeDays);
 
       // Process keywords sequentially so items stream through the full pipeline ASAP
       for (const keyword of keywords) {
@@ -431,9 +427,9 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
           let items: DiscoveryItem[] = [];
 
           if (platform === "REDDIT") {
-            items = await searchRedditKeyword(keyword, existingIds);
+            items = await searchRedditKeyword(keyword, existingIds, cfg);
           } else if (platform === "YOUTUBE") {
-            items = await searchYouTubeKeyword(keyword, existingIds, site.name, cutoffDate);
+            items = await searchYouTubeKeyword(keyword, existingIds, site.name, cutoffDate, cfg);
           }
 
           if (items.length === 0) {
@@ -451,6 +447,7 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
             run,
             platform,
             runState,
+            cfg,
           );
 
           await job.log(`[${platform}] "${keyword}" — done (running total: ${runState.savedCount} saved, ${runState.generatedCount} generating)`);
@@ -472,7 +469,7 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
           comments: { none: {} },
         },
         orderBy: { relevanceScore: "desc" },
-        take: AUTO_GENERATE_TOP_N,
+        take: cfg.autoGenerateTopN,
         select: { id: true },
       });
 

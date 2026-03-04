@@ -19,6 +19,7 @@ import {
   ArrowRight,
   Settings,
   AlertCircle,
+  SlidersHorizontal,
 } from "lucide-react";
 import Link from "next/link";
 import Seo from "@/components/Seo";
@@ -27,6 +28,7 @@ import PageHeader from "@/components/shared/PageHeader";
 import LoadingState from "@/components/shared/LoadingState";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { SubscriptionModal } from "@/components/SubscriptionModal";
+import DiscoverySettingsModal from "@/components/DiscoverySettingsModal";
 import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
 import { timeAgo } from "@/utils/format-time";
@@ -313,6 +315,7 @@ export default function SiteDetailPage() {
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showDiscoverySettings, setShowDiscoverySettings] = useState(false);
   const [keywordDrafts, setKeywordDrafts] = useState<Record<KeywordCategory, string>>({
     features: "",
     competitors: "",
@@ -510,6 +513,13 @@ export default function SiteDetailPage() {
             >
               <Zap size={12} />
               Switch to {isAuto ? "Manual" : "Auto"}
+            </button>
+            <button
+              onClick={() => setShowDiscoverySettings(true)}
+              className="p-2 rounded-full border border-charcoal/[0.08] text-charcoal-light/40 hover:text-teal hover:border-teal/30 transition-all"
+              title="Discovery settings"
+            >
+              <SlidersHorizontal size={14} />
             </button>
             <button
               onClick={() => setShowDeleteDialog(true)}
@@ -716,6 +726,13 @@ export default function SiteDetailPage() {
       <SubscriptionModal
         open={showUpgradeModal}
         onOpenChange={setShowUpgradeModal}
+      />
+
+      <DiscoverySettingsModal
+        mode="persisted"
+        open={showDiscoverySettings}
+        onOpenChange={setShowDiscoverySettings}
+        siteId={site.id}
       />
     </DashboardLayout>
   );

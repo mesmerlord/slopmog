@@ -402,7 +402,7 @@ export default function QueuePage() {
 
   const pendingQuery = trpc.opportunity.listPending.useInfiniteQuery(
     {
-      limit: 20,
+      limit: 10,
       search: debouncedSearchTerm || undefined,
       platform: platformFilter === "ALL" ? undefined : platformFilter,
       siteId: siteFilter === "ALL" ? undefined : siteFilter,
@@ -464,9 +464,12 @@ export default function QueuePage() {
   });
 
   const allPages = pendingQuery.data?.pages ?? [];
-  const queueItems = allPages.flatMap((p) => p.items);
+  const allQueueItems = allPages.flatMap((p) => p.items);
+  const queueItems = isPaid ? allQueueItems : allQueueItems.slice(0, 5);
   const filteredCount = allPages[0]?.filteredCount ?? 0;
   const totalPendingCount = allPages[0]?.totalPendingCount ?? 0;
+  const showFreeUpsell = !isPaid && totalPendingCount >= 5;
+  const freeUpsellExactCount = totalPendingCount > 10;
 
   const hasActiveControls =
     searchTerm.trim().length > 0 ||
@@ -686,7 +689,7 @@ export default function QueuePage() {
               )}
 
               {/* Free-user upsell: See More */}
-              {!isPaid && totalPendingCount > queueItems.length && (
+              {showFreeUpsell && (
                 <button
                   onClick={() => setShowUpgradeModal(true)}
                   className="group w-full bg-gradient-to-b from-white to-sunny/[0.08] rounded-brand shadow-brand-sm border border-sunny/20 hover:border-sunny/40 p-8 flex flex-col items-center gap-4 transition-all hover:shadow-brand-md"
@@ -698,12 +701,14 @@ export default function QueuePage() {
                     <div className="inline-flex items-center gap-2 mb-1.5">
                       <Sparkles size={16} className="text-sunny" />
                       <span className="font-heading font-bold text-charcoal text-lg">
-                        {totalPendingCount - queueItems.length} more opportunities waiting
+                        {freeUpsellExactCount
+                          ? `${totalPendingCount - queueItems.length} more opportunities waiting`
+                          : "There are more opportunities waiting"}
                       </span>
                       <Sparkles size={16} className="text-sunny" />
                     </div>
                     <p className="text-sm text-charcoal-light max-w-md mx-auto">
-                      We found more conversations where your brand fits naturally. Upgrade to unlock the full queue and auto-generated comments.
+                      We found even more conversations where your brand fits naturally. Upgrade to unlock the full queue and auto-generated comments.
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-2 bg-coral text-white px-6 py-2.5 rounded-full text-sm font-bold group-hover:bg-coral-dark transition-all">

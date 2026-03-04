@@ -2,15 +2,16 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 import type { GetServerSideProps } from "next";
 import { toast } from "sonner";
-import { Globe, Loader2, ArrowRight, Lock } from "lucide-react";
+import { Globe, Loader2, ArrowRight, Lock, SlidersHorizontal } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
 import { SubscriptionModal } from "@/components/SubscriptionModal";
+import DiscoverySettingsModal from "@/components/DiscoverySettingsModal";
 import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
+import { DISCOVERY_DEFAULTS, type DiscoveryConfig } from "@/services/discovery/config";
 import { getServerAuthSession } from "@/server/utils/auth";
-import AddSiteIllustrationV3 from "@/components/illustrations/AddSiteIllustrationV3";
 import AddSiteIllustrationV2 from "@/components/illustrations/AddSiteIllustrationV2";
 
 export default function NewSitePage() {
@@ -21,7 +22,13 @@ export default function NewSitePage() {
     "YOUTUBE",
   ]);
   const [mode, setMode] = useState<"MANUAL" | "AUTO">("MANUAL");
+  const [discoveryConfig, setDiscoveryConfig] = useState<DiscoveryConfig>({ ...DISCOVERY_DEFAULTS });
+  const [showDiscoverySettings, setShowDiscoverySettings] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  const isDefaultConfig = Object.keys(DISCOVERY_DEFAULTS).every(
+    (k) => discoveryConfig[k as keyof DiscoveryConfig] === DISCOVERY_DEFAULTS[k as keyof DiscoveryConfig],
+  );
 
   const planQuery = trpc.user.getPlanInfo.useQuery();
   const canUseAuto = planQuery.data?.canPost ?? false;
@@ -56,7 +63,12 @@ export default function NewSitePage() {
       normalizedUrl = `https://${normalizedUrl}`;
     }
 
-    createSite.mutate({ url: normalizedUrl, platforms, mode });
+    createSite.mutate({
+      url: normalizedUrl,
+      platforms,
+      mode,
+      ...(!isDefaultConfig ? { discoveryConfig } : {}),
+    });
   };
 
   return (
@@ -271,6 +283,19 @@ export default function NewSitePage() {
                   </>
                 )}
               </button>
+              <div className="flex justify-center mt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowDiscoverySettings(true)}
+                  className="inline-flex items-center gap-1 text-[11px] text-charcoal-light/40 hover:text-charcoal-light transition-colors"
+                >
+                  <SlidersHorizontal size={10} />
+                  Discovery settings
+                  {!isDefaultConfig && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </form>
@@ -290,6 +315,14 @@ export default function NewSitePage() {
       <SubscriptionModal
         open={showUpgradeModal}
         onOpenChange={setShowUpgradeModal}
+      />
+
+      <DiscoverySettingsModal
+        mode="local"
+        open={showDiscoverySettings}
+        onOpenChange={setShowDiscoverySettings}
+        initialConfig={discoveryConfig}
+        onSave={setDiscoveryConfig}
       />
     </DashboardLayout>
   );
