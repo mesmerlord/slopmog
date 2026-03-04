@@ -28,6 +28,13 @@ const navCards = [
     color: "bg-teal/10 text-teal",
   },
   {
+    label: "Sites",
+    description: "All tracked brands across the platform",
+    href: "/admin/sites",
+    icon: Globe,
+    color: "bg-sunny/15 text-sunny-dark",
+  },
+  {
     label: "Comments",
     description: "Review all generated comments",
     href: "/admin/comments",
@@ -79,7 +86,7 @@ export default function AdminHubPage() {
           <h2 className="text-xs font-bold text-charcoal-light uppercase tracking-wider mb-4">
             Quick Access
           </h2>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {navCards.map((card) => {
               const Icon = card.icon;
               return (
