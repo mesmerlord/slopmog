@@ -1,5 +1,5 @@
 import { Worker, type Job } from "bullmq";
-import { redisConnection } from "@/server/utils/redis";
+import { redisConnection, redis } from "@/server/utils/redis";
 import { prisma } from "@/server/utils/db";
 import type { GenerationJobData, PostingJobData } from "@/queue/queues";
 import { postingQueue } from "@/queue/queues";
@@ -120,13 +120,29 @@ async function processGeneration(job: Job<GenerationJobData>) {
     data: { status: opportunityStatus },
   });
 
-  // In AUTO mode, immediately enqueue for posting
+  // In AUTO mode, enqueue for posting with cumulative random 5–10 min gaps per site
   if (site.mode === "AUTO") {
+    const redisKey = `auto:lastScheduled:${site.id}:${opportunity.platform}`;
+    const now = Date.now();
+    const gapMs = Math.floor(Math.random() * 300_000) + 300_000; // 5–10 min
+
+    const lastScheduledStr = await redis.get(redisKey);
+    const lastScheduled = lastScheduledStr ? parseInt(lastScheduledStr, 10) : 0;
+    const earliest = Math.max(now, lastScheduled);
+    const postAt = earliest + gapMs;
+    const delayMs = postAt - now;
+
+    // Store the scheduled time and expire the key after 1 hour
+    await redis.set(redisKey, postAt.toString(), "EX", 3600);
+
+    const delayMin = Math.round(delayMs / 60_000);
     await postingQueue.add("post", {
       commentId: comment.id,
-    } satisfies PostingJobData);
-    console.log(`[generation] AUTO mode: enqueued comment ${comment.id} for posting`);
-    await job.log(`AUTO mode: comment ${comment.id} enqueued for posting`);
+    } satisfies PostingJobData, {
+      delay: delayMs,
+    });
+    console.log(`[generation] AUTO mode: enqueued comment ${comment.id} for posting (delay: ${delayMin}m)`);
+    await job.log(`AUTO mode: comment ${comment.id} enqueued for posting (delay: ~${delayMin}m)`);
   }
 
   console.log(`[generation] Generated comment for opportunity ${opportunityId} (${commentStatus})`);

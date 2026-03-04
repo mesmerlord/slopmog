@@ -54,8 +54,8 @@ export default function Footer({ onScrollTo }: FooterProps) {
                 <li><Link href="/dashboard" className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors">Dashboard</Link></li>
               </>
             )}
-            <li><a href="#" className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors">Privacy</a></li>
-            <li><a href="#" className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors">Terms</a></li>
+            <li><Link href={routes.legal.privacy} className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors">Privacy</Link></li>
+            <li><Link href={routes.legal.terms} className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors">Terms</Link></li>
           </ul>
         </div>
 

@@ -218,29 +218,67 @@ export const commentRouter = router({
       z.object({
         cursor: z.string().optional(),
         limit: z.number().min(1).max(50).default(20),
+        search: z.string().trim().max(120).optional(),
+        platform: z.enum(["REDDIT", "YOUTUBE"]).optional(),
+        siteId: z.string().optional(),
+        sortBy: z.enum([
+          "newest",
+          "oldest",
+          "quality",
+        ]).default("newest"),
       }),
     )
     .query(async ({ ctx, input }) => {
-      const comments = await ctx.prisma.comment.findMany({
-        where: {
-          site: { userId: ctx.session.user.id },
-          status: "POSTED",
-        },
-        include: {
-          opportunity: {
-            select: {
-              title: true,
-              contentUrl: true,
-              platform: true,
-              sourceContext: true,
+      const baseWhere: Record<string, unknown> = {
+        site: { userId: ctx.session.user.id },
+        status: "POSTED" as const,
+      };
+      if (input.siteId) baseWhere.siteId = input.siteId;
+
+      const where: Record<string, unknown> = { ...baseWhere };
+      if (input.platform) {
+        where.opportunity = { platform: input.platform };
+      }
+
+      const normalizedSearch = input.search?.trim();
+      if (normalizedSearch) {
+        where.OR = [
+          { opportunity: { title: { contains: normalizedSearch, mode: "insensitive" } } },
+          { opportunity: { sourceContext: { contains: normalizedSearch, mode: "insensitive" } } },
+          { opportunity: { matchedKeyword: { contains: normalizedSearch, mode: "insensitive" } } },
+          { site: { name: { contains: normalizedSearch, mode: "insensitive" } } },
+        ];
+      }
+
+      const orderBy =
+        input.sortBy === "newest"
+          ? [{ postedAt: "desc" as const }]
+          : input.sortBy === "oldest"
+            ? [{ postedAt: "asc" as const }]
+            : [{ qualityScore: "desc" as const }, { postedAt: "desc" as const }];
+
+      const [comments, filteredCount, totalCount] = await Promise.all([
+        ctx.prisma.comment.findMany({
+          where,
+          include: {
+            opportunity: {
+              select: {
+                title: true,
+                contentUrl: true,
+                platform: true,
+                sourceContext: true,
+                matchedKeyword: true,
+              },
             },
+            site: { select: { name: true } },
           },
-          site: { select: { name: true } },
-        },
-        orderBy: { postedAt: "desc" },
-        take: input.limit + 1,
-        cursor: input.cursor ? { id: input.cursor } : undefined,
-      });
+          orderBy,
+          take: input.limit + 1,
+          cursor: input.cursor ? { id: input.cursor } : undefined,
+        }),
+        ctx.prisma.comment.count({ where }),
+        ctx.prisma.comment.count({ where: baseWhere }),
+      ]);
 
       let nextCursor: string | undefined;
       if (comments.length > input.limit) {
@@ -248,7 +286,7 @@ export const commentRouter = router({
         nextCursor = next?.id;
       }
 
-      return { items: comments, nextCursor };
+      return { items: comments, nextCursor, filteredCount, totalCount };
     }),
 
   getStats: protectedProcedure.query(async ({ ctx }) => {

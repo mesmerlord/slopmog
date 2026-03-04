@@ -23,6 +23,10 @@ export const routes = {
     index: "/alternatives-to",
     crowdreply: "/alternatives-to/crowdreply",
   },
+  legal: {
+    terms: "/terms",
+    privacy: "/privacy",
+  },
 } as const;
 
 export interface AlternativeConfig {
