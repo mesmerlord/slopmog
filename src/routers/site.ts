@@ -2,8 +2,10 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc";
 import { analyzeSite } from "@/services/discovery/site-analyzer";
-import { discoveryQueue, type DiscoveryJobData } from "@/queue/queues";
+import { discoveryQueue, postingQueue, type DiscoveryJobData, type PostingJobData } from "@/queue/queues";
 import { getUserPlan } from "@/server/utils/plan";
+import { getTotalCredits } from "@/server/utils/credits";
+import { redis } from "@/server/utils/redis";
 
 const KeywordCategorySchema = z.enum(["features", "competitors", "brand"]);
 
@@ -170,6 +172,28 @@ export const siteRouter = router({
       return site;
     }),
 
+  getDailyAutoStats: protectedProcedure
+    .input(z.object({ siteId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const site = await ctx.prisma.site.findFirst({
+        where: { id: input.siteId, userId: ctx.session.user.id },
+        select: { id: true, dailyAutoLimit: true },
+      });
+
+      if (!site) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
+      }
+
+      const todayUTC = new Date().toISOString().slice(0, 10);
+      const dailyCountKey = `auto:dailyCount:${input.siteId}:${todayUTC}`;
+      const countStr = await redis.get(dailyCountKey);
+      const postedToday = countStr ? parseInt(countStr, 10) : 0;
+
+      const totalCredits = await getTotalCredits(ctx.session.user.id);
+
+      return { postedToday, dailyAutoLimit: site.dailyAutoLimit, totalCredits };
+    }),
+
   update: protectedProcedure
     .input(
       z.object({
@@ -177,6 +201,7 @@ export const siteRouter = router({
         mode: z.enum(["MANUAL", "AUTO"]).optional(),
         platforms: z.array(z.enum(["REDDIT", "YOUTUBE"])).optional(),
         active: z.boolean().optional(),
+        dailyAutoLimit: z.number().int().min(1).max(100).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -190,10 +215,88 @@ export const siteRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
       }
 
-      return ctx.prisma.site.update({
+      const previousMode = site.mode;
+
+      const updated = await ctx.prisma.site.update({
         where: { id },
         data,
       });
+
+      // Smart scheduling when toggling MANUAL -> AUTO
+      if (data.mode === "AUTO" && previousMode === "MANUAL") {
+        const todayUTC = new Date().toISOString().slice(0, 10);
+        const dailyCountKey = `auto:dailyCount:${id}:${todayUTC}`;
+        const currentCountStr = await redis.get(dailyCountKey);
+        const alreadyPostedToday = currentCountStr ? parseInt(currentCountStr, 10) : 0;
+        const remaining = Math.max(0, updated.dailyAutoLimit - alreadyPostedToday);
+
+        if (remaining > 0) {
+          // Find DRAFT comments ranked by relevance
+          const readyComments = await ctx.prisma.comment.findMany({
+            where: { siteId: id, status: "DRAFT" },
+            include: { opportunity: { select: { relevanceScore: true, platform: true } } },
+            orderBy: { opportunity: { relevanceScore: "desc" } },
+            take: remaining,
+          });
+
+          if (readyComments.length > 0) {
+            // Check last posted comment to determine if recent
+            const lastPosted = await ctx.prisma.comment.findFirst({
+              where: { siteId: id, status: "POSTED" },
+              orderBy: { postedAt: "desc" },
+              select: { postedAt: true },
+            });
+
+            const now = Date.now();
+            const isRecent = lastPosted?.postedAt && (now - lastPosted.postedAt.getTime()) < 300_000;
+
+            // Update statuses to APPROVED
+            await ctx.prisma.$transaction(
+              readyComments.flatMap((c) => [
+                ctx.prisma.comment.update({
+                  where: { id: c.id },
+                  data: { status: "APPROVED" },
+                }),
+                ctx.prisma.opportunity.update({
+                  where: { id: c.opportunityId },
+                  data: { status: "APPROVED" },
+                }),
+              ]),
+            );
+
+            // Schedule posting with staggered delays
+            let cumulativeDelay = isRecent ? 300_000 : 0; // 5 min if recent, immediate if not
+
+            for (let i = 0; i < readyComments.length; i++) {
+              const c = readyComments[i];
+              const platform = c.opportunity.platform;
+
+              if (i > 0) {
+                cumulativeDelay += Math.floor(Math.random() * 300_000) + 300_000; // 5-10 min gap
+              }
+
+              // Update lastScheduled redis key
+              const redisKey = `auto:lastScheduled:${id}:${platform}`;
+              const postAt = now + cumulativeDelay;
+              await redis.set(redisKey, postAt.toString(), "EX", 3600);
+
+              await postingQueue.add("post", {
+                commentId: c.id,
+              } satisfies PostingJobData, {
+                delay: cumulativeDelay,
+              });
+            }
+
+            // Update daily counter
+            await redis.incrby(dailyCountKey, readyComments.length);
+            await redis.expire(dailyCountKey, 90000); // 25 hours
+
+            console.log(`[site] Smart toggle: scheduled ${readyComments.length} comments for site ${id} (recent: ${!!isRecent})`);
+          }
+        }
+      }
+
+      return updated;
     }),
 
   addKeywordTerm: protectedProcedure
@@ -294,6 +397,69 @@ export const siteRouter = router({
         keywordCount: allKeywords.length,
         alreadyExists: keywordExistsInCategory,
         queued,
+      };
+    }),
+
+  removeKeywordTerm: protectedProcedure
+    .input(
+      z.object({
+        siteId: z.string(),
+        category: KeywordCategorySchema,
+        term: z.string().min(1).max(80),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const site = await ctx.prisma.site.findFirst({
+        where: { id: input.siteId, userId: ctx.session.user.id },
+        select: {
+          id: true,
+          keywords: true,
+          keywordConfig: true,
+        },
+      });
+
+      if (!site) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
+      }
+
+      const keywordConfig = parseSiteKeywordConfig(site.keywordConfig, site.keywords);
+      const termLower = input.term.toLowerCase();
+
+      const categoryKeywords = keywordConfig[input.category];
+      const filtered = categoryKeywords.filter(
+        (kw) => kw.toLowerCase() !== termLower,
+      );
+
+      if (filtered.length === categoryKeywords.length) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Keyword not found in this category" });
+      }
+
+      keywordConfig[input.category] = filtered;
+      keywordConfig.reddit = keywordConfig.reddit.filter(
+        (kw) => kw.toLowerCase() !== termLower,
+      );
+      keywordConfig.youtube = keywordConfig.youtube.filter(
+        (kw) => kw.toLowerCase() !== termLower,
+      );
+
+      const allKeywords = dedupeKeywords([
+        ...keywordConfig.features,
+        ...keywordConfig.competitors,
+        ...keywordConfig.brand,
+      ]);
+
+      await ctx.prisma.site.update({
+        where: { id: site.id },
+        data: {
+          keywords: allKeywords,
+          keywordConfig,
+        },
+      });
+
+      return {
+        term: input.term,
+        category: input.category,
+        keywordCount: allKeywords.length,
       };
     }),
 

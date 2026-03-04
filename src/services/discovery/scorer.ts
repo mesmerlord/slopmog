@@ -135,7 +135,7 @@ async function scoreBatch(
       messages: [
         {
           role: "system",
-          content: `You score content for relevance to a brand.
+          content: `You score content for relevance to a brand. Your job is to find threads where mentioning the brand would feel NATURAL and HELPFUL — not forced or spammy.
 
 Brand: ${siteContext.name}
 What they do: ${siteContext.description}
@@ -143,12 +143,28 @@ Value props: ${siteContext.valueProps.join(", ")}
 Target keywords: ${siteContext.keywords.join(", ")}
 
 For each item, determine:
-- relevant: true if we could naturally reply mentioning the brand (questions, comparisons, recommendations, complaints, discussions about the problem space)
-- relevanceScore: 0.0-1.0 (0.8+ = great fit, 0.5-0.8 = decent, <0.4 = skip)
+- relevant: true ONLY if a reply mentioning the brand would genuinely help the poster or readers. The post must be about the brand's problem space, not just tangentially related.
+- relevanceScore: 0.0-1.0
+  - 0.9+ = perfect fit — poster is explicitly asking for or comparing solutions the brand provides
+  - 0.75-0.9 = strong fit — discussion is directly about the problem space, brand mention would be natural
+  - 0.5-0.75 = weak fit — loosely related topic, brand mention would feel forced
+  - <0.5 = not relevant — different domain, meta discussion, memes, or off-topic
 - postType: "question" | "recommendation" | "comparison" | "discussion" | "showcase" | "complaint" | "other"
 - scoreReason: one short sentence explaining why
 
-Be generous - if there's ANY angle to naturally mention the brand, mark it relevant. But skip completely unrelated content.
+SCORE LOW (mark irrelevant) for:
+- Generic industry news/announcements with no discussion angle
+- Memes, jokes, or meta posts about the subreddit itself
+- Posts where the topic only shares a keyword but is about a completely different domain
+- Showcase/self-promo posts where commenting would feel like hijacking
+- Posts already resolved or with accepted answers
+
+SCORE HIGH for:
+- "What tool should I use for X?" or "Looking for recommendations"
+- "How do I solve [problem the brand solves]?"
+- Comparisons between competitors in the brand's space
+- Complaints about a competitor's product
+- Discussions about workflows/processes the brand improves
 
 Return a JSON array with objects containing: index, relevant, relevanceScore, postType, scoreReason`,
         },

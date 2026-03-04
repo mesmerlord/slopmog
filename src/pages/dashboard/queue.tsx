@@ -14,6 +14,10 @@ import {
   Loader2,
   Lock,
   Sparkles,
+  ArrowUp,
+  MessageSquare,
+  Eye,
+  ThumbsUp,
 } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -52,6 +56,28 @@ function formatPostedDate(value: Date | string | null | undefined): string {
   });
 }
 
+type OpportunityMetadata = {
+  score?: number;
+  permalink?: string;
+  subredditSubscribers?: number;
+  likeCount?: number;
+  channelId?: string;
+  thumbnail?: string;
+};
+
+function parseMetadata(value: unknown): OpportunityMetadata {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as OpportunityMetadata;
+  }
+  return {};
+}
+
+function formatCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}m`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
+  return String(n);
+}
+
 type PlatformFilter = "ALL" | "REDDIT" | "YOUTUBE";
 type QueueSort = "best_match" | "posted_newest" | "posted_oldest" | "queue_newest" | "queue_oldest";
 
@@ -65,6 +91,9 @@ interface QueueItemProps {
     publishedAt: Date | string | null;
     relevanceScore: number;
     matchedKeyword: string;
+    viewCount?: number | null;
+    commentCount?: number | null;
+    metadata?: unknown;
     site: { id: string; name: string; url: string };
     comments: Array<{ id: string; text: string; qualityScore: number; persona: string }>;
   };
@@ -123,6 +152,53 @@ function QueueItem({
             <span className="text-xs text-charcoal-light">
               Score: {(opportunity.relevanceScore * 100).toFixed(0)}%
             </span>
+            {(() => {
+              const meta = parseMetadata(opportunity.metadata);
+              return (
+                <>
+                  {opportunity.platform === "REDDIT" && (
+                    <>
+                      {meta.score != null && meta.score > 0 && (
+                        <>
+                          <span className="text-xs text-charcoal-light/50">|</span>
+                          <span className="text-xs text-charcoal-light flex items-center gap-0.5">
+                            <ArrowUp size={11} /> {formatCompact(meta.score)}
+                          </span>
+                        </>
+                      )}
+                      {opportunity.commentCount != null && opportunity.commentCount > 0 && (
+                        <>
+                          <span className="text-xs text-charcoal-light/50">|</span>
+                          <span className="text-xs text-charcoal-light flex items-center gap-0.5">
+                            <MessageSquare size={11} /> {formatCompact(opportunity.commentCount)}
+                          </span>
+                        </>
+                      )}
+                    </>
+                  )}
+                  {opportunity.platform === "YOUTUBE" && (
+                    <>
+                      {opportunity.viewCount != null && opportunity.viewCount > 0 && (
+                        <>
+                          <span className="text-xs text-charcoal-light/50">|</span>
+                          <span className="text-xs text-charcoal-light flex items-center gap-0.5">
+                            <Eye size={11} /> {formatCompact(opportunity.viewCount)}
+                          </span>
+                        </>
+                      )}
+                      {meta.likeCount != null && meta.likeCount > 0 && (
+                        <>
+                          <span className="text-xs text-charcoal-light/50">|</span>
+                          <span className="text-xs text-charcoal-light flex items-center gap-0.5">
+                            <ThumbsUp size={11} /> {formatCompact(meta.likeCount)}
+                          </span>
+                        </>
+                      )}
+                    </>
+                  )}
+                </>
+              );
+            })()}
             <span className="text-xs text-charcoal-light/50">|</span>
             <span className="text-xs font-semibold text-charcoal">
               Posted: {formatPostedDate(opportunity.publishedAt)}
@@ -324,15 +400,18 @@ export default function QueuePage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const pendingQuery = trpc.opportunity.listPending.useQuery({
-    limit: 20,
-    search: debouncedSearchTerm || undefined,
-    platform: platformFilter === "ALL" ? undefined : platformFilter,
-    siteId: siteFilter === "ALL" ? undefined : siteFilter,
-    sortBy,
-  }, {
-    placeholderData: (previousData) => previousData,
-  });
+  const pendingQuery = trpc.opportunity.listPending.useInfiniteQuery(
+    {
+      limit: 20,
+      search: debouncedSearchTerm || undefined,
+      platform: platformFilter === "ALL" ? undefined : platformFilter,
+      siteId: siteFilter === "ALL" ? undefined : siteFilter,
+      sortBy,
+    },
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+    },
+  );
 
   const approveMutation = trpc.comment.approve.useMutation({
     onSuccess: () => {
@@ -384,10 +463,10 @@ export default function QueuePage() {
     onSettled: () => setGeneratingOn(null),
   });
 
-  const queryData = pendingQuery.data;
-  const queueItems = queryData?.items ?? [];
-  const filteredCount = queryData?.filteredCount ?? 0;
-  const totalPendingCount = queryData?.totalPendingCount ?? 0;
+  const allPages = pendingQuery.data?.pages ?? [];
+  const queueItems = allPages.flatMap((p) => p.items);
+  const filteredCount = allPages[0]?.filteredCount ?? 0;
+  const totalPendingCount = allPages[0]?.totalPendingCount ?? 0;
 
   const hasActiveControls =
     searchTerm.trim().length > 0 ||
@@ -435,7 +514,7 @@ export default function QueuePage() {
         </div>
       )}
 
-      {!queryData && pendingQuery.isLoading ? (
+      {!allPages.length && pendingQuery.isLoading ? (
         <LoadingState variant="spinner" text="Loading queue..." />
       ) : !hasAnyPending && discoveryRunning ? (
         <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06]">
@@ -585,6 +664,26 @@ export default function QueuePage() {
                   isGenerating={generatingOn === opp.id}
                 />
               ))}
+
+              {/* Load More for paid users */}
+              {isPaid && pendingQuery.hasNextPage && (
+                <div className="flex justify-center py-2">
+                  <button
+                    onClick={() => pendingQuery.fetchNextPage()}
+                    disabled={pendingQuery.isFetchingNextPage}
+                    className="inline-flex items-center gap-2 bg-teal text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-teal-dark transition-all disabled:opacity-60"
+                  >
+                    {pendingQuery.isFetchingNextPage ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      "Load More"
+                    )}
+                  </button>
+                </div>
+              )}
 
               {/* Free-user upsell: See More */}
               {!isPaid && totalPendingCount > queueItems.length && (

@@ -3,6 +3,7 @@ import { redisConnection } from "@/server/utils/redis";
 import { prisma } from "@/server/utils/db";
 import type { PostingJobData } from "@/queue/queues";
 import { postingRegistry } from "@/services/posting/provider";
+import { hasEnoughCredits, deductCredits } from "@/server/utils/credits";
 
 // Register providers (side-effect imports)
 import "@/services/posting/upvotemax";
@@ -80,6 +81,25 @@ async function processPosting(job: Job<PostingJobData>) {
 
   await job.log(`Provider selected: ${provider.name}`);
 
+  // Credit pre-check — insufficient credits is not retryable
+  const creditCheck = await hasEnoughCredits(comment.site.userId, 1);
+  if (!creditCheck.hasEnough) {
+    const msg = `Insufficient credits — purchase more at billing. Available: ${creditCheck.totalCredits}`;
+    console.warn(`[posting] Comment ${commentId}: ${msg}`);
+    await job.log(`SKIPPED: ${msg}`);
+    await prisma.$transaction([
+      prisma.comment.update({
+        where: { id: commentId },
+        data: { status: "DRAFT", errorMessage: msg },
+      }),
+      prisma.opportunity.update({
+        where: { id: opportunity.id },
+        data: { status: "PENDING_REVIEW" },
+      }),
+    ]);
+    return;
+  }
+
   const commentText =
     opportunity.platform === "YOUTUBE" && provider.name === "socialplug"
       ? normalizeSocialPlugYouTubeCommentText(comment.text)
@@ -115,6 +135,19 @@ async function processPosting(job: Job<PostingJobData>) {
       where: { id: opportunity.discoveryRunId },
       data: { postedCount: { increment: 1 } },
     });
+
+    // Deduct 1 credit for the posted comment
+    try {
+      await deductCredits({
+        userId: comment.site.userId,
+        amount: 1,
+        reason: "CAMPAIGN_USAGE",
+        reasonExtra: `Comment ${commentId} on ${opportunity.platform}`,
+        throwOnInsufficient: false,
+      });
+    } catch (creditErr) {
+      console.error(`[posting] CRITICAL: Failed to deduct credit for comment ${commentId}:`, creditErr);
+    }
 
     console.log(
       `[posting] Comment ${commentId} posted via ${provider.name} (order: ${result.orderId})`,

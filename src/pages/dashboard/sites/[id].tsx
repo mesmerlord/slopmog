@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import type { GetServerSideProps } from "next";
 import { toast } from "sonner";
@@ -17,6 +17,8 @@ import {
   Activity,
   X,
   ArrowRight,
+  Settings,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import Seo from "@/components/Seo";
@@ -241,6 +243,11 @@ export default function SiteDetailPage() {
     return () => clearInterval(interval);
   }, [hasRunningDiscovery, siteId, activityQuery]);
 
+  const autoStatsQuery = trpc.site.getDailyAutoStats.useQuery(
+    { siteId },
+    { enabled: !!siteId },
+  );
+
   const planQuery = trpc.user.getPlanInfo.useQuery();
   const canUseAuto = planQuery.data?.canPost ?? false;
 
@@ -258,6 +265,7 @@ export default function SiteDetailPage() {
     onSuccess: () => {
       toast.success("Site updated!");
       utils.site.getById.invalidate({ id: siteId });
+      utils.site.getDailyAutoStats.invalidate({ siteId });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -266,6 +274,14 @@ export default function SiteDetailPage() {
     onSuccess: () => {
       toast.success("Site deleted.");
       router.push(routes.dashboard.sites.index);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const removeKeywordTerm = trpc.site.removeKeywordTerm.useMutation({
+    onSuccess: (result) => {
+      toast.success(`Removed "${result.term}".`);
+      utils.site.getById.invalidate({ id: siteId });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -302,6 +318,15 @@ export default function SiteDetailPage() {
     competitors: "",
     brand: "",
   });
+  const [localDailyLimit, setLocalDailyLimit] = useState<number | null>(null);
+  const dailyLimitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const debouncedUpdateLimit = useCallback((value: number) => {
+    if (dailyLimitTimerRef.current) clearTimeout(dailyLimitTimerRef.current);
+    dailyLimitTimerRef.current = setTimeout(() => {
+      updateSite.mutate({ id: siteId, dailyAutoLimit: value });
+    }, 800);
+  }, [siteId, updateSite]);
 
   const site = siteQuery.data;
 
@@ -497,6 +522,82 @@ export default function SiteDetailPage() {
         </div>
       </div>
 
+      {/* Auto Settings */}
+      {isAuto && (
+        <div className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-5 mb-6">
+          <h3 className="text-xs font-bold text-charcoal-light uppercase tracking-wider mb-4 flex items-center gap-1.5">
+            <Settings size={12} /> Auto Settings
+          </h3>
+
+          <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+            {/* Daily limit input */}
+            <div className="flex-shrink-0">
+              <label className="block text-sm font-semibold text-charcoal mb-1">
+                Posts per day
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={localDailyLimit ?? site.dailyAutoLimit}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val) && val >= 1 && val <= 100) {
+                    setLocalDailyLimit(val);
+                    debouncedUpdateLimit(val);
+                  }
+                }}
+                className="w-24 h-9 rounded-full border border-charcoal/[0.12] bg-white px-3 text-sm text-charcoal text-center focus:outline-none focus:ring-2 focus:ring-teal/30"
+              />
+            </div>
+
+            {/* Usage indicator */}
+            {autoStatsQuery.data && (
+              <div className="flex-1">
+                <p className="text-sm text-charcoal">
+                  <span className="font-bold">{autoStatsQuery.data.postedToday}</span>
+                  {" / "}
+                  <span className="font-bold">{localDailyLimit ?? autoStatsQuery.data.dailyAutoLimit}</span>
+                  {" "}posted today
+                </p>
+                <div className="mt-1.5 h-1.5 rounded-full bg-charcoal/[0.06] overflow-hidden max-w-xs">
+                  <div
+                    className="h-full rounded-full bg-teal transition-all"
+                    style={{
+                      width: `${Math.min(100, (autoStatsQuery.data.postedToday / (localDailyLimit ?? autoStatsQuery.data.dailyAutoLimit)) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Credit warnings */}
+          {autoStatsQuery.data && autoStatsQuery.data.totalCredits <= 0 && (
+            <div className="mt-4 flex items-start gap-2 bg-coral/[0.06] border border-coral/20 rounded-brand px-4 py-3">
+              <AlertCircle size={16} className="text-coral flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-charcoal">
+                No credits remaining — auto mode won&apos;t post.{" "}
+                <Link href={routes.dashboard.billing} className="text-teal font-bold hover:text-teal-dark transition-colors">
+                  Go to billing
+                </Link>
+              </p>
+            </div>
+          )}
+          {autoStatsQuery.data && autoStatsQuery.data.totalCredits > 0 && autoStatsQuery.data.totalCredits < (localDailyLimit ?? autoStatsQuery.data.dailyAutoLimit) && (
+            <div className="mt-4 flex items-start gap-2 bg-sunny/[0.08] border border-sunny/20 rounded-brand px-4 py-3">
+              <AlertTriangle size={16} className="text-sunny-dark flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-charcoal">
+                You have {autoStatsQuery.data.totalCredits} credit{autoStatsQuery.data.totalCredits === 1 ? "" : "s"} left — auto-posting will stop after {autoStatsQuery.data.totalCredits} comment{autoStatsQuery.data.totalCredits === 1 ? "" : "s"}.{" "}
+                <Link href={routes.dashboard.billing} className="text-teal font-bold hover:text-teal-dark transition-colors">
+                  Buy more credits
+                </Link>
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Keywords */}
       <div className="mb-6 bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-5">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
@@ -524,9 +625,17 @@ export default function SiteDetailPage() {
                   {section.tags.length > 0 ? section.tags.map((kw) => (
                     <span
                       key={kw}
-                      className={`px-2 py-0.5 rounded-full border text-[11px] text-charcoal font-medium self-start ${section.tagClassName}`}
+                      className={`group/tag inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full border text-[11px] text-charcoal font-medium self-start ${section.tagClassName}`}
                     >
                       {kw}
+                      <button
+                        onClick={() => removeKeywordTerm.mutate({ siteId: site.id, category: section.category, term: kw })}
+                        disabled={removeKeywordTerm.isPending}
+                        className="opacity-0 group-hover/tag:opacity-100 ml-0.5 p-0.5 rounded-full text-charcoal-light hover:text-coral hover:bg-coral/10 transition-all disabled:opacity-50"
+                        title={`Remove "${kw}"`}
+                      >
+                        <X size={10} />
+                      </button>
                     </span>
                   )) : (
                     <span className="text-[11px] text-charcoal-light/60">None yet</span>

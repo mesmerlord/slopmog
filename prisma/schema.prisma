@@ -257,8 +257,9 @@ model Site {
   keywords       String[]
   keywordConfig  Json?      // Structured: { features, competitors, brand, reddit, youtube }
   brandTone      String
-  mode        SiteMode   @default(MANUAL)
-  platforms   Platform[]
+  mode           SiteMode   @default(MANUAL)
+  dailyAutoLimit Int        @default(20)
+  platforms      Platform[]
   active      Boolean    @default(true)
 
   discoveryRuns DiscoveryRun[]
@@ -313,6 +314,7 @@ model Opportunity {
   commentCount   Int?
   publishedAt    DateTime?
   matchedKeyword String
+  metadata       Json?
 
   // Scoring
   relevanceScore       Float

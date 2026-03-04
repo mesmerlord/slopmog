@@ -5,6 +5,7 @@ import { postingQueue, type PostingJobData } from "@/queue/queues";
 import { PERSONA_MAP } from "@/constants/personas";
 import { generateComment } from "@/services/generation/generator";
 import { getUserPlan } from "@/server/utils/plan";
+import { hasEnoughCredits } from "@/server/utils/credits";
 import {
   getRedditComments,
   getYouTubeComments,
@@ -37,6 +38,14 @@ export const commentRouter = router({
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Posting is available on paid plans only. Upgrade to publish comments.",
+        });
+      }
+
+      const creditCheck = await hasEnoughCredits(ctx.session.user.id, 1);
+      if (!creditCheck.hasEnough) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You need at least 1 credit to post. Buy more credits on the billing page.",
         });
       }
 

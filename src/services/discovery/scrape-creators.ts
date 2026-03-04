@@ -62,6 +62,7 @@ export interface RedditPost {
   author: string;
   score: number;
   numComments: number;
+  subredditSubscribers: number;
   url: string;
   permalink: string;
   createdAt: string;
@@ -87,6 +88,7 @@ function mapRedditPost(raw: Record<string, unknown>): RedditPost {
     author: String(raw.author ?? raw.authorName ?? ""),
     score: Number(raw.score ?? raw.ups ?? 0),
     numComments: Number(raw.numComments ?? raw.num_comments ?? raw.commentCount ?? 0),
+    subredditSubscribers: Number(raw.subreddit_subscribers ?? raw.subredditSubscribers ?? 0),
     url: permalink.startsWith("http")
       ? permalink
       : `https://www.reddit.com${permalink}`,

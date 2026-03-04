@@ -120,8 +120,35 @@ async function processGeneration(job: Job<GenerationJobData>) {
     data: { status: opportunityStatus },
   });
 
-  // In AUTO mode, enqueue for posting with cumulative random 5–10 min gaps per site
+  // In AUTO mode, check daily limit then enqueue for posting
   if (site.mode === "AUTO") {
+    // Check daily auto limit
+    const todayUTC = new Date().toISOString().slice(0, 10);
+    const dailyCountKey = `auto:dailyCount:${site.id}:${todayUTC}`;
+    const currentCountStr = await redis.get(dailyCountKey);
+    const currentCount = currentCountStr ? parseInt(currentCountStr, 10) : 0;
+
+    if (currentCount >= site.dailyAutoLimit) {
+      // Revert to DRAFT for manual review
+      await prisma.$transaction([
+        prisma.comment.update({
+          where: { id: comment.id },
+          data: { status: "DRAFT" },
+        }),
+        prisma.opportunity.update({
+          where: { id: opportunityId },
+          data: { status: "PENDING_REVIEW" },
+        }),
+      ]);
+      console.log(`[generation] AUTO mode: daily limit reached (${currentCount}/${site.dailyAutoLimit}) for site ${site.id}, comment ${comment.id} reverted to DRAFT`);
+      await job.log(`AUTO mode: daily limit reached (${currentCount}/${site.dailyAutoLimit}), comment reverted to DRAFT for manual review`);
+      return;
+    }
+
+    // Increment daily counter with 25-hour expiry
+    await redis.incr(dailyCountKey);
+    await redis.expire(dailyCountKey, 90000); // 25 hours
+
     const redisKey = `auto:lastScheduled:${site.id}:${opportunity.platform}`;
     const now = Date.now();
     const gapMs = Math.floor(Math.random() * 300_000) + 300_000; // 5–10 min
@@ -141,8 +168,8 @@ async function processGeneration(job: Job<GenerationJobData>) {
     } satisfies PostingJobData, {
       delay: delayMs,
     });
-    console.log(`[generation] AUTO mode: enqueued comment ${comment.id} for posting (delay: ${delayMin}m)`);
-    await job.log(`AUTO mode: comment ${comment.id} enqueued for posting (delay: ~${delayMin}m)`);
+    console.log(`[generation] AUTO mode: enqueued comment ${comment.id} for posting (delay: ${delayMin}m, daily: ${currentCount + 1}/${site.dailyAutoLimit})`);
+    await job.log(`AUTO mode: comment ${comment.id} enqueued for posting (delay: ~${delayMin}m, daily: ${currentCount + 1}/${site.dailyAutoLimit})`);
   }
 
   console.log(`[generation] Generated comment for opportunity ${opportunityId} (${commentStatus})`);

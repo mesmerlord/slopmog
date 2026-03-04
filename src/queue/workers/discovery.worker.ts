@@ -15,6 +15,7 @@ import {
   type SiteContext,
 } from "@/services/discovery/scorer";
 import { pMap } from "@/services/shared/parallel";
+import type { Prisma } from "@prisma/client";
 import type { KeywordConfig } from "@/services/discovery/site-analyzer";
 
 const MIN_YOUTUBE_VIEWS = 1000;
@@ -22,6 +23,9 @@ const MAX_YOUTUBE_AGE_DAYS = 90;
 const AUTO_GENERATE_TOP_N = 10;
 const AUTO_GENERATE_MIN_SCORE = 0.9;
 const MAX_REDDIT_PAGES = 5;
+const MIN_REDDIT_UPVOTES = 3;
+const MIN_REDDIT_COMMENTS = 2;
+const MIN_SUBREDDIT_SUBSCRIBERS = 10_000;
 
 function normalizeKeyword(value: string): string {
   return value.trim().replace(/\s+/g, " ");
@@ -109,6 +113,7 @@ interface DiscoveryItem extends ScoreInput {
   author?: string;
   viewCount?: number;
   commentCount?: number;
+  metadata?: Record<string, string | number | boolean>;
   _hasBrandMention?: boolean;
 }
 
@@ -159,6 +164,12 @@ async function searchRedditKeyword(
 
     for (const post of result.posts) {
       if (existingIds.has(post.id)) continue;
+
+      // Pre-filter: skip low-engagement posts and small subreddits
+      const hasMinEngagement = post.score >= MIN_REDDIT_UPVOTES || post.numComments >= MIN_REDDIT_COMMENTS;
+      if (!hasMinEngagement) continue;
+      if (post.subredditSubscribers > 0 && post.subredditSubscribers < MIN_SUBREDDIT_SUBSCRIBERS) continue;
+
       existingIds.add(post.id);
 
       items.push({
@@ -172,6 +183,7 @@ async function searchRedditKeyword(
         publishedAtRaw: post.createdAt,
         author: post.author,
         commentCount: post.numComments,
+        metadata: { score: post.score, permalink: post.permalink, subredditSubscribers: post.subredditSubscribers },
       });
     }
 
@@ -210,6 +222,7 @@ async function searchYouTubeKeyword(
       publishedAtRaw: video.publishedAt,
       viewCount: video.viewCount,
       commentCount: video.commentCount,
+      metadata: { likeCount: video.likeCount, channelId: video.channelId, thumbnail: video.thumbnail },
     });
   }
 
@@ -283,6 +296,10 @@ async function processKeywordResults(
         body: source.body,
         sourceContext: source.sourceContext,
         matchedKeyword: source.matchedKeyword,
+        author: source.author,
+        viewCount: source.viewCount,
+        commentCount: source.commentCount,
+        metadata: (source.metadata as Prisma.InputJsonValue) ?? undefined,
         relevanceScore: item.relevanceScore,
         postType: item.postType,
         scoreReason: item.scoreReason,
@@ -290,6 +307,10 @@ async function processKeywordResults(
         status: "PENDING_REVIEW",
       },
       update: {
+        author: source.author,
+        viewCount: source.viewCount,
+        commentCount: source.commentCount,
+        metadata: (source.metadata as Prisma.InputJsonValue) ?? undefined,
         relevanceScore: item.relevanceScore,
         postType: item.postType,
         scoreReason: item.scoreReason,
