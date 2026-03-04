@@ -222,6 +222,82 @@ export const adminRouter = router({
       return { success: true };
     }),
 
+  getAllSites: adminProcedure
+    .input(
+      z.object({
+        page: z.number().min(1).default(1),
+        limit: z.number().min(1).max(50).default(20),
+        search: z.string().trim().max(120).optional(),
+        activeFilter: z.enum(["all", "active", "inactive"]).default("all"),
+        platform: z.enum(["REDDIT", "YOUTUBE"]).optional(),
+        sortBy: z
+          .enum(["newest", "oldest", "opportunities", "comments"])
+          .default("newest"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const where: Record<string, unknown> = {};
+
+      if (input.activeFilter === "active") where.active = true;
+      else if (input.activeFilter === "inactive") where.active = false;
+
+      if (input.platform) where.platforms = { has: input.platform };
+
+      if (input.search?.trim()) {
+        where.OR = [
+          { name: { contains: input.search.trim(), mode: "insensitive" } },
+          { url: { contains: input.search.trim(), mode: "insensitive" } },
+          { user: { email: { contains: input.search.trim(), mode: "insensitive" } } },
+        ];
+      }
+
+      const orderBy =
+        input.sortBy === "newest"
+          ? [{ createdAt: "desc" as const }]
+          : input.sortBy === "oldest"
+            ? [{ createdAt: "asc" as const }]
+            : input.sortBy === "opportunities"
+              ? [{ opportunities: { _count: "desc" as const } }]
+              : [{ comments: { _count: "desc" as const } }];
+
+      const [sites, total] = await Promise.all([
+        ctx.prisma.site.findMany({
+          where,
+          select: {
+            id: true,
+            name: true,
+            url: true,
+            active: true,
+            mode: true,
+            platforms: true,
+            createdAt: true,
+            user: { select: { email: true, name: true } },
+            _count: { select: { opportunities: true, comments: true, discoveryRuns: true } },
+          },
+          orderBy,
+          skip: (input.page - 1) * input.limit,
+          take: input.limit,
+        }),
+        ctx.prisma.site.count({ where }),
+      ]);
+
+      return {
+        items: sites,
+        total,
+        page: input.page,
+        totalPages: Math.ceil(total / input.limit),
+      };
+    }),
+
+  /** Lightweight list for filter dropdowns */
+  getSitesList: adminProcedure.query(async ({ ctx }) => {
+    return ctx.prisma.site.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+      take: 200,
+    });
+  }),
+
   getAllComments: adminProcedure
     .input(
       z.object({
@@ -232,6 +308,8 @@ export const adminRouter = router({
           .enum(["DRAFT", "APPROVED", "POSTED", "FAILED", "SKIPPED"])
           .optional(),
         platform: z.enum(["REDDIT", "YOUTUBE"]).optional(),
+        siteId: z.string().optional(),
+        userEmail: z.string().trim().max(120).optional(),
         sortBy: z
           .enum(["newest", "oldest", "quality_high", "quality_low"])
           .default("newest"),
@@ -242,6 +320,13 @@ export const adminRouter = router({
 
       if (input.status) where.status = input.status;
       if (input.platform) where.opportunity = { platform: input.platform };
+      if (input.siteId) where.siteId = input.siteId;
+      if (input.userEmail?.trim()) {
+        where.site = {
+          ...((where.site as Record<string, unknown>) ?? {}),
+          user: { email: { contains: input.userEmail.trim(), mode: "insensitive" } },
+        };
+      }
 
       if (input.search?.trim()) {
         where.OR = [

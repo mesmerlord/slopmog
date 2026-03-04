@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   Users,
+  Globe,
   MessageSquare,
   BarChart3,
   Shield,
@@ -25,6 +26,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Hub", href: "/admin", icon: LayoutDashboard, exact: true },
   { label: "Users", href: "/admin/users", icon: Users },
+  { label: "Sites", href: "/admin/sites", icon: Globe },
   { label: "Comments", href: "/admin/comments", icon: MessageSquare },
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
 ];

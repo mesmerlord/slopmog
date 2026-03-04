@@ -52,6 +52,9 @@ export default function AdminCommentsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(undefined);
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>(undefined);
+  const [siteId, setSiteId] = useState<string | undefined>(undefined);
+  const [userEmail, setUserEmail] = useState("");
+  const [debouncedUserEmail, setDebouncedUserEmail] = useState("");
   const [sortBy, setSortBy] = useState<SortBy>("newest");
 
   useEffect(() => {
@@ -62,11 +65,23 @@ export default function AdminCommentsPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedUserEmail(userEmail);
+      setPage(1);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [userEmail]);
+
+  const sitesList = trpc.admin.getSitesList.useQuery();
+
   const comments = trpc.admin.getAllComments.useQuery({
     page,
     search: debouncedSearch || undefined,
     status: statusFilter,
     platform: platformFilter,
+    siteId,
+    userEmail: debouncedUserEmail || undefined,
     sortBy,
   });
 
@@ -116,6 +131,25 @@ export default function AdminCommentsPage() {
             <option value="oldest">Oldest</option>
             <option value="quality_high">Quality (High)</option>
             <option value="quality_low">Quality (Low)</option>
+          </select>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            placeholder="Filter by user email..."
+            value={userEmail}
+            onChange={(e) => setUserEmail(e.target.value)}
+            className="flex-1 px-4 py-2.5 rounded-brand-sm border border-charcoal/[0.12] bg-white text-sm font-body text-charcoal placeholder:text-charcoal-light/60 focus:outline-none focus:ring-2 focus:ring-lavender/30 focus:border-lavender transition-all"
+          />
+          <select
+            value={siteId ?? ""}
+            onChange={(e) => { setSiteId(e.target.value || undefined); setPage(1); }}
+            className="px-4 py-2.5 rounded-brand-sm border border-charcoal/[0.12] bg-white text-sm font-body text-charcoal focus:outline-none focus:ring-2 focus:ring-lavender/30"
+          >
+            <option value="">All Sites</option>
+            {sitesList.data?.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
           </select>
         </div>
         <div className="flex flex-wrap gap-2">
