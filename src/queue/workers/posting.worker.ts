@@ -159,6 +159,41 @@ postingWorker.on("completed", (job) => {
   console.log(`[posting] Job ${job.id} completed`);
 });
 
-postingWorker.on("failed", (job, err) => {
+postingWorker.on("failed", async (job, err) => {
   console.error(`[posting] Job ${job?.id} failed:`, err.message);
+
+  // When all retries are exhausted, reset the comment back to the queue
+  // so users can re-approve it later
+  if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) {
+    const { commentId } = job.data as PostingJobData;
+    try {
+      const comment = await prisma.comment.findUnique({
+        where: { id: commentId },
+        select: { opportunityId: true },
+      });
+      if (comment) {
+        await prisma.$transaction([
+          prisma.comment.update({
+            where: { id: commentId },
+            data: {
+              status: "DRAFT",
+              errorMessage: `Posting failed after ${job.attemptsMade} attempts: ${err.message}`,
+            },
+          }),
+          prisma.opportunity.update({
+            where: { id: comment.opportunityId },
+            data: { status: "PENDING_REVIEW" },
+          }),
+        ]);
+        console.log(
+          `[posting] Comment ${commentId} returned to queue after ${job.attemptsMade} exhausted retries`,
+        );
+      }
+    } catch (dbErr) {
+      console.error(
+        `[posting] Failed to return comment ${commentId} to queue:`,
+        dbErr,
+      );
+    }
+  }
 });
