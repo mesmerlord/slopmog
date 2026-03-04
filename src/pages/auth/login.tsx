@@ -196,11 +196,31 @@ export default function LoginPage() {
                 )}
               </div>
 
-              {/* Name field — signup only */}
+              {/* Password field — always visible */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-semibold text-charcoal mb-1.5">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  placeholder={mode === "signup" ? "At least 8 characters" : "Your password"}
+                  className="w-full px-4 py-3 bg-white border-2 border-charcoal/[0.08] rounded-brand-sm text-[0.95rem] text-charcoal placeholder:text-charcoal-light/50 focus:outline-none focus:border-teal transition-colors"
+                  {...register("password", {
+                    required: "Password is required",
+                    minLength: mode === "signup" ? { value: 8, message: "At least 8 characters" } : undefined,
+                  })}
+                />
+                {errors.password && (
+                  <p className="text-coral text-xs mt-1">{errors.password.message}</p>
+                )}
+              </div>
+
+              {/* Name field — signup only, after password */}
               {mode === "signup" && (
                 <div>
                   <label htmlFor="name" className="block text-sm font-semibold text-charcoal mb-1.5">
-                    Name
+                    Full Name
                   </label>
                   <input
                     id="name"
@@ -215,47 +235,17 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* Password field — shows after email check */}
-              {mode !== "idle" && (
-                <div>
-                  <label htmlFor="password" className="block text-sm font-semibold text-charcoal mb-1.5">
-                    Password
-                  </label>
-                  <input
-                    id="password"
-                    type="password"
-                    placeholder={mode === "signup" ? "At least 8 characters" : "Your password"}
-                    className="w-full px-4 py-3 bg-white border-2 border-charcoal/[0.08] rounded-brand-sm text-[0.95rem] text-charcoal placeholder:text-charcoal-light/50 focus:outline-none focus:border-teal transition-colors"
-                    {...register("password", {
-                      required: "Password is required",
-                      minLength: mode === "signup" ? { value: 8, message: "At least 8 characters" } : undefined,
-                    })}
-                  />
-                  {errors.password && (
-                    <p className="text-coral text-xs mt-1">{errors.password.message}</p>
-                  )}
-                </div>
-              )}
-
-              {mode !== "idle" && (
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-coral text-white py-3 rounded-full font-bold text-[0.95rem] shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl hover:shadow-coral/30 transition-all disabled:opacity-50 disabled:hover:translate-y-0"
-                >
-                  {isLoading
-                    ? "Hold on..."
-                    : mode === "signup"
-                      ? "Create Account"
-                      : "Sign In"}
-                </button>
-              )}
-
-              {mode === "idle" && (
-                <p className="text-[0.85rem] text-charcoal-light text-center">
-                  Enter your email to get started
-                </p>
-              )}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-coral text-white py-3 rounded-full font-bold text-[0.95rem] shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl hover:shadow-coral/30 transition-all disabled:opacity-50 disabled:hover:translate-y-0"
+              >
+                {isLoading
+                  ? "Hold on..."
+                  : mode === "signup"
+                    ? "Create Account"
+                    : "Sign In"}
+              </button>
             </form>
 
             <p className="text-[0.78rem] text-charcoal-light/60 text-center mt-8">

@@ -4,79 +4,54 @@ import { useRouter } from "next/router";
 import { useSession, signOut } from "next-auth/react";
 import {
   LayoutDashboard,
-  Globe,
-  Inbox,
+  Users,
   MessageSquare,
-  CreditCard,
-  Settings2,
-  Coins,
+  BarChart3,
+  Shield,
+  ArrowLeft,
   LogOut,
   Menu,
   X,
-  Shield,
 } from "lucide-react";
 import LogoBlob from "@/components/LogoBlob";
-import { trpc } from "@/utils/trpc";
-
-const routes = {
-  dashboard: {
-    index: "/dashboard",
-    sites: {
-      index: "/dashboard/sites",
-      new: "/dashboard/sites/new",
-      detail: (id: string) => `/dashboard/sites/${id}` as const,
-    },
-    queue: "/dashboard/queue",
-    comments: "/dashboard/comments",
-    billing: "/dashboard/billing",
-    settings: "/dashboard/settings",
-  },
-} as const;
 
 interface NavItem {
   label: string;
   href: string;
   icon: typeof LayoutDashboard;
-  /** Match pathname exactly, or also match sub-paths */
   exact?: boolean;
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: routes.dashboard.index, icon: LayoutDashboard, exact: true },
-  { label: "Sites", href: routes.dashboard.sites.index, icon: Globe },
-  { label: "Queue", href: routes.dashboard.queue, icon: Inbox },
-  { label: "Comments", href: routes.dashboard.comments, icon: MessageSquare },
-  { label: "Billing", href: routes.dashboard.billing, icon: CreditCard },
-  { label: "Settings", href: routes.dashboard.settings, icon: Settings2 },
+  { label: "Hub", href: "/admin", icon: LayoutDashboard, exact: true },
+  { label: "Users", href: "/admin/users", icon: Users },
+  { label: "Comments", href: "/admin/comments", icon: MessageSquare },
+  { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
 ];
 
-interface DashboardLayoutProps {
+interface AdminLayoutProps {
   children: ReactNode;
   title?: string;
   description?: string;
 }
 
-export default function DashboardLayout({ children, title, description }: DashboardLayoutProps) {
+export default function AdminLayout({ children, title, description }: AdminLayoutProps) {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const credits = trpc.user.getCredits.useQuery(undefined, {
-    enabled: status === "authenticated",
-  });
-
-  // Auth redirect
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace("/auth/login");
+    } else if (status === "authenticated" && session?.user?.role !== "ADMIN") {
+      router.replace("/dashboard");
     }
-  }, [status, router]);
+  }, [status, session, router]);
 
   const closeSidebar = useCallback(() => {
     setSidebarOpen(false);
   }, []);
 
-  // Close sidebar on route change
   useEffect(() => {
     router.events.on("routeChangeComplete", closeSidebar);
     return () => {
@@ -89,7 +64,6 @@ export default function DashboardLayout({ children, title, description }: Dashbo
     return router.pathname === item.href || router.pathname.startsWith(item.href + "/");
   };
 
-  // Loading state
   if (status === "loading") {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-bg">
@@ -101,15 +75,27 @@ export default function DashboardLayout({ children, title, description }: Dashbo
     );
   }
 
-  // If unauthenticated, show nothing (useEffect handles redirect)
-  if (!session) return null;
+  if (!session || session.user.role !== "ADMIN") return null;
 
   const sidebarContent = (
     <div className="flex h-full flex-col">
-      {/* Logo */}
-      <Link href="/" className="flex items-center gap-2.5 px-5 py-5 hover:opacity-80 transition-opacity">
+      {/* Logo + Admin badge */}
+      <Link href="/admin" className="flex items-center gap-2.5 px-5 py-5 hover:opacity-80 transition-opacity">
         <LogoBlob className="w-9 h-9 shrink-0" />
         <span className="font-heading font-bold text-lg text-charcoal">SlopMog</span>
+        <span className="ml-auto flex items-center gap-1 rounded-full bg-lavender/15 px-2.5 py-0.5 text-xs font-bold text-lavender-dark">
+          <Shield size={12} />
+          Admin
+        </span>
+      </Link>
+
+      {/* Back to dashboard */}
+      <Link
+        href="/dashboard"
+        className="flex items-center gap-2 mx-3 mb-2 px-3 py-2 rounded-brand-sm text-sm font-semibold text-charcoal-light hover:bg-charcoal/[0.04] hover:text-charcoal transition-all"
+      >
+        <ArrowLeft size={16} strokeWidth={2} />
+        Back to Dashboard
       </Link>
 
       {/* Nav items */}
@@ -124,37 +110,25 @@ export default function DashboardLayout({ children, title, description }: Dashbo
                   href={item.href}
                   className={`flex items-center gap-3 rounded-brand-sm px-3 py-2.5 text-sm font-semibold transition-all duration-150 ${
                     active
-                      ? "bg-teal/10 text-teal"
+                      ? "bg-lavender/10 text-lavender-dark"
                       : "text-charcoal-light hover:bg-charcoal/[0.04] hover:text-charcoal"
                   }`}
                 >
                   <Icon
                     size={20}
                     strokeWidth={active ? 2.2 : 1.8}
-                    className={active ? "text-teal" : "text-charcoal-light"}
+                    className={active ? "text-lavender-dark" : "text-charcoal-light"}
                   />
                   {item.label}
                 </Link>
               </li>
             );
           })}
-          {session?.user?.role === "ADMIN" && (
-            <li className="mt-4 pt-3 border-t border-charcoal/[0.08]">
-              <Link
-                href="/admin"
-                className="flex items-center gap-3 rounded-brand-sm px-3 py-2.5 text-sm font-semibold text-lavender-dark hover:bg-lavender/10 transition-all duration-150"
-              >
-                <Shield size={20} strokeWidth={1.8} className="text-lavender-dark" />
-                Admin Panel
-              </Link>
-            </li>
-          )}
         </ul>
       </nav>
 
-      {/* Bottom section: sign out + credits */}
-      <div className="mt-auto border-t border-charcoal/[0.08] px-3 py-3 space-y-2">
-        {/* Sign out */}
+      {/* Bottom: sign out */}
+      <div className="mt-auto border-t border-charcoal/[0.08] px-3 py-3">
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
           className="flex w-full items-center gap-3 rounded-brand-sm px-3 py-2.5 text-sm font-semibold text-charcoal-light hover:bg-coral/[0.06] hover:text-coral transition-all duration-150"
@@ -162,15 +136,6 @@ export default function DashboardLayout({ children, title, description }: Dashbo
           <LogOut size={20} strokeWidth={1.8} />
           Sign Out
         </button>
-
-        {/* Credits pill */}
-        <div className="flex items-center gap-2 rounded-full bg-sunny/20 px-4 py-2">
-          <Coins size={18} className="text-sunny-dark shrink-0" />
-          <span className="text-sm font-bold text-charcoal">
-            {credits.data !== undefined ? credits.data.amount.toLocaleString() : "--"}
-          </span>
-          <span className="text-xs text-charcoal-light">credits</span>
-        </div>
       </div>
     </div>
   );
@@ -197,7 +162,6 @@ export default function DashboardLayout({ children, title, description }: Dashbo
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Close button inside drawer */}
         <button
           onClick={closeSidebar}
           className="absolute top-4 right-3 p-1.5 rounded-brand-sm text-charcoal-light hover:bg-charcoal/[0.06] transition-colors"
@@ -220,7 +184,7 @@ export default function DashboardLayout({ children, title, description }: Dashbo
             <Menu size={22} />
           </button>
           <LogoBlob className="w-7 h-7 shrink-0" />
-          <span className="font-heading font-bold text-base text-charcoal">SlopMog</span>
+          <span className="font-heading font-bold text-base text-charcoal">Admin</span>
         </header>
 
         {/* Scrollable content area */}

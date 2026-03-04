@@ -91,6 +91,11 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.stripeCustomerId = user.stripeCustomerId;
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { role: true },
+        });
+        if (dbUser) token.role = dbUser.role;
       }
 
       if (account?.provider === "google" && token.email) {
