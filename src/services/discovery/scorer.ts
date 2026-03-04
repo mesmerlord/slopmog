@@ -35,9 +35,66 @@ const ScoreBatchSchema = z.array(
   }),
 );
 
+const TriageSchema = z.array(z.number().int().min(0));
+
 const BATCH_SIZE = 20;
 const SCORE_BATCH_CONCURRENCY = 3;
-const MIN_SCORE = 0.6;
+const MIN_SCORE = 0.75;
+
+/**
+ * Fast title-only triage: reorders items so most promising ones are scored first.
+ * Does NOT filter — returns all items in a better order.
+ * Skips if ≤5 items (not worth the call). Graceful degradation on failure.
+ */
+export async function triageByTitle(
+  items: ScoreInput[],
+  siteContext: SiteContext,
+): Promise<ScoreInput[]> {
+  if (items.length <= 5) return items;
+
+  try {
+    const titleList = items.map((item, i) => `[${i}] ${item.title}`).join("\n");
+
+    const ranked = await chatCompletionJSON({
+      model: MODELS.GEMINI_FLASH,
+      messages: [
+        {
+          role: "system",
+          content: `You rank content titles by relevance to a brand. Return a JSON array of indices sorted from most to least relevant.
+
+Brand: ${siteContext.name}
+What they do: ${siteContext.description}
+Keywords: ${siteContext.keywords.join(", ")}
+
+Return ALL indices — just reorder them. Most relevant first.`,
+        },
+        {
+          role: "user",
+          content: `Rank these by relevance:\n\n${titleList}`,
+        },
+      ],
+      temperature: 0,
+      schema: TriageSchema,
+    });
+
+    // Rebuild items in ranked order, appending any missing indices at the end
+    const seen = new Set<number>();
+    const reordered: ScoreInput[] = [];
+    for (const idx of ranked) {
+      if (idx >= 0 && idx < items.length && !seen.has(idx)) {
+        seen.add(idx);
+        reordered.push(items[idx]);
+      }
+    }
+    for (let i = 0; i < items.length; i++) {
+      if (!seen.has(i)) reordered.push(items[i]);
+    }
+    return reordered;
+  } catch (err) {
+    console.error("[scorer] triageByTitle failed, using original order:", err);
+    return items;
+  }
+}
 
 export async function scoreOpportunityBatch(
   items: ScoreInput[],

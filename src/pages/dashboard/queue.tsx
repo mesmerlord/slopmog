@@ -12,6 +12,8 @@ import {
   ArrowUpDown,
   Globe,
   Loader2,
+  Lock,
+  Sparkles,
 } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -20,6 +22,7 @@ import EmptyState from "@/components/shared/EmptyState";
 import LoadingState from "@/components/shared/LoadingState";
 import { SubscriptionModal } from "@/components/SubscriptionModal";
 import GeneratingMascotV1 from "@/components/illustrations/GeneratingMascotV1";
+import UpgradeUpsellMascot from "@/components/illustrations/UpgradeUpsellMascot";
 import { PERSONAS } from "@/constants/personas";
 import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
@@ -69,8 +72,10 @@ interface QueueItemProps {
   onSkip: (commentId: string) => void;
   onEdit: (commentId: string, text: string) => void;
   onRegenerate: (commentId: string, persona: string) => void;
+  onGenerate: (opportunityId: string) => void;
   isActing: boolean;
   isRegenerating: boolean;
+  isGenerating: boolean;
 }
 
 function QueueItem({
@@ -79,26 +84,28 @@ function QueueItem({
   onSkip,
   onEdit,
   onRegenerate,
+  onGenerate,
   isActing,
   isRegenerating,
+  isGenerating,
 }: QueueItemProps) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState("");
   const [persona, setPersona] = useState("auto");
   const comment = opportunity.comments[0];
 
-  if (!comment) return null;
-
   useEffect(() => {
-    setPersona(comment.persona || "auto");
-  }, [comment.persona, comment.id]);
+    if (comment) setPersona(comment.persona || "auto");
+  }, [comment?.persona, comment?.id]);
 
   const handleStartEdit = () => {
+    if (!comment) return;
     setEditText(comment.text);
     setEditing(true);
   };
 
   const handleSaveEdit = () => {
+    if (!comment) return;
     onEdit(comment.id, editText);
     setEditing(false);
   };
@@ -137,104 +144,130 @@ function QueueItem({
         </div>
       </div>
 
-      {/* Comment */}
-      <div className="bg-charcoal/[0.02] rounded-brand-sm border border-charcoal/[0.06] p-4 mb-4 flex-1">
-        <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-charcoal-light uppercase">
-              Generated Comment ({comment.persona})
-            </span>
-            <span className="text-xs text-charcoal-light">
-              Quality: {(comment.qualityScore * 100).toFixed(0)}%
-            </span>
+      {comment ? (
+        <>
+          {/* Comment */}
+          <div className="bg-charcoal/[0.02] rounded-brand-sm border border-charcoal/[0.06] p-4 mb-4 flex-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-charcoal-light uppercase">
+                Generated Comment ({comment.persona})
+              </span>
+              <span className="text-xs text-charcoal-light">
+                Quality: {(comment.qualityScore * 100).toFixed(0)}%
+              </span>
+            </div>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <select
+                value={persona}
+                onChange={(e) => setPersona(e.target.value)}
+                disabled={disabled}
+                className="h-8 rounded-full border border-charcoal/[0.12] bg-white px-3 text-xs font-semibold text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30 disabled:opacity-60"
+              >
+                {PERSONAS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => onRegenerate(comment.id, persona)}
+                disabled={disabled}
+                className="inline-flex items-center gap-1.5 rounded-full border border-teal/30 px-3 py-1.5 text-xs font-bold text-teal hover:bg-teal/5 transition-all disabled:opacity-50"
+              >
+                <RefreshCw size={13} className={isRegenerating ? "animate-spin" : ""} />
+                Regenerate
+              </button>
+            </div>
+            {isRegenerating ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-4">
+                <div className="h-20 w-20">
+                  <GeneratingMascotV1 className="h-full w-full" />
+                </div>
+                <p className="text-xs font-semibold text-charcoal-light">Regenerating comment...</p>
+              </div>
+            ) : editing ? (
+              <div>
+                <textarea
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  className="w-full p-3 rounded-brand-sm border border-charcoal/[0.12] bg-white text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30 resize-y min-h-[80px]"
+                  rows={4}
+                />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={disabled}
+                    className="px-3 py-1.5 bg-teal text-white rounded-full text-xs font-bold hover:bg-teal-dark transition-all"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditing(false)}
+                    disabled={disabled}
+                    className="px-3 py-1.5 border border-charcoal/[0.1] text-charcoal-light rounded-full text-xs font-bold hover:bg-charcoal/[0.04] transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-charcoal whitespace-pre-wrap line-clamp-6">{comment.text}</p>
+            )}
           </div>
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <select
-              value={persona}
-              onChange={(e) => setPersona(e.target.value)}
-              disabled={disabled}
-              className="h-8 rounded-full border border-charcoal/[0.12] bg-white px-3 text-xs font-semibold text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30 disabled:opacity-60"
-            >
-              {PERSONAS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
+
+          {/* Actions */}
+          <div className="flex gap-2">
             <button
-              onClick={() => onRegenerate(comment.id, persona)}
+              onClick={() => onApprove(comment.id)}
               disabled={disabled}
-              className="inline-flex items-center gap-1.5 rounded-full border border-teal/30 px-3 py-1.5 text-xs font-bold text-teal hover:bg-teal/5 transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 bg-teal text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-teal-dark transition-all disabled:opacity-50"
             >
-              <RefreshCw size={13} className={isRegenerating ? "animate-spin" : ""} />
-              Regenerate
+              <Check size={14} />
+              Approve
+            </button>
+            {!editing && (
+              <button
+                onClick={handleStartEdit}
+                disabled={disabled}
+                className="inline-flex items-center gap-1.5 border border-charcoal/[0.12] text-charcoal px-4 py-2 rounded-full text-sm font-bold hover:bg-charcoal/[0.04] transition-all"
+              >
+                <Pencil size={14} />
+                Edit
+              </button>
+            )}
+            <button
+              onClick={() => onSkip(comment.id)}
+              disabled={disabled}
+              className="inline-flex items-center gap-1.5 border border-coral/30 text-coral px-4 py-2 rounded-full text-sm font-bold hover:bg-coral/5 transition-all disabled:opacity-50"
+            >
+              <X size={14} />
+              Skip
             </button>
           </div>
-          {isRegenerating ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-4">
-              <div className="h-20 w-20">
+        </>
+      ) : (
+        <div className="bg-charcoal/[0.02] rounded-brand-sm border border-charcoal/[0.06] p-4 flex-1 flex flex-col items-center justify-center gap-3">
+          {isGenerating ? (
+            <>
+              <div className="h-16 w-16">
                 <GeneratingMascotV1 className="h-full w-full" />
               </div>
-              <p className="text-xs font-semibold text-charcoal-light">Regenerating comment...</p>
-            </div>
-          ) : editing ? (
-          <div>
-            <textarea
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-              className="w-full p-3 rounded-brand-sm border border-charcoal/[0.12] bg-white text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30 resize-y min-h-[80px]"
-              rows={4}
-            />
-            <div className="flex gap-2 mt-2">
+              <p className="text-xs font-semibold text-charcoal-light">Generating comment...</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-charcoal-light">No comment yet for this opportunity.</p>
               <button
-                onClick={handleSaveEdit}
-                disabled={disabled}
-                className="px-3 py-1.5 bg-teal text-white rounded-full text-xs font-bold hover:bg-teal-dark transition-all"
+                onClick={() => onGenerate(opportunity.id)}
+                className="inline-flex items-center gap-1.5 bg-teal text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-teal-dark transition-all"
               >
-                Save
+                <RefreshCw size={14} />
+                Generate Comment
               </button>
-              <button
-                onClick={() => setEditing(false)}
-                disabled={disabled}
-                className="px-3 py-1.5 border border-charcoal/[0.1] text-charcoal-light rounded-full text-xs font-bold hover:bg-charcoal/[0.04] transition-all"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-charcoal whitespace-pre-wrap line-clamp-6">{comment.text}</p>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => onApprove(comment.id)}
-          disabled={disabled}
-          className="inline-flex items-center gap-1.5 bg-teal text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-teal-dark transition-all disabled:opacity-50"
-        >
-          <Check size={14} />
-          Approve
-        </button>
-        {!editing && (
-          <button
-            onClick={handleStartEdit}
-            disabled={disabled}
-            className="inline-flex items-center gap-1.5 border border-charcoal/[0.12] text-charcoal px-4 py-2 rounded-full text-sm font-bold hover:bg-charcoal/[0.04] transition-all"
-          >
-            <Pencil size={14} />
-            Edit
-          </button>
-        )}
-        <button
-          onClick={() => onSkip(comment.id)}
-          disabled={disabled}
-          className="inline-flex items-center gap-1.5 border border-coral/30 text-coral px-4 py-2 rounded-full text-sm font-bold hover:bg-coral/5 transition-all disabled:opacity-50"
-        >
-          <X size={14} />
-          Skip
-        </button>
-      </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -251,6 +284,8 @@ export default function QueuePage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const sitesQuery = trpc.site.list.useQuery();
+  const planQuery = trpc.user.getPlanInfo.useQuery();
+  const isPaid = planQuery.data?.isPaid ?? false;
   const discoveryStatusQuery = trpc.site.hasRunningDiscovery.useQuery();
   const discoveryRunning = discoveryStatusQuery.data?.isRunning ?? false;
   const discoveryRuns = discoveryStatusQuery.data?.runs ?? [];
@@ -263,6 +298,15 @@ export default function QueuePage() {
     }, 3000);
     return () => clearInterval(interval);
   }, [discoveryRunning, discoveryStatusQuery]);
+
+  // Poll pending list while discovery is running so items appear incrementally
+  useEffect(() => {
+    if (!discoveryRunning) return;
+    const interval = setInterval(() => {
+      utils.opportunity.listPending.invalidate();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [discoveryRunning, utils]);
 
   // Auto-invalidate pending list when discovery finishes
   const prevRunningRef = useRef(discoveryRunning);
@@ -328,6 +372,16 @@ export default function QueuePage() {
     },
     onError: (err) => toast.error(err.message),
     onSettled: () => setRegeneratingOn(null),
+  });
+
+  const [generatingOn, setGeneratingOn] = useState<string | null>(null);
+  const generateMutation = trpc.opportunity.generate.useMutation({
+    onSuccess: () => {
+      toast.success("Comment generated!");
+      utils.opportunity.listPending.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+    onSettled: () => setGeneratingOn(null),
   });
 
   const queryData = pendingQuery.data;
@@ -501,29 +555,66 @@ export default function QueuePage() {
                 Reset Filters
               </button>
             </div>
-          ) : queueItems.map((opp) => (
-            <QueueItem
-              key={opp.id}
-              opportunity={opp}
-              onApprove={(commentId) => {
-                setActingOn(commentId);
-                approveMutation.mutate({ commentId });
-              }}
-              onSkip={(commentId) => {
-                setActingOn(commentId);
-                skipMutation.mutate({ commentId });
-              }}
-              onEdit={(commentId, text) => {
-                editMutation.mutate({ commentId, text });
-              }}
-              onRegenerate={(commentId, persona) => {
-                setRegeneratingOn(commentId);
-                regenerateMutation.mutate({ commentId, persona });
-              }}
-              isActing={actingOn !== null}
-              isRegenerating={regeneratingOn === opp.comments[0]?.id}
-            />
-          ))}
+          ) : (
+            <>
+              {queueItems.map((opp) => (
+                <QueueItem
+                  key={opp.id}
+                  opportunity={opp}
+                  onApprove={(commentId) => {
+                    setActingOn(commentId);
+                    approveMutation.mutate({ commentId });
+                  }}
+                  onSkip={(commentId) => {
+                    setActingOn(commentId);
+                    skipMutation.mutate({ commentId });
+                  }}
+                  onEdit={(commentId, text) => {
+                    editMutation.mutate({ commentId, text });
+                  }}
+                  onRegenerate={(commentId, persona) => {
+                    setRegeneratingOn(commentId);
+                    regenerateMutation.mutate({ commentId, persona });
+                  }}
+                  onGenerate={(opportunityId) => {
+                    setGeneratingOn(opportunityId);
+                    generateMutation.mutate({ opportunityId });
+                  }}
+                  isActing={actingOn !== null}
+                  isRegenerating={regeneratingOn === opp.comments[0]?.id}
+                  isGenerating={generatingOn === opp.id}
+                />
+              ))}
+
+              {/* Free-user upsell: See More */}
+              {!isPaid && totalPendingCount > queueItems.length && (
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="group w-full bg-gradient-to-b from-white to-sunny/[0.08] rounded-brand shadow-brand-sm border border-sunny/20 hover:border-sunny/40 p-8 flex flex-col items-center gap-4 transition-all hover:shadow-brand-md"
+                >
+                  <div className="h-28 w-44">
+                    <UpgradeUpsellMascot className="h-full w-full" />
+                  </div>
+                  <div className="text-center">
+                    <div className="inline-flex items-center gap-2 mb-1.5">
+                      <Sparkles size={16} className="text-sunny" />
+                      <span className="font-heading font-bold text-charcoal text-lg">
+                        {totalPendingCount - queueItems.length} more opportunities waiting
+                      </span>
+                      <Sparkles size={16} className="text-sunny" />
+                    </div>
+                    <p className="text-sm text-charcoal-light max-w-md mx-auto">
+                      We found more conversations where your brand fits naturally. Upgrade to unlock the full queue and auto-generated comments.
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-2 bg-coral text-white px-6 py-2.5 rounded-full text-sm font-bold group-hover:bg-coral-dark transition-all">
+                    <Lock size={14} />
+                    Upgrade to See More
+                  </span>
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
 

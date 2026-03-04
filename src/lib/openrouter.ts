@@ -126,5 +126,6 @@ function stripMarkdownCodeBlocks(text: string): string {
 export const MODELS = {
   GEMINI_FLASH: "google/gemini-3-flash-preview",
   CLAUDE_OPUS: "anthropic/claude-opus-4-6",
-  CLAUDE_SONNET: "anthropic/claude-sonnet-4.6",
+  CLAUDE_SONNET: "anthropic/claude-sonnet-4-6",
+  CLAUDE_HAIKU: "anthropic/claude-haiku-4-5-20251001",
 } as const;

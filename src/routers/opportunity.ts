@@ -1,5 +1,12 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc";
+import { generateComment } from "@/services/generation/generator";
+import {
+  getRedditComments,
+  getYouTubeComments,
+} from "@/services/discovery/scrape-creators";
+import type { CommentGenerationInput } from "@/services/generation/types";
 
 export const opportunityRouter = router({
   listPending: protectedProcedure
@@ -115,6 +122,94 @@ export const opportunityRouter = router({
       }
 
       return { items: opportunities, nextCursor };
+    }),
+
+  generate: protectedProcedure
+    .input(z.object({
+      opportunityId: z.string(),
+      persona: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const opportunity = await ctx.prisma.opportunity.findFirst({
+        where: {
+          id: input.opportunityId,
+          site: { userId: ctx.session.user.id },
+          status: "PENDING_REVIEW",
+        },
+        include: {
+          site: true,
+          comments: { where: { status: "DRAFT" }, take: 1 },
+        },
+      });
+
+      if (!opportunity) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Opportunity not found or not pending" });
+      }
+
+      // Already has a draft comment
+      if (opportunity.comments.length > 0) {
+        return opportunity.comments[0];
+      }
+
+      let existingComments: CommentGenerationInput["existingComments"] = [];
+      try {
+        if (opportunity.platform === "REDDIT") {
+          const comments = await getRedditComments(opportunity.contentUrl);
+          existingComments = comments.slice(0, 15).map((c) => ({
+            author: c.author, body: c.body, score: c.score, isOp: false,
+          }));
+        } else if (opportunity.platform === "YOUTUBE") {
+          const comments = await getYouTubeComments(opportunity.contentUrl);
+          existingComments = comments.slice(0, 15).map((c) => ({
+            author: c.author, body: c.text, score: c.likeCount, isOp: false,
+          }));
+        }
+      } catch (err) {
+        console.warn(`[opportunity.generate] Failed to fetch existing comments:`, err);
+      }
+
+      const site = opportunity.site;
+      const result = await generateComment({
+        postTitle: opportunity.title,
+        postBody: opportunity.body ?? "",
+        sourceContext: opportunity.sourceContext,
+        platform: opportunity.platform,
+        existingComments,
+        businessName: site.name,
+        businessDescription: site.description,
+        valueProps: site.valueProps,
+        websiteUrl: site.url,
+        brandTone: site.brandTone,
+        matchedKeyword: opportunity.matchedKeyword,
+        commentPosition: "top_level",
+        postType: (opportunity.postType as "question" | "discussion" | "showcase") ?? "discussion",
+        persona: input.persona,
+      });
+
+      if (result.noRelevantComment || result.variants.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Could not generate a natural comment for this opportunity",
+        });
+      }
+
+      const best = result.best;
+      const toSingleLine = (text: string) => text.replace(/\s*\n+\s*/g, " ").trim();
+      const savedText = opportunity.platform === "YOUTUBE"
+        ? result.variants.slice(0, 5).map((v) => toSingleLine(v.text)).filter(Boolean).join("\n")
+        : best.text;
+
+      return ctx.prisma.comment.create({
+        data: {
+          opportunityId: opportunity.id,
+          siteId: site.id,
+          status: "DRAFT",
+          text: savedText,
+          persona: input.persona ?? "auto",
+          qualityScore: best.qualityScore,
+          scoreReasons: best.reasons,
+        },
+      });
     }),
 
   getStats: protectedProcedure.query(async ({ ctx }) => {

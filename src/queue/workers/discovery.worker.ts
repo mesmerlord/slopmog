@@ -7,11 +7,10 @@ import {
   searchReddit,
   searchYouTube,
   getYouTubeComments,
-  type RedditPost,
-  type YouTubeVideo,
 } from "@/services/discovery/scrape-creators";
 import {
   scoreOpportunityBatch,
+  triageByTitle,
   type ScoreInput,
   type SiteContext,
 } from "@/services/discovery/scorer";
@@ -20,7 +19,9 @@ import type { KeywordConfig } from "@/services/discovery/site-analyzer";
 
 const MIN_YOUTUBE_VIEWS = 1000;
 const MAX_YOUTUBE_AGE_DAYS = 90;
-const KEYWORD_SEARCH_CONCURRENCY = 4;
+const AUTO_GENERATE_TOP_N = 10;
+const AUTO_GENERATE_MIN_SCORE = 0.9;
+const MAX_REDDIT_PAGES = 5;
 
 function normalizeKeyword(value: string): string {
   return value.trim().replace(/\s+/g, " ");
@@ -100,6 +101,233 @@ function getKeywordsForPlatform(
   return all.length > 0 ? all : dedupeKeywords(fallbackKeywords);
 }
 
+// Extended type for discovery items that carries extra fields
+interface DiscoveryItem extends ScoreInput {
+  contentUrl: string;
+  matchedKeyword: string;
+  publishedAtRaw?: string;
+  author?: string;
+  viewCount?: number;
+  commentCount?: number;
+  _hasBrandMention?: boolean;
+}
+
+// Shared mutable state across keyword iterations within a single run
+interface RunState {
+  generatedCount: number;
+  savedCount: number;
+  totalFound: number;
+  totalScored: number;
+}
+
+// ─── Keyword Prioritization ─────────────────────────────────
+
+function categorizeKeyword(
+  keyword: string,
+  keywordConfig: KeywordConfig | null | undefined,
+): number {
+  if (!keywordConfig) return 4; // unknown
+  const lower = keyword.toLowerCase();
+  if (keywordConfig.brand.some((k) => k.toLowerCase() === lower)) return 0;
+  if (keywordConfig.features.some((k) => k.toLowerCase() === lower)) return 1;
+  const platformKws = [...keywordConfig.reddit, ...keywordConfig.youtube];
+  if (platformKws.some((k) => k.toLowerCase() === lower)) return 2;
+  if (keywordConfig.competitors.some((k) => k.toLowerCase() === lower)) return 3;
+  return 4;
+}
+
+function prioritizeKeywords(
+  keywords: string[],
+  keywordConfig: KeywordConfig | null | undefined,
+): string[] {
+  return [...keywords].sort(
+    (a, b) => categorizeKeyword(a, keywordConfig) - categorizeKeyword(b, keywordConfig),
+  );
+}
+
+// ─── Per-Keyword Search Functions ───────────────────────────
+
+async function searchRedditKeyword(
+  keyword: string,
+  existingIds: Set<string>,
+): Promise<DiscoveryItem[]> {
+  const items: DiscoveryItem[] = [];
+  let after: string | undefined;
+
+  for (let page = 0; page < MAX_REDDIT_PAGES; page++) {
+    const result = await searchReddit(keyword, { timeframe: "day", after });
+
+    for (const post of result.posts) {
+      if (existingIds.has(post.id)) continue;
+      existingIds.add(post.id);
+
+      items.push({
+        externalId: post.id,
+        title: post.title,
+        body: post.body,
+        sourceContext: post.subreddit,
+        platform: "REDDIT",
+        contentUrl: post.url,
+        matchedKeyword: keyword,
+        publishedAtRaw: post.createdAt,
+        author: post.author,
+        commentCount: post.numComments,
+      });
+    }
+
+    if (!result.after || result.posts.length === 0) break;
+    after = result.after;
+  }
+
+  return items;
+}
+
+async function searchYouTubeKeyword(
+  keyword: string,
+  existingIds: Set<string>,
+  brandName: string,
+  cutoffDate: Date,
+): Promise<DiscoveryItem[]> {
+  const items: DiscoveryItem[] = [];
+  const videos = await searchYouTube(keyword);
+
+  for (const video of videos) {
+    if (existingIds.has(video.videoId)) continue;
+    if (video.viewCount < MIN_YOUTUBE_VIEWS) continue;
+    const publishedAt = parsePublishedAt(video.publishedAt);
+    if (publishedAt && publishedAt < cutoffDate) continue;
+
+    existingIds.add(video.videoId);
+
+    items.push({
+      externalId: video.videoId,
+      title: video.title,
+      body: video.description?.slice(0, 500),
+      sourceContext: video.channelName,
+      platform: "YOUTUBE",
+      contentUrl: video.url,
+      matchedKeyword: keyword,
+      publishedAtRaw: video.publishedAt,
+      viewCount: video.viewCount,
+      commentCount: video.commentCount,
+    });
+  }
+
+  // Check for existing brand mentions in comments (first 2 videos per keyword)
+  const brandLower = brandName.toLowerCase();
+  const sampled = items.slice(0, 2);
+
+  await pMap(
+    sampled,
+    async (video) => {
+      try {
+        const comments = await getYouTubeComments(video.contentUrl);
+        const hasMention = comments.some((c) =>
+          c.text.toLowerCase().includes(brandLower),
+        );
+        if (hasMention) video._hasBrandMention = true;
+      } catch {
+        // Non-critical, continue
+      }
+    },
+    2,
+  );
+
+  return items;
+}
+
+// ─── Per-Keyword Processing (triage → score → save → generate) ──
+
+async function processKeywordResults(
+  items: DiscoveryItem[],
+  siteContext: SiteContext,
+  site: { id: string; name: string },
+  run: { id: string },
+  platform: "REDDIT" | "YOUTUBE",
+  runState: RunState,
+): Promise<void> {
+  if (items.length === 0) return;
+
+  runState.totalFound += items.length;
+
+  // Triage: reorder by title relevance for better scoring priority
+  const triaged = await triageByTitle(items, siteContext);
+
+  // Score
+  const scored = await scoreOpportunityBatch(triaged, siteContext);
+  const passing = scored.filter((s) => s.relevant);
+  const sourceById = new Map(items.map((item) => [item.externalId, item]));
+
+  runState.totalScored += scored.length;
+
+  // Sort passing by score descending for auto-generate priority
+  const passingSorted = [...passing].sort((a, b) => b.relevanceScore - a.relevanceScore);
+
+  // Upsert passing items immediately — visible in queue!
+  for (const item of passingSorted) {
+    const source = sourceById.get(item.externalId);
+    if (!source) continue;
+    const publishedAt = parsePublishedAt(source.publishedAtRaw);
+
+    const opportunity = await prisma.opportunity.upsert({
+      where: {
+        siteId_externalId: { siteId: site.id, externalId: item.externalId },
+      },
+      create: {
+        siteId: site.id,
+        discoveryRunId: run.id,
+        platform,
+        externalId: item.externalId,
+        contentUrl: source.contentUrl,
+        title: source.title,
+        body: source.body,
+        sourceContext: source.sourceContext,
+        matchedKeyword: source.matchedKeyword,
+        relevanceScore: item.relevanceScore,
+        postType: item.postType,
+        scoreReason: item.scoreReason,
+        ...(publishedAt ? { publishedAt } : {}),
+        status: "PENDING_REVIEW",
+      },
+      update: {
+        relevanceScore: item.relevanceScore,
+        postType: item.postType,
+        scoreReason: item.scoreReason,
+        ...(publishedAt ? { publishedAt } : {}),
+      },
+    });
+    runState.savedCount++;
+
+    // Auto-generate for ≥0.90 as they stream in
+    if (
+      item.relevanceScore >= AUTO_GENERATE_MIN_SCORE &&
+      opportunity.status === "PENDING_REVIEW"
+    ) {
+      const hasComment = await prisma.comment.count({
+        where: { opportunityId: opportunity.id },
+      });
+      if (hasComment === 0) {
+        await generationQueue.add("generate", {
+          opportunityId: opportunity.id,
+        } satisfies GenerationJobData);
+        runState.generatedCount++;
+      }
+    }
+  }
+
+  // Update DiscoveryRun counts progressively
+  await prisma.discoveryRun.update({
+    where: { id: run.id },
+    data: {
+      foundCount: runState.totalFound,
+      scoredCount: runState.totalScored,
+      generatedCount: runState.generatedCount,
+    },
+  });
+}
+
+// ─── Main Discovery Flow ────────────────────────────────────
+
 async function processDiscovery(job: Job<DiscoveryJobData>) {
   const { siteId } = job.data;
   if (!siteId) {
@@ -130,17 +358,21 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
   };
 
   const keywordConfig = site.keywordConfig as KeywordConfig | null;
-
   const keywordOverrides = dedupeKeywords(job.data.keywordOverrides ?? []);
 
   // Process each platform
   for (const platform of site.platforms) {
-    const keywords = getKeywordsForPlatform(
+    const rawKeywords = getKeywordsForPlatform(
       keywordConfig,
       site.keywords,
       platform,
       keywordOverrides,
     );
+
+    // Prioritize: brand → features → platform-specific → competitors → unknown
+    const keywords = keywordOverrides.length > 0
+      ? rawKeywords
+      : prioritizeKeywords(rawKeywords, keywordConfig);
 
     const run = await prisma.discoveryRun.create({
       data: {
@@ -151,88 +383,102 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
       },
     });
 
+    const runState: RunState = {
+      generatedCount: 0,
+      savedCount: 0,
+      totalFound: 0,
+      totalScored: 0,
+    };
+
     try {
       await job.log(`[${platform}] Searching with ${keywords.length} keywords: ${keywords.slice(0, 5).join(", ")}${keywords.length > 5 ? ` (+${keywords.length - 5} more)` : ""}`);
 
-      let allItems: DiscoveryItem[] = [];
+      // Load existing IDs once at start (shared across all keywords)
+      const existingIds = new Set(
+        (await prisma.opportunity.findMany({
+          where: { siteId: site.id, platform },
+          select: { externalId: true },
+        })).map((o) => o.externalId),
+      );
 
-      if (platform === "REDDIT") {
-        allItems = await discoverReddit(keywords, site.id);
-      } else if (platform === "YOUTUBE") {
-        allItems = await discoverYouTube(keywords, site.id, site.name);
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - MAX_YOUTUBE_AGE_DAYS);
+
+      // Process keywords sequentially so items stream through the full pipeline ASAP
+      for (const keyword of keywords) {
+        try {
+          let items: DiscoveryItem[] = [];
+
+          if (platform === "REDDIT") {
+            items = await searchRedditKeyword(keyword, existingIds);
+          } else if (platform === "YOUTUBE") {
+            items = await searchYouTubeKeyword(keyword, existingIds, site.name, cutoffDate);
+          }
+
+          if (items.length === 0) {
+            await job.log(`[${platform}] "${keyword}" — 0 new items, skipping`);
+            continue;
+          }
+
+          await job.log(`[${platform}] "${keyword}" — ${items.length} new items, scoring...`);
+          await job.updateProgress({ phase: "scoring", platform, keyword, itemCount: items.length });
+
+          await processKeywordResults(
+            items,
+            { ...siteContext, keywords },
+            site,
+            run,
+            platform,
+            runState,
+          );
+
+          await job.log(`[${platform}] "${keyword}" — done (running total: ${runState.savedCount} saved, ${runState.generatedCount} generating)`);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(`[discovery] ${platform} keyword "${keyword}" failed for ${site.name}:`, err);
+          await job.log(`WARN [${platform}] keyword "${keyword}" failed: ${message} — continuing`);
+          // Continue to next keyword
+        }
       }
 
-      await job.log(`[${platform}] Search complete — ${allItems.length} new items found`);
-      await job.updateProgress({ phase: "scoring", platform, itemCount: allItems.length });
-
-      // Score all items
-      const scored = await scoreOpportunityBatch(allItems, {
-        ...siteContext,
-        keywords,
+      // Final pass: ensure the global top N all have comments queued.
+      // The per-keyword loop already generated for ≥0.90 items, but due to keyword
+      // ordering some top items may have been missed. This backfills the gaps.
+      const topWithoutComments = await prisma.opportunity.findMany({
+        where: {
+          discoveryRunId: run.id,
+          status: "PENDING_REVIEW",
+          comments: { none: {} },
+        },
+        orderBy: { relevanceScore: "desc" },
+        take: AUTO_GENERATE_TOP_N,
+        select: { id: true },
       });
-      const passing = scored.filter((s) => s.relevant);
-      const sourceById = new Map(allItems.map((item) => [item.externalId, item]));
 
-      await job.log(`[${platform}] Scoring complete — ${passing.length}/${scored.length} items passed relevance filter`);
-      await job.updateProgress({ phase: "saving", platform, passingCount: passing.length });
+      for (const opp of topWithoutComments) {
+        await generationQueue.add("generate", {
+          opportunityId: opp.id,
+        } satisfies GenerationJobData);
+        runState.generatedCount++;
+      }
 
-      // Upsert opportunities and enqueue generation
-      let generatedCount = 0;
-      for (const item of passing) {
-        const source = sourceById.get(item.externalId);
-        if (!source) continue;
-        const publishedAt = parsePublishedAt(source.publishedAtRaw);
-
-        const opportunity = await prisma.opportunity.upsert({
-          where: {
-            siteId_externalId: { siteId: site.id, externalId: item.externalId },
-          },
-          create: {
-            siteId: site.id,
-            discoveryRunId: run.id,
-            platform,
-            externalId: item.externalId,
-            contentUrl: (source as ScoreInput & { contentUrl?: string }).contentUrl ?? "",
-            title: source.title,
-            body: source.body,
-            sourceContext: source.sourceContext,
-            matchedKeyword: (source as ScoreInput & { matchedKeyword?: string }).matchedKeyword ?? "",
-            relevanceScore: item.relevanceScore,
-            postType: item.postType,
-            scoreReason: item.scoreReason,
-            ...(publishedAt ? { publishedAt } : {}),
-            status: "DISCOVERED",
-          },
-          update: {
-            relevanceScore: item.relevanceScore,
-            postType: item.postType,
-            scoreReason: item.scoreReason,
-            ...(publishedAt ? { publishedAt } : {}),
-          },
-        });
-
-        // Only enqueue generation for newly created opportunities
-        if (opportunity.status === "DISCOVERED") {
-          await generationQueue.add("generate", {
-            opportunityId: opportunity.id,
-          } satisfies GenerationJobData);
-          generatedCount++;
-        }
+      if (topWithoutComments.length > 0) {
+        await job.log(`[${platform}] Final pass: backfilled ${topWithoutComments.length} comments for top opportunities`);
       }
 
       await prisma.discoveryRun.update({
         where: { id: run.id },
         data: {
           status: "COMPLETED",
-          foundCount: allItems.length,
-          scoredCount: scored.length,
-          generatedCount,
+          foundCount: runState.totalFound,
+          scoredCount: runState.totalScored,
+          generatedCount: runState.generatedCount,
           completedAt: new Date(),
         },
       });
 
-      const summary = `[${platform}] Done — ${allItems.length} found, ${passing.length} passed, ${generatedCount} generation jobs enqueued`;
-      console.log(`[discovery] ${platform} complete for ${site.name}: ${allItems.length} found, ${passing.length} passed, ${generatedCount} enqueued`);
+      const summary = `[${platform}] Done — ${runState.totalFound} found, ${runState.savedCount} saved (score ≥0.75), ${runState.generatedCount} auto-generating`;
+      console.log(`[discovery] ${platform} complete for ${site.name}: ${runState.totalFound} found, ${runState.savedCount} saved, ${runState.generatedCount} auto-generating`);
       await job.log(summary);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -240,6 +486,9 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
         where: { id: run.id },
         data: {
           status: "FAILED",
+          foundCount: runState.totalFound,
+          scoredCount: runState.totalScored,
+          generatedCount: runState.generatedCount,
           errorMessage: message,
           completedAt: new Date(),
         },
@@ -249,147 +498,6 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
       throw err;
     }
   }
-}
-
-// Extended type for discovery items that carries extra fields
-interface DiscoveryItem extends ScoreInput {
-  contentUrl: string;
-  matchedKeyword: string;
-  publishedAtRaw?: string;
-  author?: string;
-  viewCount?: number;
-  commentCount?: number;
-}
-
-async function discoverReddit(keywords: string[], siteId: string): Promise<DiscoveryItem[]> {
-  const existingIds = new Set(
-    (await prisma.opportunity.findMany({
-      where: { siteId, platform: "REDDIT" },
-      select: { externalId: true },
-    })).map((o) => o.externalId),
-  );
-
-  const allPosts: DiscoveryItem[] = [];
-
-  const MAX_PAGES = 5;
-
-  const keywordResults = await pMap(
-    keywords,
-    async (keyword) => {
-      const allPagesOfPosts: RedditPost[] = [];
-      let after: string | undefined;
-
-      for (let page = 0; page < MAX_PAGES; page++) {
-        const result = await searchReddit(keyword, { timeframe: "day", after });
-        allPagesOfPosts.push(...result.posts);
-
-        if (!result.after || result.posts.length === 0) break;
-        after = result.after;
-      }
-
-      return { keyword, posts: allPagesOfPosts };
-    },
-    KEYWORD_SEARCH_CONCURRENCY,
-  );
-
-  for (const { keyword, posts } of keywordResults) {
-    for (const post of posts) {
-      if (existingIds.has(post.id)) continue;
-      existingIds.add(post.id); // dedupe across keywords
-
-      allPosts.push({
-        externalId: post.id,
-        title: post.title,
-        body: post.body,
-        sourceContext: post.subreddit,
-        platform: "REDDIT",
-        contentUrl: post.url,
-        matchedKeyword: keyword,
-        publishedAtRaw: post.createdAt,
-        author: post.author,
-        commentCount: post.numComments,
-      });
-    }
-  }
-
-  console.log(`[discovery] Reddit: ${allPosts.length} new posts across ${keywords.length} keywords`);
-  return allPosts;
-}
-
-async function discoverYouTube(
-  keywords: string[],
-  siteId: string,
-  brandName: string,
-): Promise<DiscoveryItem[]> {
-  const existingIds = new Set(
-    (await prisma.opportunity.findMany({
-      where: { siteId, platform: "YOUTUBE" },
-      select: { externalId: true },
-    })).map((o) => o.externalId),
-  );
-
-  const allVideos: DiscoveryItem[] = [];
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - MAX_YOUTUBE_AGE_DAYS);
-
-  const keywordResults = await pMap(
-    keywords,
-    async (keyword) => {
-      const videos = await searchYouTube(keyword);
-      return { keyword, videos };
-    },
-    KEYWORD_SEARCH_CONCURRENCY,
-  );
-
-  for (const { keyword, videos } of keywordResults) {
-    for (const video of videos) {
-      if (existingIds.has(video.videoId)) continue;
-      if (video.viewCount < MIN_YOUTUBE_VIEWS) continue;
-      const publishedAt = parsePublishedAt(video.publishedAt);
-      if (publishedAt && publishedAt < cutoffDate) continue;
-
-      existingIds.add(video.videoId);
-
-      allVideos.push({
-        externalId: video.videoId,
-        title: video.title,
-        body: video.description?.slice(0, 500),
-        sourceContext: video.channelName,
-        platform: "YOUTUBE",
-        contentUrl: video.url,
-        matchedKeyword: keyword,
-        publishedAtRaw: video.publishedAt,
-        viewCount: video.viewCount,
-        commentCount: video.commentCount,
-      });
-    }
-  }
-
-  // Check for existing brand mentions in comments (sample first 5 videos)
-  const sampled = allVideos.slice(0, 5);
-  const brandLower = brandName.toLowerCase();
-
-  await pMap(
-    sampled,
-    async (video) => {
-      try {
-        const comments = await getYouTubeComments(video.contentUrl);
-        const hasMention = comments.some((c) =>
-          c.text.toLowerCase().includes(brandLower),
-        );
-        if (hasMention) {
-          // Mark to set existingBrandMention when saving
-          (video as DiscoveryItem & { _hasBrandMention?: boolean })._hasBrandMention = true;
-        }
-      } catch {
-        // Non-critical, continue
-      }
-    },
-    2,
-  );
-
-  console.log(`[discovery] YouTube: ${allVideos.length} new videos across ${keywords.length} keywords`);
-  return allVideos;
 }
 
 export const discoveryWorker = new Worker<DiscoveryJobData>(

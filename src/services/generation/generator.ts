@@ -76,7 +76,7 @@ export async function generateComment(
   const variantCount = input.platform === "YOUTUBE" ? 5 : 1;
 
   const result = await chatCompletionJSON({
-    model: MODELS.CLAUDE_OPUS,
+    model: MODELS.CLAUDE_SONNET,
     messages: [
       {
         role: "system",
