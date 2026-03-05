@@ -239,6 +239,7 @@ enum DiscoveryRunStatus {
   RUNNING
   COMPLETED
   FAILED
+  CANCELLED
 }
 
 enum SiteMode {

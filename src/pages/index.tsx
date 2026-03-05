@@ -59,7 +59,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "How quickly will I see results?",
-    a: "Most clients see their brand appearing in AI recommendations within 3-4 weeks. Unlike traditional SEO that takes months, AI models scrape Reddit frequently and update their recommendations faster than you'd expect.",
+    a: "Most clients see their brand appearing in AI recommendations within 3-4 weeks. Unlike traditional SEO that takes months, AI models scrape Reddit and YouTube frequently and update their recommendations faster than you'd expect.",
   },
   {
     q: "What if my competitors are doing this too?",
@@ -67,11 +67,11 @@ const FAQ_ITEMS = [
   },
   {
     q: "Who writes the comments?",
-    a: "AI generates comments that sound natural and fit Reddit's tone, but you can also write your own if you prefer. Every comment goes through your approval before posting, so you're always in control of what gets published.",
+    a: "AI generates comments that sound natural and fit each platform's tone, but you can also write your own if you prefer. Every comment goes through your approval before posting, so you're always in control of what gets published.",
   },
   {
     q: "Can I see which comments you've posted?",
-    a: "Absolutely. Full transparency is baked in. Your dashboard shows every comment, its engagement metrics, and the subreddits we're targeting. We also track when and where your brand appears in AI recommendations.",
+    a: "Absolutely. Full transparency is baked in. Your dashboard shows every comment, its engagement metrics, and the threads we're targeting. We also track when and where your brand appears in AI recommendations.",
   },
 ];
 
@@ -173,7 +173,7 @@ export default function Home() {
     <>
       <Seo
         title="SlopMog — Get Your Brand Into AI Recommendations"
-        description="SlopMog posts Reddit comments about your brand so AI recommends you. It's not manipulation. It's just really, really good marketing."
+        description="SlopMog posts Reddit & YouTube comments about your brand so AI recommends you. It's not manipulation. It's just really, really good marketing."
         image={`${process.env.NEXT_PUBLIC_SITE_URL}/api/og`}
         jsonLd={{
           "@context": "https://schema.org",
@@ -181,7 +181,7 @@ export default function Home() {
           name: "SlopMog",
           applicationCategory: "BusinessApplication",
           description:
-            "Get your brand into AI recommendations by posting authentic Reddit comments. Works with ChatGPT, Gemini, and Perplexity.",
+            "Get your brand into AI recommendations by posting authentic Reddit & YouTube comments. Works with ChatGPT, Gemini, and Perplexity.",
           offers: {
             "@type": "AggregateOffer",
             lowPrice: "499",
@@ -241,7 +241,7 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-sm md:text-lg text-charcoal-light max-w-md mx-auto lg:mx-0 mb-5 lg:mb-8 leading-relaxed">
-              We post Reddit comments about your brand. AI learns from them. You show up in recommendations. Simple.
+              We post Reddit & YouTube comments about your brand. AI learns from them. You show up in recommendations. Simple.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start">
               {session ? (
@@ -300,7 +300,7 @@ export default function Home() {
               {
                 num: "2",
                 title: "We Post the Comments",
-                desc: "AI writes authentic Reddit comments that naturally mention your brand — or write your own. You approve before anything goes live.",
+                desc: "AI writes authentic comments on Reddit & YouTube that naturally mention your brand — or write your own. You approve before anything goes live.",
                 icon: (
                   <svg viewBox="0 0 72 72" fill="none">
                     <rect x="8" y="14" width="40" height="28" rx="6" stroke="#2EC4B6" strokeWidth="2.5" />

@@ -10,7 +10,7 @@ import { CREDIT_COSTS } from "@/constants/credits";
 import "@/services/posting/upvotemax";
 import "@/services/posting/socialplug";
 
-const SOCIALPLUG_YOUTUBE_COMMENT_TARGET = 5;
+const SOCIALPLUG_YOUTUBE_COMMENT_TARGET = 1;
 
 function normalizeSocialPlugYouTubeCommentText(text: string): string {
   const lines = text

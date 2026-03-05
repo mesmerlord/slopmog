@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/server/trpc";
+import { discoveryQueue, hvDiscoveryQueue } from "@/queue/queues";
 
 export const adminRouter = router({
   getOverviewStats: adminProcedure.query(async ({ ctx }) => {
@@ -532,6 +533,201 @@ export const adminRouter = router({
           })),
         ],
       };
+    }),
+
+  getQueueStatus: adminProcedure.query(async ({ ctx }) => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const [
+      runningRegular,
+      runningHV,
+      recentRegular,
+      recentHV,
+      completedToday,
+      failedToday,
+    ] = await Promise.all([
+      ctx.prisma.discoveryRun.findMany({
+        where: { status: "RUNNING" },
+        include: {
+          site: { select: { name: true, user: { select: { email: true } } } },
+        },
+        orderBy: { startedAt: "desc" },
+      }),
+      ctx.prisma.hVDiscoveryRun.findMany({
+        where: { status: "RUNNING" },
+        include: {
+          site: { select: { name: true, user: { select: { email: true } } } },
+        },
+        orderBy: { startedAt: "desc" },
+      }),
+      ctx.prisma.discoveryRun.findMany({
+        where: { status: { not: "RUNNING" } },
+        include: {
+          site: { select: { name: true, user: { select: { email: true } } } },
+        },
+        orderBy: { startedAt: "desc" },
+        take: 20,
+      }),
+      ctx.prisma.hVDiscoveryRun.findMany({
+        where: { status: { not: "RUNNING" } },
+        include: {
+          site: { select: { name: true, user: { select: { email: true } } } },
+        },
+        orderBy: { startedAt: "desc" },
+        take: 20,
+      }),
+      ctx.prisma.discoveryRun.count({
+        where: { status: "COMPLETED", completedAt: { gte: todayStart } },
+      }),
+      ctx.prisma.discoveryRun.count({
+        where: { status: "FAILED", completedAt: { gte: todayStart } },
+      }),
+    ]);
+
+    return {
+      running: [
+        ...runningRegular.map((r) => ({
+          id: r.id,
+          type: "regular" as const,
+          siteId: r.siteId,
+          siteName: r.site.name,
+          userEmail: r.site.user?.email ?? "unknown",
+          platform: r.platform,
+          startedAt: r.startedAt,
+          foundCount: r.foundCount,
+          scoredCount: r.scoredCount,
+        })),
+        ...runningHV.map((r) => ({
+          id: r.id,
+          type: "hv" as const,
+          siteId: r.siteId,
+          siteName: r.site.name,
+          userEmail: r.site.user?.email ?? "unknown",
+          platform: null,
+          startedAt: r.startedAt,
+          foundCount: r.citationsFound,
+          scoredCount: r.opportunitiesCreated,
+        })),
+      ].sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime()),
+      recent: [
+        ...recentRegular.map((r) => ({
+          id: r.id,
+          type: "regular" as const,
+          siteId: r.siteId,
+          siteName: r.site.name,
+          userEmail: r.site.user?.email ?? "unknown",
+          platform: r.platform,
+          status: r.status,
+          startedAt: r.startedAt,
+          completedAt: r.completedAt,
+          foundCount: r.foundCount,
+          scoredCount: r.scoredCount,
+          generatedCount: r.generatedCount,
+          errorMessage: r.errorMessage,
+        })),
+        ...recentHV.map((r) => ({
+          id: r.id,
+          type: "hv" as const,
+          siteId: r.siteId,
+          siteName: r.site.name,
+          userEmail: r.site.user?.email ?? "unknown",
+          platform: null,
+          status: r.status,
+          startedAt: r.startedAt,
+          completedAt: r.completedAt,
+          foundCount: r.citationsFound,
+          scoredCount: r.opportunitiesCreated,
+          generatedCount: 0,
+          errorMessage: r.errorMessage,
+        })),
+      ]
+        .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
+        .slice(0, 20),
+      counts: {
+        running: runningRegular.length + runningHV.length,
+        completedToday,
+        failedToday,
+      },
+    };
+  }),
+
+  cancelDiscoveryRun: adminProcedure
+    .input(z.object({ runId: z.string(), type: z.enum(["regular", "hv"]) }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.type === "regular") {
+        await ctx.prisma.discoveryRun.update({
+          where: { id: input.runId },
+          data: { status: "CANCELLED", completedAt: new Date() },
+        });
+        // Drain matching waiting/delayed jobs
+        const waiting = await discoveryQueue.getJobs(["waiting", "delayed"]);
+        for (const job of waiting) {
+          if (job.data?.siteId) {
+            const run = await ctx.prisma.discoveryRun.findUnique({
+              where: { id: input.runId },
+              select: { siteId: true },
+            });
+            if (run && job.data.siteId === run.siteId) {
+              await job.remove().catch(() => {});
+            }
+          }
+        }
+      } else {
+        await ctx.prisma.hVDiscoveryRun.update({
+          where: { id: input.runId },
+          data: { status: "CANCELLED", completedAt: new Date() },
+        });
+        const waiting = await hvDiscoveryQueue.getJobs(["waiting", "delayed"]);
+        for (const job of waiting) {
+          if (job.data?.siteId) {
+            const run = await ctx.prisma.hVDiscoveryRun.findUnique({
+              where: { id: input.runId },
+              select: { siteId: true },
+            });
+            if (run && job.data.siteId === run.siteId) {
+              await job.remove().catch(() => {});
+            }
+          }
+        }
+      }
+
+      return { success: true };
+    }),
+
+  cancelAllForSite: adminProcedure
+    .input(z.object({ siteId: z.string(), type: z.enum(["regular", "hv", "both"]) }))
+    .mutation(async ({ ctx, input }) => {
+      const cancelRegular = input.type === "regular" || input.type === "both";
+      const cancelHV = input.type === "hv" || input.type === "both";
+
+      if (cancelRegular) {
+        await ctx.prisma.discoveryRun.updateMany({
+          where: { siteId: input.siteId, status: "RUNNING" },
+          data: { status: "CANCELLED", completedAt: new Date() },
+        });
+        const waiting = await discoveryQueue.getJobs(["waiting", "delayed"]);
+        for (const job of waiting) {
+          if (job.data?.siteId === input.siteId) {
+            await job.remove().catch(() => {});
+          }
+        }
+      }
+
+      if (cancelHV) {
+        await ctx.prisma.hVDiscoveryRun.updateMany({
+          where: { siteId: input.siteId, status: "RUNNING" },
+          data: { status: "CANCELLED", completedAt: new Date() },
+        });
+        const waiting = await hvDiscoveryQueue.getJobs(["waiting", "delayed"]);
+        for (const job of waiting) {
+          if (job.data?.siteId === input.siteId) {
+            await job.remove().catch(() => {});
+          }
+        }
+      }
+
+      return { success: true };
     }),
 
   getCreditHistory: adminProcedure

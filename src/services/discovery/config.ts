@@ -11,6 +11,7 @@ export interface DiscoveryConfig {
   maxRedditPages: number;
   autoGenerateTopN: number;
   autoGenerateMinScore: number;
+  dailyKeywordLimit: number;
 }
 
 export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
@@ -22,6 +23,7 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   maxRedditPages: 10,
   autoGenerateTopN: 10,
   autoGenerateMinScore: 0.9,
+  dailyKeywordLimit: 25,
 };
 
 export function parseDiscoveryConfig(raw: unknown): DiscoveryConfig {
@@ -46,5 +48,6 @@ export function parseDiscoveryConfig(raw: unknown): DiscoveryConfig {
       if (typeof val !== "number" || !Number.isFinite(val)) return DISCOVERY_DEFAULTS.autoGenerateMinScore;
       return Math.max(0, Math.min(1, val));
     })(),
+    dailyKeywordLimit: num("dailyKeywordLimit", 1, 30),
   };
 }

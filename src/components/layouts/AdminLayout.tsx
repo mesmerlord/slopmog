@@ -8,6 +8,7 @@ import {
   Globe,
   MessageSquare,
   BarChart3,
+  ListOrdered,
   Shield,
   ArrowLeft,
   LogOut,
@@ -28,6 +29,7 @@ const navItems: NavItem[] = [
   { label: "Users", href: "/admin/users", icon: Users },
   { label: "Sites", href: "/admin/sites", icon: Globe },
   { label: "Comments", href: "/admin/comments", icon: MessageSquare },
+  { label: "Queue", href: "/admin/queue", icon: ListOrdered },
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
 ];
 

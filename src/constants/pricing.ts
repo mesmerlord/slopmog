@@ -24,15 +24,15 @@ export type Plan = {
 };
 
 const baseFeatures = [
-  { feature: "AI writes comments that sound human", available: true },
-  { feature: "Posted on aged Reddit accounts", available: true },
+  { feature: "AI-generated comments on Reddit & YouTube", available: true },
+  { feature: "Posted from aged Reddit accounts", available: true },
 ];
 
 export const planList: Plan[] = [
   {
     plan: "starter",
     plan_name: "Starter",
-    credits_per_month: 15,
+    credits_per_month: 500,
     description: "Dip your toes in",
     price: {
       monthly: 49,
@@ -42,12 +42,14 @@ export const planList: Plan[] = [
     popular: false,
     features: [
       {
-        feature: "{{credits}} comments posted/month",
-        values: { credits: 15 },
+        feature: "{{credits}} credits/month",
+        values: { credits: 500 },
         available: true,
       },
       ...baseFeatures,
-      { feature: "Target up to 3 keywords", available: true },
+      { feature: "Hands-free daily posting", available: true },
+      { feature: "Target up to 5 keywords", available: true },
+      { feature: "High-value comment targeting", available: true },
       { feature: "See which comments are live", available: true },
       { feature: "AI mention tracking", available: false },
       { feature: "Priority support", available: false },
@@ -59,7 +61,7 @@ export const planList: Plan[] = [
   {
     plan: "growth",
     plan_name: "Growth",
-    credits_per_month: 40,
+    credits_per_month: 1000,
     description: "For brands ready to show up",
     price: {
       monthly: 99,
@@ -69,14 +71,16 @@ export const planList: Plan[] = [
     popular: true,
     features: [
       {
-        feature: "{{credits}} comments posted/month",
-        values: { credits: 40 },
+        feature: "{{credits}} credits/month",
+        values: { credits: 1000 },
         available: true,
       },
       ...baseFeatures,
+      { feature: "Hands-free daily posting", available: true },
       { feature: "Target up to 10 keywords", available: true },
+      { feature: "High-value comment targeting", available: true },
       { feature: "Track when AI chatbots mention you", available: true },
-      { feature: "Weekly performance reports", available: true },
+      { feature: "Customizable discovery filters", available: true },
       { feature: "Priority support", available: true },
     ],
     monthlyPriceId: "",
@@ -86,7 +90,7 @@ export const planList: Plan[] = [
   {
     plan: "pro",
     plan_name: "Pro",
-    credits_per_month: 100,
+    credits_per_month: 2000,
     description: "For serious brand domination",
     price: {
       monthly: 199,
@@ -96,14 +100,17 @@ export const planList: Plan[] = [
     popular: false,
     features: [
       {
-        feature: "{{credits}} comments posted/month",
-        values: { credits: 100 },
+        feature: "{{credits}} credits/month",
+        values: { credits: 2000 },
         available: true,
       },
       ...baseFeatures,
+      { feature: "Hands-free daily posting", available: true },
       { feature: "Unlimited keyword targeting", available: true },
-      { feature: "Full analytics dashboard", available: true },
+      { feature: "High-value comment targeting", available: true },
       { feature: "Track when AI chatbots mention you", available: true },
+      { feature: "Customizable discovery filters", available: true },
+      { feature: "Full analytics dashboard", available: true },
       { feature: "Priority support + monthly strategy call", available: true },
     ],
     monthlyPriceId: "",
@@ -113,13 +120,13 @@ export const planList: Plan[] = [
 ];
 
 export const CREDIT_PRICES = {
-  5: { price: 1900 },
-  15: { price: 4900 },
-  40: { price: 11900 },
-  100: { price: 24900 },
+  100: { price: 1400 },
+  300: { price: 3900 },
+  600: { price: 7500 },
+  1200: { price: 14400 },
 };
 
-export const FREE_CREDITS = 3;
+export const FREE_CREDITS = 18;
 
 export function getCreditsForPlan(planName: string | null): number {
   if (!planName || planName === "FREE") return 0;

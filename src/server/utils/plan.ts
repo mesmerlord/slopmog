@@ -10,7 +10,7 @@ interface UserPlan {
 
 // TODO: Refactor plan limits for multi-platform rebuild
 const PLAN_LIMITS: Record<string, { maxKeywords: number; maxSites: number; canPost: boolean }> = {
-  Starter: { maxKeywords: 3, maxSites: 3, canPost: true },
+  Starter: { maxKeywords: 5, maxSites: 3, canPost: true },
   Growth: { maxKeywords: 10, maxSites: 10, canPost: true },
   Pro: { maxKeywords: Infinity, maxSites: Infinity, canPost: true },
 };

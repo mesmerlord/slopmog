@@ -51,19 +51,23 @@ const PRICING_FAQ = [
   },
   {
     q: "What counts as one credit?",
-    a: "One credit = one Reddit comment posted. Each comment is AI-generated (or written by you), posted on an aged Reddit account, and strategically placed in relevant conversations about your category.",
+    a: "One credit = $0.10. A regular Reddit or YouTube comment costs 6 credits ($0.60). High-Value comments — targeting threads that AI chatbots actively cite — cost 60 credits ($6) because they have way more impact.",
+  },
+  {
+    q: "What's HV Discovery?",
+    a: "HV Discovery finds the specific threads that AI chatbots like ChatGPT, Gemini, and Claude are citing when people ask for recommendations. Getting your brand into those threads means showing up in AI answers — not just search results.",
   },
   {
     q: "Is there a free trial?",
-    a: "Every new account gets 3 free credits to try the service. No credit card required. Post 3 comments, see the results, then decide if you want more.",
+    a: "Every new account gets 18 free credits to try the service. No credit card required. Post 3 comments, see the results, then decide if you want more.",
   },
 ];
 
 const CREDIT_PACK_INFO: Record<number, { label: string; perCredit: string }> = {
-  5: { label: "Starter Pack", perCredit: "$3.80" },
-  15: { label: "Boost Pack", perCredit: "$3.27" },
-  40: { label: "Power Pack", perCredit: "$2.98" },
-  100: { label: "Mega Pack", perCredit: "$2.49" },
+  100: { label: "Starter Pack", perCredit: "$0.14" },
+  300: { label: "Boost Pack", perCredit: "$0.13" },
+  600: { label: "Power Pack", perCredit: "$0.125" },
+  1200: { label: "Mega Pack", perCredit: "$0.12" },
 };
 
 export default function PricingPage() {
@@ -125,7 +129,7 @@ export default function PricingPage() {
     <>
       <Seo
         title="Pricing — SlopMog"
-        description="Choose your SlopMog plan. Get your brand into AI recommendations with authentic Reddit comments. Plans from $49/mo."
+        description="Choose your SlopMog plan. Get your brand into AI recommendations with Reddit & YouTube comments. Plans from $49/mo."
       />
 
       <Nav />

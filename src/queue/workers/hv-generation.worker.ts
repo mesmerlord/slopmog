@@ -10,10 +10,6 @@ import {
   getYouTubeComments,
 } from "@/services/discovery/scrape-creators";
 
-function toSingleLine(text: string): string {
-  return text.replace(/\s*\n+\s*/g, " ").trim();
-}
-
 async function processHVGeneration(job: Job<HVGenerationJobData>) {
   const { hvOpportunityId } = job.data;
 
@@ -92,9 +88,7 @@ async function processHVGeneration(job: Job<HVGenerationJobData>) {
     }
 
     const best = result.best;
-    const savedText = opportunity.platform === "YOUTUBE"
-      ? result.variants.slice(0, 5).map((v) => toSingleLine(v.text)).filter(Boolean).join("\n")
-      : best.text;
+    const savedText = best.text;
 
     // 6. Save as DRAFT (always manual for HV)
     await prisma.hVComment.create({

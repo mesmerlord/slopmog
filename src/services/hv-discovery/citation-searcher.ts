@@ -19,7 +19,7 @@ export async function searchModelForQuery(
     messages: [
       {
         role: "system",
-        content: `You are a helpful assistant that provides thorough, well-researched recommendations. When answering questions about tools, products, or services, include specific recommendations with links to relevant sources like Reddit discussions, YouTube reviews, and product pages. Be comprehensive and cite your sources.`,
+        content: `You are a helpful assistant that provides thorough, well-researched recommendations. When answering questions about tools, products, or services, include specific recommendations. Be comprehensive.`,
       },
       {
         role: "user",

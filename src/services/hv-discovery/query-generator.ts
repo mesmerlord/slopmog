@@ -25,45 +25,43 @@ export async function generateDecisionQueries(
     messages: [
       {
         role: "system",
-        content: `You are an expert at understanding what people ACTUALLY discuss in online communities (Reddit, YouTube, forums) around a given industry.
+        content: `You are an expert at understanding what people search for when they're looking for a product or solution like the one described below.
 
-Your job: given a business, generate search queries that will surface the Reddit threads and YouTube videos where that business's category is being actively discussed. These queries get sent to AI chatbots with web search — we want queries that make those chatbots CITE real community discussions.
+Your job: generate queries that a potential customer of this business might type into an AI chatbot (ChatGPT, Claude, Gemini, Grok). We want queries where AI models with web search will CITE real Reddit threads and YouTube videos in their answers.
 
-The key insight: the best threads to find are NOT "recommend me a tool" threads. They're the organic discussions where people talk about real problems, share experiences, debate approaches, and mention tools naturally along the way. Those threads are what AI models cite most.
+The goal: find threads/videos where this business could naturally be recommended. We'll later post comments in those threads mentioning the business.
 
-Categories (think of these as the TYPES of discussions happening in the community):
-- COMPARISON: Community debates and comparisons between specific approaches or tools
-- RECOMMENDATION: Threads where people share what's working for them
-- REVIEW: Experience reports, "I tried X, here's what happened"
-- HOW_TO: People figuring out how to accomplish something, sharing workflows
-- PROBLEM_SOLVING: People troubleshooting, asking for help with real problems
+CRITICAL RULES:
+- EVERY query must be relevant to the business described. A thread surfaced by the query should be one where the business could naturally be mentioned.
+- NEVER generate competitor-vs-competitor queries that don't involve the business. "X vs Y" is only useful if X or Y is the business itself, or if the query is about the problem the business solves.
+- Focus on the PROBLEMS the business solves, not on competitor tool shopping.
+- The best queries are ones where someone is looking for a solution that this business provides.
 
-Think about what's ACTUALLY being discussed on Reddit and YouTube in this business's space:
-- What problems are people venting about?
-- What comparisons come up repeatedly?
-- What workflows are people sharing?
-- What's the current hot debate or trend?
-- What are beginners asking about?
-- What are experienced people recommending to beginners?
+Categories:
+- COMPARISON: The business vs a competitor, or the business's approach vs alternatives
+- RECOMMENDATION: "Best tool for [thing the business does]", "What should I use for [problem]?"
+- REVIEW: "Has anyone used [business] or similar tools for [use case]?"
+- HOW_TO: "How do I [accomplish thing the business helps with]?"
+- PROBLEM_SOLVING: "I'm struggling with [problem the business solves]"
 
 Query style:
 - Short and natural, 3-12 words
 - Mix of questions and fragments
-- Think "what would someone type into ChatGPT" not "what would a blog post be titled"
-- Include specific tool/brand names from the competitor list naturally
-- Some queries should be about the PROBLEM SPACE (not tool shopping) because those threads often have the richest discussions`,
+- Think "what would a potential customer type into ChatGPT"
+- Include the business name in ~30% of queries, competitor names in ~20% (always paired with the business or its problem space)
+- ~50% should be pure problem-space queries about what the business solves`,
       },
       {
         role: "user",
-        content: `Generate ${count} queries for this business's space:
+        content: `Generate ${count} queries for this business:
 
-Business: ${siteContext.name}
+Business: ${siteContext.name} (${siteContext.url})
 What it does: ${siteContext.description}
 Key value props: ${siteContext.valueProps.join(", ")}
 Competitors: ${siteContext.keywordConfig.competitors.join(", ")}
 Feature keywords: ${siteContext.keywordConfig.features.join(", ")}
 
-Think about what real discussions exist on Reddit and YouTube around these topics. Generate queries that will surface those threads — not "recommend me a tool" queries, but queries about the actual problems, debates, and workflows people discuss in this space.
+Remember: every query must surface threads where ${siteContext.name} could be naturally recommended. No competitor-vs-competitor queries unless ${siteContext.name} is part of the comparison.
 ${existingList}
 
 Return JSON: { queries: [{ query: string, category: string }] }`,

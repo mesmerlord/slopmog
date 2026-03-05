@@ -6,6 +6,7 @@ import { commentRouter } from "@/routers/comment";
 import { hvOpportunityRouter } from "@/routers/hv-opportunity";
 import { hvCommentRouter } from "@/routers/hv-comment";
 import { adminRouter } from "@/routers/admin";
+import { toolRouter } from "@/routers/tool";
 
 export const appRouter = router({
   user: userRouter,
@@ -15,6 +16,7 @@ export const appRouter = router({
   hvOpportunity: hvOpportunityRouter,
   hvComment: hvCommentRouter,
   admin: adminRouter,
+  tool: toolRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -512,6 +512,7 @@ export const siteRouter = router({
           maxRedditPages: z.number().int().min(1).max(20).optional(),
           autoGenerateTopN: z.number().int().min(0).max(50).optional(),
           autoGenerateMinScore: z.number().min(0).max(1).optional(),
+          dailyKeywordLimit: z.number().int().min(1).max(30).optional(),
         }),
       }),
     )

@@ -62,50 +62,28 @@ function extractDomain(url: string): string {
 }
 
 export function extractCitations(
-  content: string,
+  _content: string,
   annotations: ParsedCitationUrl[],
 ): ParsedCitation[] {
-  const allUrls = new Map<string, ParsedCitationUrl>();
+  // Only use annotation URLs (deterministic web search results, not AI-generated text)
+  const seen = new Set<string>();
+  const results: ParsedCitation[] = [];
 
-  // Add annotation URLs first (higher quality)
   for (const a of annotations) {
     const key = a.url.replace(/\/+$/, "").toLowerCase();
-    if (!allUrls.has(key)) {
-      allUrls.set(key, a);
-    }
-  }
+    if (seen.has(key)) continue;
+    seen.add(key);
 
-  // Also extract markdown links from content as fallback
-  const markdownRegex = /\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g;
-  let match;
-  while ((match = markdownRegex.exec(content)) !== null) {
-    const key = match[2].replace(/\/+$/, "").toLowerCase();
-    if (!allUrls.has(key)) {
-      allUrls.set(key, { url: match[2], title: match[1] || undefined });
-    }
-  }
-
-  // Also extract bare URLs from content
-  const bareUrlRegex = /(?<!\()(?<!\[)(https?:\/\/[^\s\])>]+)/g;
-  while ((match = bareUrlRegex.exec(content)) !== null) {
-    const key = match[1].replace(/\/+$/, "").toLowerCase();
-    if (!allUrls.has(key)) {
-      allUrls.set(key, { url: match[1] });
-    }
-  }
-
-  const results: ParsedCitation[] = [];
-  Array.from(allUrls.values()).forEach((citation) => {
-    const classified = classifyUrl(citation.url);
+    const classified = classifyUrl(a.url);
     results.push({
-      url: citation.url,
-      title: citation.title,
-      domain: extractDomain(citation.url),
+      url: a.url,
+      title: a.title,
+      domain: extractDomain(a.url),
       platform: classified.platform,
       externalId: classified.externalId,
       normalizedUrl: classified.normalizedUrl,
     });
-  });
+  }
 
   return results;
 }

@@ -23,10 +23,13 @@ interface ChatCompletionOptions {
 
 interface UrlCitationAnnotation {
   type: "url_citation";
-  url: string;
-  title?: string;
-  start_index?: number;
-  end_index?: number;
+  url_citation: {
+    url: string;
+    title?: string;
+    content?: string;
+    start_index?: number;
+    end_index?: number;
+  };
 }
 
 interface ChatCompletionResponse {
@@ -146,16 +149,6 @@ export interface ChatCompletionWithCitationsResult {
   usage: { promptTokens: number; completionTokens: number; totalTokens: number };
 }
 
-function extractMarkdownLinks(content: string): ParsedCitationUrl[] {
-  const regex = /\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g;
-  const results: ParsedCitationUrl[] = [];
-  let match;
-  while ((match = regex.exec(content)) !== null) {
-    results.push({ url: match[2], title: match[1] || undefined });
-  }
-  return results;
-}
-
 function deduplicateCitationUrls(citations: ParsedCitationUrl[]): ParsedCitationUrl[] {
   const seen = new Map<string, ParsedCitationUrl>();
   for (const c of citations) {
@@ -204,15 +197,12 @@ export async function chatCompletionWithCitations(
   const msg = data.choices?.[0]?.message;
   const content = msg?.content ?? "";
 
-  // Extract citations from annotations (OpenRouter standardized format)
+  // Extract citations from annotations only (OpenRouter web search — deterministic, real URLs)
   const annotationCitations: ParsedCitationUrl[] = (msg?.annotations ?? [])
-    .filter((a): a is UrlCitationAnnotation => a.type === "url_citation" && !!a.url)
-    .map((a) => ({ url: a.url, title: a.title }));
+    .filter((a): a is UrlCitationAnnotation => a.type === "url_citation" && !!a.url_citation?.url)
+    .map((a) => ({ url: a.url_citation.url, title: a.url_citation.title }));
 
-  // Also extract markdown links from content as fallback
-  const markdownCitations = extractMarkdownLinks(content);
-
-  const citations = deduplicateCitationUrls([...annotationCitations, ...markdownCitations]);
+  const citations = deduplicateCitationUrls(annotationCitations);
 
   return {
     content,

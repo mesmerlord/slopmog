@@ -22,6 +22,7 @@ import KeywordTargetAnimation from "@/components/illustrations/KeywordTargetAnim
 import AITrackingAnimation from "@/components/illustrations/AITrackingAnimation";
 import HumanWritingAnimation from "@/components/illustrations/HumanWritingAnimation";
 import { ALTERNATIVES } from "@/lib/constants";
+import { planList } from "@/constants/pricing";
 
 /* ─── Data ─── */
 
@@ -40,13 +41,13 @@ const FEATURE_COMPARISON: {
   {
     feature: "Comments included",
     competitor: "~10 comments at $10/each from credits",
-    slopmog: "15-100 comments/mo included in plan",
+    slopmog: "~40-170 regular + 4-16 HV comments/mo",
     winner: "slopmog" as const,
   },
   {
     feature: "Cost per comment",
     competitor: "$10-32 per comment",
-    slopmog: "$1.99-3.27 per comment",
+    slopmog: "$0.60 regular, $6 high-value",
     winner: "slopmog" as const,
   },
   {
@@ -64,8 +65,8 @@ const FEATURE_COMPARISON: {
   {
     feature: "Thread discovery tool",
     competitor: "Built-in tool finds Google-ranking threads",
-    slopmog: "Keyword targeting across relevant subreddits",
-    winner: "tie" as const,
+    slopmog: "Keyword targeting on Reddit & YouTube + HV Discovery for AI-cited threads",
+    winner: "slopmog" as const,
   },
   {
     feature: "Upvote boosting",
@@ -125,13 +126,13 @@ const SWITCHING_REASONS = [
     icon: DollarSign,
     title: "Actually Affordable Pricing",
     description:
-      "CrowdReply charges $10 per comment from your credit balance. At SlopMog, our Make Waves plan gets you 40 comments for $99/mo. That's $2.48 per comment vs their $10. We're not saying math is hard, but... that's 4x more comments for the same price.",
+      "CrowdReply charges $10 per comment from your credit balance. At SlopMog, our Make Waves plan gets you ~83 regular comments + 8 high-value comments for $99/mo. Regular comments are $0.60 each. We're not saying math is hard, but... that's a lot more comments for the same price.",
     slopmogAdvantage:
-      "40 comments for $99/mo vs ~10 comments for $99/mo at CrowdReply",
+      "~83 comments + 8 HV for $99/mo vs ~10 comments for $99/mo at CrowdReply",
     benefits: [
       "Start at $49/mo — half the cost of CrowdReply PRO",
-      "$1.99-3.27 per comment depending on plan",
-      "Predictable monthly cost, no credit math required",
+      "$0.60 per regular comment, $6 per high-value",
+      "Predictable monthly cost with credit-based flexibility",
       "Scale up anytime without nickel-and-dime pricing",
     ],
     ctaText: "See Our Pricing",
@@ -176,12 +177,12 @@ const SWITCHING_REASONS = [
     title: "AI Writes the Comments For You",
     description:
       "CrowdReply requires you to write your own comments. Which is fine if you have the time and Reddit instincts. Our AI generates natural-sounding comments tuned for Reddit's tone — or write your own if you prefer. You approve before anything goes live.",
-    slopmogAdvantage: "AI generates Reddit-native comments, or bring your own",
+    slopmogAdvantage: "AI generates platform-native comments for Reddit & YouTube",
     benefits: [
-      "AI writes comments that match Reddit's tone",
-      "Write your own comments if you prefer",
+      "AI writes comments for Reddit and YouTube",
+      "8+ persona styles to match any brand voice",
       "You approve before anything goes live",
-      "No need to become a Reddit expert yourself",
+      "No need to become a platform expert yourself",
     ],
     ctaText: "Try SlopMog Free",
     ctaRoute: "/#cta",
@@ -228,7 +229,7 @@ const FAQS = [
   {
     question: "How does SlopMog pricing compare to CrowdReply?",
     answer:
-      "CrowdReply's PRO plan is $99/mo which gives you $100 in credits. At $10 per comment, that's about 10 comments. SlopMog's Make Waves plan is also $99/mo but includes 40 comments — 4x more. Our starter plan is $49/mo for 15 comments. So even our cheapest plan gives you 50% more comments than CrowdReply's PRO plan, at half the price.",
+      "CrowdReply's PRO plan is $99/mo which gives you $100 in credits. At $10 per comment, that's about 10 comments. SlopMog's Make Waves plan is also $99/mo but includes 1,000 credits — enough for ~83 regular comments + 8 high-value comments. Our starter plan is $49/mo with 500 credits. So even our cheapest plan gets you way more comments than CrowdReply's PRO plan, at half the price.",
   },
   {
     question: "Does CrowdReply write comments for you?",
@@ -341,7 +342,7 @@ export default function CrowdReplyAlternative() {
           </h1>
           <p className="text-base md:text-lg text-charcoal-light max-w-[620px] mx-auto mb-8 leading-relaxed">
             CrowdReply is solid. But $10 per comment adds up fast. SlopMog gives
-            you 4x more comments for the same price — and we write them for you.
+            you way more comments for the same price — and we write them for you.
             Also our name is funnier.
           </p>
 
@@ -370,7 +371,7 @@ export default function CrowdReplyAlternative() {
           <div className="flex flex-wrap justify-center gap-3">
             {[
               "Starts at $49/mo",
-              "15-100 comments/mo",
+              "500-2,000 credits/mo",
               "AI-generated content",
               "AI tracking included",
             ].map((badge) => (
@@ -390,8 +391,8 @@ export default function CrowdReplyAlternative() {
         <div className="max-w-[1140px] mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 text-center text-white">
             {[
-              { value: "4x", label: "More comments per dollar" },
-              { value: "$2.48", label: "Per comment (Make Waves)" },
+              { value: "16x", label: "More comments per dollar" },
+              { value: "$0.60", label: "Per regular comment" },
               { value: "$49", label: "Starting monthly price" },
               { value: "100%", label: "Approve before posting" },
             ].map((stat) => (
@@ -716,12 +717,12 @@ export default function CrowdReplyAlternative() {
                 </div>
                 <div className="space-y-3 mb-5">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-charcoal-light">Comments</span>
-                    <span className="font-bold text-teal">40</span>
+                    <span className="text-charcoal-light">Credits</span>
+                    <span className="font-bold text-teal">1,000/mo</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-charcoal-light">Cost/comment</span>
-                    <span className="font-bold text-teal">$2.48</span>
+                    <span className="font-bold text-teal">$0.60</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-charcoal-light">Content writing</span>
@@ -741,13 +742,13 @@ export default function CrowdReplyAlternative() {
                   </div>
                 </div>
                 <div className="bg-teal/10 rounded-full px-4 py-1.5 text-xs font-bold text-teal text-center">
-                  4x more comments for the same price
+                  ~83 regular + 8 HV comments for the same price
                 </div>
               </div>
             </div>
           </div>
 
-          {/* All SlopMog plans */}
+          {/* All SlopMog plans — driven by planList so it stays in sync */}
           <h3 className="font-heading font-bold text-xl text-charcoal text-center mb-2">
             All SlopMog Plans
           </h3>
@@ -755,112 +756,60 @@ export default function CrowdReplyAlternative() {
             Pick a plan. All include upvote boosting as an add-on.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-[960px] mx-auto items-start">
-            {/* Tier 1 */}
-            <div className="bg-white rounded-brand-lg px-7 py-9 shadow-brand-sm border-2 border-charcoal/[0.06] hover:-translate-y-1 hover:shadow-brand-lg transition-all relative">
-              <div className="font-heading text-lg font-bold text-charcoal mb-2">
-                Test the Waters
-              </div>
-              <div className="font-heading text-4xl font-bold text-charcoal mb-1">
-                $49
-                <span className="text-sm font-medium text-charcoal-light">
-                  /mo
-                </span>
-              </div>
-              <div className="text-sm text-charcoal-light mb-6">
-                Dip your toes in
-              </div>
-              <ul className="list-none mb-7 space-y-2">
-                {[
-                  "15 comments posted per month",
-                  "Target up to 3 keywords",
-                  "See which comments are live",
-                  "AI writes them, you just approve",
-                ].map((f) => (
-                  <li
-                    key={f}
-                    className="flex items-start gap-2.5 text-sm text-charcoal"
+            {planList.map((plan) => {
+              const tierName = plan.plan === "starter" ? "Test the Waters" : plan.plan === "growth" ? "Make Waves" : "Own the Ocean";
+              return (
+                <div
+                  key={plan.id}
+                  className={`bg-white rounded-brand-lg px-7 py-9 border-2 hover:-translate-y-1 transition-all relative${
+                    plan.popular
+                      ? " shadow-brand-md border-teal md:scale-[1.04] z-[2]"
+                      : " shadow-brand-sm border-charcoal/[0.06] hover:shadow-brand-lg"
+                  }`}
+                >
+                  {plan.popular && (
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-teal text-white px-5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide whitespace-nowrap">
+                      Most Popular
+                    </div>
+                  )}
+                  <div className="font-heading text-lg font-bold text-charcoal mb-2">
+                    {tierName}
+                  </div>
+                  <div className="font-heading text-4xl font-bold text-charcoal mb-1">
+                    ${plan.price.monthly}
+                    <span className="text-sm font-medium text-charcoal-light">/mo</span>
+                  </div>
+                  <div className="text-sm text-charcoal-light mb-6">
+                    {plan.description}
+                  </div>
+                  <ul className="list-none mb-7 space-y-2">
+                    {plan.features.filter((f) => f.available).slice(0, 5).map((f, i) => {
+                      let text = f.feature;
+                      if (f.values) {
+                        for (const [k, val] of Object.entries(f.values)) {
+                          text = text.replace(`{{${k}}}`, val.toLocaleString());
+                        }
+                      }
+                      return (
+                        <li key={i} className="flex items-start gap-2.5 text-sm text-charcoal">
+                          <CheckIcon /> {text}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <Link
+                    href="/#cta"
+                    className={`block w-full py-3 rounded-full font-bold text-sm text-center border-2 transition-all${
+                      plan.popular
+                        ? " border-coral bg-coral text-white shadow-[0_4px_16px_rgba(255,107,107,0.25)] hover:bg-coral-dark hover:border-coral-dark hover:-translate-y-0.5"
+                        : " border-teal text-teal bg-transparent hover:bg-teal hover:text-white"
+                    }`}
                   >
-                    <CheckIcon /> {f}
-                  </li>
-                ))}
-              </ul>
-              <div className="bg-teal-bg rounded-brand-sm px-4 py-2 text-xs font-semibold text-teal-dark text-center">
-                $3.27 per comment
-              </div>
-            </div>
-
-            {/* Tier 2 — Popular */}
-            <div className="bg-white rounded-brand-lg px-7 py-9 shadow-brand-md border-2 border-teal md:scale-[1.04] z-[2] hover:-translate-y-1 transition-all relative">
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-teal text-white px-5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide whitespace-nowrap">
-                Most Popular
-              </div>
-              <div className="font-heading text-lg font-bold text-charcoal mb-2">
-                Make Waves
-              </div>
-              <div className="font-heading text-4xl font-bold text-charcoal mb-1">
-                $99
-                <span className="text-sm font-medium text-charcoal-light">
-                  /mo
-                </span>
-              </div>
-              <div className="text-sm text-charcoal-light mb-6">
-                For brands ready to show up
-              </div>
-              <ul className="list-none mb-7 space-y-2">
-                {[
-                  "40 comments posted per month",
-                  "Target up to 10 keywords",
-                  "Track when AI chatbots mention you",
-                  "Weekly performance reports",
-                  "Priority support",
-                ].map((f) => (
-                  <li
-                    key={f}
-                    className="flex items-start gap-2.5 text-sm text-charcoal"
-                  >
-                    <CheckIcon /> {f}
-                  </li>
-                ))}
-              </ul>
-              <div className="bg-teal-bg rounded-brand-sm px-4 py-2 text-xs font-semibold text-teal-dark text-center">
-                $2.48 per comment — 4x better than CrowdReply
-              </div>
-            </div>
-
-            {/* Tier 3 */}
-            <div className="bg-white rounded-brand-lg px-7 py-9 shadow-brand-sm border-2 border-charcoal/[0.06] hover:-translate-y-1 hover:shadow-brand-lg transition-all relative">
-              <div className="font-heading text-lg font-bold text-charcoal mb-2">
-                Own the Ocean
-              </div>
-              <div className="font-heading text-4xl font-bold text-charcoal mb-1">
-                $199
-                <span className="text-sm font-medium text-charcoal-light">
-                  /mo
-                </span>
-              </div>
-              <div className="text-sm text-charcoal-light mb-6">
-                Serious brand domination
-              </div>
-              <ul className="list-none mb-7 space-y-2">
-                {[
-                  "100 comments posted per month",
-                  "Unlimited keyword targeting",
-                  "Full analytics dashboard",
-                  "Track AI chatbot mentions",
-                  "Priority support + strategy call",
-                ].map((f) => (
-                  <li
-                    key={f}
-                    className="flex items-start gap-2.5 text-sm text-charcoal"
-                  >
-                    <CheckIcon /> {f}
-                  </li>
-                ))}
-              </ul>
-              <div className="bg-teal-bg rounded-brand-sm px-4 py-2 text-xs font-semibold text-teal-dark text-center">
-                $1.99 per comment — 5x better than CrowdReply
-              </div>
-            </div>
+                    Get Started
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

@@ -12,6 +12,7 @@ import {
   Search,
   ArrowLeft,
   ExternalLink,
+  Loader2,
 } from "lucide-react";
 import Seo from "@/components/Seo";
 import Nav from "@/components/Nav";
@@ -23,6 +24,7 @@ import RedditStrategyAnimation from "@/components/illustrations/RedditStrategyAn
 import BrandMentionAnimation from "@/components/illustrations/BrandMentionAnimation";
 import { routes } from "@/lib/constants";
 import { PERSONAS } from "@/constants/personas";
+import { trpc } from "@/utils/trpc";
 
 /* --- Types --- */
 
@@ -154,34 +156,79 @@ export default function RedditCommentGenerator() {
 
   const toolRef = useRef<HTMLDivElement>(null);
 
+  const scrapeMutation = trpc.tool.scrapeRedditPost.useMutation({
+    onSuccess: (data) => {
+      setPost({
+        title: data.post.title,
+        selftext: data.post.body,
+        subreddit: data.post.subreddit,
+        author: data.post.author,
+        score: data.post.score,
+        numComments: data.post.numComments,
+      });
+      setComments(
+        data.comments.slice(0, 15).map((c) => ({
+          id: c.id,
+          body: c.body,
+          author: c.author,
+          score: c.score,
+          isOp: c.author === data.post.author,
+        })),
+      );
+      setStep("configure");
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
+
+  const generateMutation = trpc.tool.generateFreeComment.useMutation({
+    onSuccess: (data) => {
+      setResult({
+        text: data.text,
+        qualityScore: data.qualityScore,
+        reasons: data.reasons,
+        variants: data.variants,
+      });
+      setActiveVariant(0);
+      setStep("result");
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
+
   const handleScrape = () => {
     if (!url.trim()) return;
-    toast("Comment generation coming soon");
+    let normalized = url.trim();
+    if (!/^https?:\/\//i.test(normalized)) normalized = `https://${normalized}`;
+    scrapeMutation.mutate({ url: normalized });
   };
 
-  const derivedBrandName = () => {
-    if (brandName.trim()) return brandName.trim();
-    // Extract domain name as brand name from website URL
-    try {
-      let raw = websiteUrl.trim();
-      if (raw && !/^https?:\/\//i.test(raw)) raw = `https://${raw}`;
-      const hostname = new URL(raw).hostname.replace(/^www\./, "");
-      const name = hostname.split(".")[0];
-      return name.charAt(0).toUpperCase() + name.slice(1);
-    } catch {
-      return "";
-    }
+  const canGenerate = !!post && !!websiteUrl.trim();
+
+  const triggerGenerate = () => {
+    if (!post || !websiteUrl.trim()) return;
+    generateMutation.mutate({
+      postTitle: post.title,
+      postBody: post.selftext,
+      subreddit: post.subreddit,
+      existingComments: comments.map((c) => ({
+        author: c.author,
+        body: c.body,
+        score: c.score,
+        isOp: c.isOp,
+      })),
+      websiteUrl: websiteUrl.trim(),
+      brandNameOverride: brandName.trim() || undefined,
+      brandDescriptionOverride: brandDescription.trim() || undefined,
+      persona,
+      noLink,
+    });
   };
 
-  const canGenerate = !!post && !!derivedBrandName();
-
-  const handleGenerate = () => {
-    toast("Comment generation coming soon");
-  };
-
-  const handleRegenerate = () => {
-    toast("Comment generation coming soon");
-  };
+  const handleGenerate = () => triggerGenerate();
+  const handleRegenerate = () => triggerGenerate();
 
   const handleCopy = async () => {
     if (!result) return;
@@ -301,11 +348,11 @@ export default function RedditCommentGenerator() {
                   />
                   <button
                     onClick={handleScrape}
-                    disabled={!url.trim()}
+                    disabled={!url.trim() || scrapeMutation.isPending}
                     className="px-6 py-3 bg-coral text-white rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none flex items-center gap-2 shrink-0"
                   >
-                    <Search className="w-4 h-4" />
-                    Analyze
+                    {scrapeMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    {scrapeMutation.isPending ? "Analyzing..." : "Analyze"}
                   </button>
                 </div>
               </div>
@@ -348,7 +395,7 @@ export default function RedditCommentGenerator() {
                     placeholder="https://yourproduct.com"
                     className="w-full px-4 py-2.5 rounded-xl border border-charcoal/10 bg-bg text-charcoal placeholder:text-charcoal-light/50 focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal transition-all text-sm"
                   />
-                  <p className="text-[11px] text-charcoal-light mt-1">We'll extract your brand name from the domain</p>
+                  <p className="text-[11px] text-charcoal-light mt-1">We'll analyze your site to extract brand info automatically</p>
                 </div>
 
                 {/* Advanced options toggle */}
@@ -423,11 +470,11 @@ export default function RedditCommentGenerator() {
 
                 <button
                   onClick={handleGenerate}
-                  disabled={!canGenerate}
+                  disabled={!canGenerate || generateMutation.isPending}
                   className="w-full py-3 bg-coral text-white rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none flex items-center justify-center gap-2"
                 >
-                  <Sparkles className="w-4 h-4" />
-                  Generate Comment
+                  {generateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  {generateMutation.isPending ? "Generating..." : "Generate Comment"}
                 </button>
               </div>
             )}
@@ -518,10 +565,11 @@ export default function RedditCommentGenerator() {
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={handleRegenerate}
-                    className="flex items-center gap-2 px-5 py-2.5 border-2 border-teal text-teal rounded-full font-bold text-sm hover:bg-teal/5 transition-all"
+                    disabled={generateMutation.isPending}
+                    className="flex items-center gap-2 px-5 py-2.5 border-2 border-teal text-teal rounded-full font-bold text-sm hover:bg-teal/5 transition-all disabled:opacity-50"
                   >
-                    <RefreshCw className="w-4 h-4" />
-                    Regenerate
+                    {generateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    {generateMutation.isPending ? "Generating..." : "Regenerate"}
                   </button>
                   <button
                     onClick={handleReset}

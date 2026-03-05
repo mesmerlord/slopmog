@@ -4,6 +4,7 @@ import {
   Users,
   Globe,
   MessageSquare,
+  ListOrdered,
   BarChart3,
   Search,
   Coins,
@@ -39,6 +40,13 @@ const navCards = [
     description: "Review all generated comments",
     href: "/admin/comments",
     icon: MessageSquare,
+    color: "bg-coral/10 text-coral",
+  },
+  {
+    label: "Queue",
+    description: "Monitor & cancel running jobs",
+    href: "/admin/queue",
+    icon: ListOrdered,
     color: "bg-coral/10 text-coral",
   },
   {

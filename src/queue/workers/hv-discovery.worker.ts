@@ -12,6 +12,11 @@ import type { HVSiteContext, ModelCitationResult } from "@/services/hv-discovery
 
 const MAX_AUTO_GENERATE = 5;
 
+async function isHVRunCancelled(runId: string): Promise<boolean> {
+  const run = await prisma.hVDiscoveryRun.findUnique({ where: { id: runId }, select: { status: true } });
+  return run?.status === "CANCELLED";
+}
+
 function readStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === "string");
@@ -30,6 +35,7 @@ function parseSiteKeywordConfig(keywordConfig: unknown): HVSiteContext["keywordC
 }
 
 interface EnrichmentData {
+  contentUrl?: string;
   title?: string;
   body?: string;
   sourceContext?: string;
@@ -128,6 +134,11 @@ async function processHVDiscovery(job: Job<HVDiscoveryJobData>) {
     const validationCache = new Map<string, ValidationResult>();
 
     for (let qi = 0; qi < savedQueries.length; qi++) {
+      if (await isHVRunCancelled(run.id)) {
+        await jobLog(job, "hv-discovery", `Run cancelled — stopping query loop`);
+        break;
+      }
+
       const query = savedQueries[qi];
       const queryNum = qi + 1;
 
@@ -338,6 +349,11 @@ async function processHVDiscovery(job: Job<HVDiscoveryJobData>) {
 
     // 6. Final pass: ensure top MAX_AUTO_GENERATE have generation queued
     // Some may have been missed if they only crossed the threshold in later queries
+    if (await isHVRunCancelled(run.id)) {
+      await jobLog(job, "hv-discovery", `Run cancelled — skipping backfill and completion`);
+      return;
+    }
+
     if (queuedOpportunityIds.size < MAX_AUTO_GENERATE) {
       const topUnqueued = await prisma.hVOpportunity.findMany({
         where: {
@@ -363,17 +379,19 @@ async function processHVDiscovery(job: Job<HVDiscoveryJobData>) {
       }
     }
 
-    // 7. Mark run complete
-    await prisma.hVDiscoveryRun.update({
-      where: { id: run.id },
-      data: {
-        status: "COMPLETED",
-        queriesUsed: savedQueries,
-        citationsFound: totalCitations,
-        opportunitiesCreated,
-        completedAt: new Date(),
-      },
-    });
+    // 7. Mark run complete (skip if already cancelled)
+    if (!(await isHVRunCancelled(run.id))) {
+      await prisma.hVDiscoveryRun.update({
+        where: { id: run.id },
+        data: {
+          status: "COMPLETED",
+          queriesUsed: savedQueries,
+          citationsFound: totalCitations,
+          opportunitiesCreated,
+          completedAt: new Date(),
+        },
+      });
+    }
 
     await jobLog(job, "hv-discovery", `HV discovery completed: ${totalCitations} citations, ${opportunitiesCreated} opportunities, ${queuedOpportunityIds.size} generating`);
   } catch (err) {

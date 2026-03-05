@@ -110,6 +110,11 @@ function getKeywordsForPlatform(
   return all.length > 0 ? all : dedupeKeywords(fallbackKeywords);
 }
 
+async function isRunCancelled(runId: string): Promise<boolean> {
+  const run = await prisma.discoveryRun.findUnique({ where: { id: runId }, select: { status: true } });
+  return run?.status === "CANCELLED";
+}
+
 // Extended type for discovery items that carries extra fields
 interface DiscoveryItem extends ScoreInput {
   contentUrl: string;
@@ -401,9 +406,12 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
     );
 
     // Prioritize: brand → features → platform-specific → competitors → unknown
-    const keywords = keywordOverrides.length > 0
+    const prioritized = keywordOverrides.length > 0
       ? rawKeywords
       : prioritizeKeywords(rawKeywords, keywordConfig);
+
+    // Apply daily keyword limit from site config
+    const keywords = prioritized.slice(0, cfg.dailyKeywordLimit);
 
     const run = await prisma.discoveryRun.create({
       data: {
@@ -437,6 +445,11 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
 
       // Process keywords sequentially so items stream through the full pipeline ASAP
       for (const keyword of keywords) {
+        if (await isRunCancelled(run.id)) {
+          await job.log(`[${platform}] Run cancelled — stopping keyword loop`);
+          break;
+        }
+
         try {
           let items: DiscoveryItem[] = [];
 
@@ -476,6 +489,11 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
       // Final pass: ensure the global top N all have comments queued.
       // The per-keyword loop already generated for ≥0.90 items, but due to keyword
       // ordering some top items may have been missed. This backfills the gaps.
+      if (await isRunCancelled(run.id)) {
+        await job.log(`[${platform}] Run cancelled — skipping backfill and completion`);
+        continue;
+      }
+
       const topWithoutComments = await prisma.opportunity.findMany({
         where: {
           discoveryRunId: run.id,
@@ -498,16 +516,18 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
         await job.log(`[${platform}] Final pass: backfilled ${topWithoutComments.length} comments for top opportunities`);
       }
 
-      await prisma.discoveryRun.update({
-        where: { id: run.id },
-        data: {
-          status: "COMPLETED",
-          foundCount: runState.totalFound,
-          scoredCount: runState.totalScored,
-          generatedCount: runState.generatedCount,
-          completedAt: new Date(),
-        },
-      });
+      if (!(await isRunCancelled(run.id))) {
+        await prisma.discoveryRun.update({
+          where: { id: run.id },
+          data: {
+            status: "COMPLETED",
+            foundCount: runState.totalFound,
+            scoredCount: runState.totalScored,
+            generatedCount: runState.generatedCount,
+            completedAt: new Date(),
+          },
+        });
+      }
 
       const summary = `[${platform}] Done — ${runState.totalFound} found, ${runState.savedCount} saved (score ≥0.75), ${runState.generatedCount} auto-generating`;
       console.log(`[discovery] ${platform} complete for ${site.name}: ${runState.totalFound} found, ${runState.savedCount} saved, ${runState.generatedCount} auto-generating`);

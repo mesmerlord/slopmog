@@ -32,6 +32,9 @@ export interface CommentGenerationInput {
 
   // Persona
   persona?: string;
+
+  // Options
+  noLink?: boolean;
 }
 
 export interface GeneratedComment {

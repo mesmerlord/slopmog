@@ -75,7 +75,7 @@ export async function generateComment(
     ? `\nYou are REPLYING to this comment by ${input.replyTarget.commentAuthor}: "${input.replyTarget.commentBody}"`
     : "";
 
-  const variantCount = input.platform === "YOUTUBE" ? 5 : 1;
+  const variantCount = 1;
 
   const result = await chatCompletionJSON({
     model: MODELS.CLAUDE_SONNET,
@@ -130,7 +130,7 @@ ${replyContext}
 Brand: ${input.businessName}
 What they do: ${input.businessDescription}
 Value props: ${input.valueProps.join(", ")}
-${input.websiteUrl ? `URL: ${input.websiteUrl}` : ""}
+${input.websiteUrl && !input.noLink ? `URL: ${input.websiteUrl}` : ""}${input.noLink ? "\nIMPORTANT: Do NOT include any URLs, links, or website addresses in the comment. No domain names or web addresses." : ""}
 Brand tone: ${input.brandTone}
 
 Existing comments:
