@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc";
-import { postingQueue, type PostingJobData } from "@/queue/queues";
+import { hvPostingQueue, type HVPostingJobData } from "@/queue/queues";
 import { PERSONA_MAP } from "@/constants/personas";
-import { generateComment } from "@/services/generation/generator";
+import { CREDIT_COSTS } from "@/constants/credits";
+import { generateHVComment } from "@/services/generation/hv-generator";
+import type { HVCommentGenerationInput } from "@/services/generation/hv-generator";
 import { getUserPlan } from "@/server/utils/plan";
 import { hasEnoughCredits } from "@/server/utils/credits";
-import { CREDIT_COSTS } from "@/constants/credits";
 import {
   getRedditComments,
   getYouTubeComments,
@@ -17,22 +18,21 @@ function toSingleLine(text: string): string {
   return text.replace(/\s*\n+\s*/g, " ").trim();
 }
 
-
-export const commentRouter = router({
+export const hvCommentRouter = router({
   approve: protectedProcedure
-    .input(z.object({ commentId: z.string() }))
+    .input(z.object({ hvCommentId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const comment = await ctx.prisma.comment.findFirst({
+      const comment = await ctx.prisma.hVComment.findFirst({
         where: {
-          id: input.commentId,
+          id: input.hvCommentId,
           site: { userId: ctx.session.user.id },
           status: "DRAFT",
         },
-        include: { opportunity: true },
+        include: { hvOpportunity: true },
       });
 
       if (!comment) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Comment not found or not in DRAFT status" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "HV Comment not found or not in DRAFT status" });
       }
 
       const plan = await getUserPlan(ctx.session.user.id);
@@ -43,56 +43,56 @@ export const commentRouter = router({
         });
       }
 
-      const platformKey = comment.opportunity.platform.toLowerCase() as "reddit" | "youtube";
-      const creditCost = CREDIT_COSTS.daily[platformKey];
+      const platformKey = comment.hvOpportunity.platform.toLowerCase() as "reddit" | "youtube";
+      const creditCost = CREDIT_COSTS.highValue[platformKey];
       const creditCheck = await hasEnoughCredits(ctx.session.user.id, creditCost);
       if (!creditCheck.hasEnough) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: `You need at least ${creditCost} credit${creditCost > 1 ? "s" : ""} to post. Buy more credits on the billing page.`,
+          message: `HV comments cost ${creditCost} credits. You have ${creditCheck.totalCredits}. Buy more on the billing page.`,
         });
       }
 
       await ctx.prisma.$transaction([
-        ctx.prisma.comment.update({
+        ctx.prisma.hVComment.update({
           where: { id: comment.id },
           data: { status: "APPROVED" },
         }),
-        ctx.prisma.opportunity.update({
-          where: { id: comment.opportunityId },
+        ctx.prisma.hVOpportunity.update({
+          where: { id: comment.hvOpportunityId },
           data: { status: "APPROVED" },
         }),
       ]);
 
-      await postingQueue.add("post", {
-        commentId: comment.id,
-      } satisfies PostingJobData);
+      await hvPostingQueue.add("hv-post", {
+        hvCommentId: comment.id,
+      } satisfies HVPostingJobData);
 
       return { success: true };
     }),
 
   skip: protectedProcedure
-    .input(z.object({ commentId: z.string() }))
+    .input(z.object({ hvCommentId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const comment = await ctx.prisma.comment.findFirst({
+      const comment = await ctx.prisma.hVComment.findFirst({
         where: {
-          id: input.commentId,
+          id: input.hvCommentId,
           site: { userId: ctx.session.user.id },
           status: "DRAFT",
         },
       });
 
       if (!comment) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Comment not found or not in DRAFT status" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "HV Comment not found or not in DRAFT status" });
       }
 
       await ctx.prisma.$transaction([
-        ctx.prisma.comment.update({
+        ctx.prisma.hVComment.update({
           where: { id: comment.id },
           data: { status: "SKIPPED" },
         }),
-        ctx.prisma.opportunity.update({
-          where: { id: comment.opportunityId },
+        ctx.prisma.hVOpportunity.update({
+          where: { id: comment.hvOpportunityId },
           data: { status: "SKIPPED" },
         }),
       ]);
@@ -103,24 +103,24 @@ export const commentRouter = router({
   edit: protectedProcedure
     .input(
       z.object({
-        commentId: z.string(),
+        hvCommentId: z.string(),
         text: z.string().min(1).max(10000),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const comment = await ctx.prisma.comment.findFirst({
+      const comment = await ctx.prisma.hVComment.findFirst({
         where: {
-          id: input.commentId,
+          id: input.hvCommentId,
           site: { userId: ctx.session.user.id },
           status: "DRAFT",
         },
       });
 
       if (!comment) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Comment not found or not in DRAFT status" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "HV Comment not found or not in DRAFT status" });
       }
 
-      return ctx.prisma.comment.update({
+      return ctx.prisma.hVComment.update({
         where: { id: comment.id },
         data: { text: input.text },
       });
@@ -129,96 +129,89 @@ export const commentRouter = router({
   regenerate: protectedProcedure
     .input(
       z.object({
-        commentId: z.string(),
+        hvCommentId: z.string(),
         persona: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const comment = await ctx.prisma.comment.findFirst({
+      const comment = await ctx.prisma.hVComment.findFirst({
         where: {
-          id: input.commentId,
+          id: input.hvCommentId,
           site: { userId: ctx.session.user.id },
           status: "DRAFT",
         },
         include: {
-          opportunity: true,
+          hvOpportunity: true,
           site: true,
         },
       });
 
       if (!comment) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Comment not found or not in DRAFT status" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "HV Comment not found or not in DRAFT status" });
       }
 
       const personaId = input.persona ?? comment.persona ?? "auto";
-      if (!PERSONA_MAP[personaId]) {
+      if (personaId !== "auto" && !PERSONA_MAP[personaId]) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid persona" });
       }
 
       let existingComments: CommentGenerationInput["existingComments"] = [];
-
       try {
-        if (comment.opportunity.platform === "REDDIT") {
-          const comments = await getRedditComments(comment.opportunity.contentUrl);
+        if (comment.hvOpportunity.platform === "REDDIT") {
+          const comments = await getRedditComments(comment.hvOpportunity.contentUrl);
           existingComments = comments.slice(0, 15).map((c) => ({
-            author: c.author,
-            body: c.body,
-            score: c.score,
-            isOp: false,
+            author: c.author, body: c.body, score: c.score, isOp: false,
           }));
-        } else if (comment.opportunity.platform === "YOUTUBE") {
-          const comments = await getYouTubeComments(comment.opportunity.contentUrl);
+        } else if (comment.hvOpportunity.platform === "YOUTUBE") {
+          const comments = await getYouTubeComments(comment.hvOpportunity.contentUrl);
           existingComments = comments.slice(0, 15).map((c) => ({
-            author: c.author,
-            body: c.text,
-            score: c.likeCount,
-            isOp: false,
+            author: c.author, body: c.text, score: c.likeCount, isOp: false,
           }));
         }
       } catch (err) {
-        console.warn(`[comment.regenerate] Failed to fetch existing comments for ${comment.id}:`, err);
+        console.warn(`[hvComment.regenerate] Failed to fetch existing comments for ${comment.id}:`, err);
       }
 
-      const generationInput: CommentGenerationInput = {
-        postTitle: comment.opportunity.title,
-        postBody: comment.opportunity.body ?? "",
-        sourceContext: comment.opportunity.sourceContext,
-        platform: comment.opportunity.platform,
+      const generationInput: HVCommentGenerationInput = {
+        postTitle: comment.hvOpportunity.title,
+        postBody: comment.hvOpportunity.body ?? "",
+        sourceContext: comment.hvOpportunity.sourceContext,
+        platform: comment.hvOpportunity.platform,
         existingComments,
         businessName: comment.site.name,
         businessDescription: comment.site.description,
         valueProps: comment.site.valueProps,
         websiteUrl: comment.site.url,
         brandTone: comment.site.brandTone,
-        matchedKeyword: comment.opportunity.matchedKeyword,
+        matchedKeyword: comment.hvOpportunity.citingQueries[0] ?? comment.site.name,
         commentPosition: "top_level",
-        postType: (comment.opportunity.postType as "question" | "discussion" | "showcase") ?? "discussion",
+        postType: "discussion",
         persona: personaId,
+        citationContext: {
+          citingModels: comment.hvOpportunity.citingModels,
+          citingQueries: comment.hvOpportunity.citingQueries,
+          citationScore: comment.hvOpportunity.citationScore,
+        },
       };
 
-      const result = await generateComment(generationInput);
+      const result = await generateHVComment(generationInput);
 
       if (result.noRelevantComment || result.variants.length === 0) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Could not generate a natural comment for this opportunity",
+          message: "Could not generate a quality comment for this high-value opportunity",
         });
       }
 
       const best = result.best;
-      const youtubeCombinedText = result.variants
-        .slice(0, 5)
-        .map((variant) => toSingleLine(variant.text))
-        .filter(Boolean)
-        .join("\n");
-      const nextText = comment.opportunity.platform === "YOUTUBE"
-        ? youtubeCombinedText
+      const savedText = comment.hvOpportunity.platform === "YOUTUBE"
+        ? result.variants.slice(0, 5).map((v) => toSingleLine(v.text)).filter(Boolean).join("\n")
         : best.text;
 
-      return ctx.prisma.comment.update({
+      return ctx.prisma.hVComment.update({
         where: { id: comment.id },
         data: {
-          text: nextText,
+          text: savedText,
           persona: personaId,
           qualityScore: best.qualityScore,
           scoreReasons: best.reasons,
@@ -234,11 +227,7 @@ export const commentRouter = router({
         search: z.string().trim().max(120).optional(),
         platform: z.enum(["REDDIT", "YOUTUBE"]).optional(),
         siteId: z.string().optional(),
-        sortBy: z.enum([
-          "newest",
-          "oldest",
-          "quality",
-        ]).default("newest"),
+        sortBy: z.enum(["newest", "oldest", "quality"]).default("newest"),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -250,15 +239,14 @@ export const commentRouter = router({
 
       const where: Record<string, unknown> = { ...baseWhere };
       if (input.platform) {
-        where.opportunity = { platform: input.platform };
+        where.hvOpportunity = { platform: input.platform };
       }
 
       const normalizedSearch = input.search?.trim();
       if (normalizedSearch) {
         where.OR = [
-          { opportunity: { title: { contains: normalizedSearch, mode: "insensitive" } } },
-          { opportunity: { sourceContext: { contains: normalizedSearch, mode: "insensitive" } } },
-          { opportunity: { matchedKeyword: { contains: normalizedSearch, mode: "insensitive" } } },
+          { hvOpportunity: { title: { contains: normalizedSearch, mode: "insensitive" } } },
+          { hvOpportunity: { sourceContext: { contains: normalizedSearch, mode: "insensitive" } } },
           { site: { name: { contains: normalizedSearch, mode: "insensitive" } } },
         ];
       }
@@ -271,16 +259,17 @@ export const commentRouter = router({
             : [{ qualityScore: "desc" as const }, { postedAt: "desc" as const }];
 
       const [comments, filteredCount, totalCount] = await Promise.all([
-        ctx.prisma.comment.findMany({
+        ctx.prisma.hVComment.findMany({
           where,
           include: {
-            opportunity: {
+            hvOpportunity: {
               select: {
                 title: true,
                 contentUrl: true,
                 platform: true,
                 sourceContext: true,
-                matchedKeyword: true,
+                citingModels: true,
+                citationScore: true,
               },
             },
             site: { select: { name: true } },
@@ -289,8 +278,8 @@ export const commentRouter = router({
           take: input.limit + 1,
           cursor: input.cursor ? { id: input.cursor } : undefined,
         }),
-        ctx.prisma.comment.count({ where }),
-        ctx.prisma.comment.count({ where: baseWhere }),
+        ctx.prisma.hVComment.count({ where }),
+        ctx.prisma.hVComment.count({ where: baseWhere }),
       ]);
 
       let nextCursor: string | undefined;
@@ -306,13 +295,13 @@ export const commentRouter = router({
     const userId = ctx.session.user.id;
 
     const [draft, posted, failed] = await Promise.all([
-      ctx.prisma.comment.count({
+      ctx.prisma.hVComment.count({
         where: { site: { userId }, status: "DRAFT" },
       }),
-      ctx.prisma.comment.count({
+      ctx.prisma.hVComment.count({
         where: { site: { userId }, status: "POSTED" },
       }),
-      ctx.prisma.comment.count({
+      ctx.prisma.hVComment.count({
         where: { site: { userId }, status: "FAILED" },
       }),
     ]);

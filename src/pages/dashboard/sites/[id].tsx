@@ -20,6 +20,7 @@ import {
   Settings,
   AlertCircle,
   SlidersHorizontal,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import Seo from "@/components/Seo";
@@ -263,6 +264,13 @@ export default function SiteDetailPage() {
     onError: (err) => toast.error(err.message),
   });
 
+  const triggerHVDiscovery = trpc.hvOpportunity.triggerDiscovery.useMutation({
+    onSuccess: () => {
+      toast.success("HV Discovery started!");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const updateSite = trpc.site.update.useMutation({
     onSuccess: () => {
       toast.success("Site updated!");
@@ -495,6 +503,23 @@ export default function SiteDetailPage() {
                 <>
                   <Play size={12} fill="currentColor" />
                   {hasAnyDiscovery ? "Re-run Discovery" : "Run Discovery"}
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => triggerHVDiscovery.mutate({ siteId: site.id })}
+              disabled={triggerHVDiscovery.isPending}
+              className="inline-flex items-center gap-1.5 border border-teal/30 text-teal px-4 py-2 rounded-full font-bold text-xs hover:bg-teal/5 transition-all disabled:opacity-40"
+            >
+              {triggerHVDiscovery.isPending ? (
+                <>
+                  <Loader2 size={12} className="animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={12} />
+                  Run HV Discovery
                 </>
               )}
             </button>

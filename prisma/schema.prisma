@@ -267,6 +267,12 @@ model Site {
   opportunities Opportunity[]
   comments      Comment[]
 
+  // HV Discovery Pipeline
+  hvDiscoveryRuns  HVDiscoveryRun[]
+  hvQueries        HVQuery[]
+  hvOpportunities  HVOpportunity[]
+  hvComments       HVComment[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -358,5 +364,170 @@ model Comment {
   updatedAt DateTime @updatedAt
 
   @@index([opportunityId])
+  @@index([siteId, status])
+}
+
+// ─── HV (High Value) Discovery Pipeline ──────────────────────
+
+enum HVQueryCategory {
+  COMPARISON
+  RECOMMENDATION
+  REVIEW
+  HOW_TO
+  PROBLEM_SOLVING
+}
+
+enum HVOpportunityStatus {
+  DISCOVERED
+  GENERATING
+  PENDING_REVIEW
+  APPROVED
+  POSTING
+  POSTED
+  SKIPPED
+  FAILED
+}
+
+enum HVCommentStatus {
+  DRAFT
+  APPROVED
+  POSTED
+  FAILED
+  SKIPPED
+}
+
+model HVDiscoveryRun {
+  id                    String             @id @default(cuid())
+  site                  Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId                String
+  status                DiscoveryRunStatus
+  queriesUsed           String[]
+  citationsFound        Int                @default(0)
+  opportunitiesCreated  Int                @default(0)
+  errorMessage          String?            @db.Text
+  startedAt             DateTime           @default(now())
+  completedAt           DateTime?
+
+  hvOpportunities HVOpportunity[]
+
+  @@index([siteId])
+  @@index([siteId, status])
+}
+
+model HVQuery {
+  id       String          @id @default(cuid())
+  site     Site            @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId   String
+  query    String          @db.Text
+  category HVQueryCategory
+
+  responses HVQueryResponse[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([siteId, query])
+  @@index([siteId])
+}
+
+model HVQueryResponse {
+  id           String @id @default(cuid())
+  query        HVQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  queryId      String
+  model        String
+  responseText String  @db.Text
+  tokensUsed   Int     @default(0)
+
+  citations HVCitation[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([queryId, model])
+  @@index([queryId])
+}
+
+model HVCitation {
+  id         String           @id @default(cuid())
+  response   HVQueryResponse  @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  responseId String
+  url        String
+  domain     String
+  title      String?
+  snippet    String?          @db.Text
+  platform   Platform?
+
+  createdAt DateTime @default(now())
+
+  @@index([responseId])
+  @@index([url])
+}
+
+model HVOpportunity {
+  id               String              @id @default(cuid())
+  site             Site                @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId           String
+  discoveryRun     HVDiscoveryRun      @relation(fields: [discoveryRunId], references: [id], onDelete: Cascade)
+  discoveryRunId   String
+  platform         Platform
+  status           HVOpportunityStatus @default(DISCOVERED)
+
+  // Content
+  externalId     String
+  contentUrl     String
+  title          String
+  body           String?  @db.Text
+  sourceContext  String
+  author         String?
+  viewCount      Int?
+  commentCount   Int?
+  publishedAt    DateTime?
+  metadata       Json?
+
+  // Citation-specific
+  citationCount  Int      @default(0)
+  citingModels   String[]
+  citingQueries  String[]
+  citationScore  Float    @default(0)
+
+  // Validation
+  isLocked    Boolean   @default(false)
+  isArchived  Boolean   @default(false)
+  threadAge   Int?
+  validatedAt DateTime?
+
+  hvComments HVComment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([siteId, externalId])
+  @@index([siteId, status])
+  @@index([siteId, platform, status])
+  @@index([discoveryRunId])
+}
+
+model HVComment {
+  id              String          @id @default(cuid())
+  hvOpportunity   HVOpportunity   @relation(fields: [hvOpportunityId], references: [id], onDelete: Cascade)
+  hvOpportunityId String
+  site            Site            @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId          String
+  status          HVCommentStatus @default(DRAFT)
+
+  // Content
+  text         String   @db.Text
+  persona      String
+  qualityScore Float
+  scoreReasons String[]
+
+  // Posting
+  providerId   String?
+  orderId      String?
+  postedAt     DateTime?
+  errorMessage String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([hvOpportunityId])
   @@index([siteId, status])
 }

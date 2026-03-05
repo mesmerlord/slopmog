@@ -11,6 +11,7 @@ export const routes = {
       detail: (id: string) => `/dashboard/sites/${id}` as const,
     },
     queue: "/dashboard/queue",
+    hvQueue: "/dashboard/hv-queue",
     comments: "/dashboard/comments",
     billing: "/dashboard/billing",
     settings: "/dashboard/settings",

@@ -14,6 +14,7 @@ function toSingleLine(text: string): string {
   return text.replace(/\s*\n+\s*/g, " ").trim();
 }
 
+
 async function processGeneration(job: Job<GenerationJobData>) {
   const { opportunityId } = job.data;
 

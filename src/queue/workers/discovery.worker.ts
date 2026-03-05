@@ -19,6 +19,19 @@ import type { Prisma } from "@prisma/client";
 import type { KeywordConfig } from "@/services/discovery/site-analyzer";
 import { parseDiscoveryConfig, type DiscoveryConfig } from "@/services/discovery/config";
 
+/**
+ * Returns true if the text is primarily Latin-script (English-like).
+ * Filters out videos with titles in CJK, Cyrillic, Arabic, etc.
+ */
+function isLatinScript(text: string): boolean {
+  // Strip digits, whitespace, and common punctuation/symbols
+  const stripped = text.replace(/[\d\s.,!?;:'"()\-\[\]{}<>@#$%^&*+=|/\\~`_]/g, "");
+  if (stripped.length === 0) return true;
+  // Keep only extended Latin characters (Basic Latin through Latin Extended + Latin Extended Additional)
+  const latinChars = stripped.replace(/[^\u0041-\u024F\u1E00-\u1EFF]/g, "").length;
+  return latinChars / stripped.length >= 0.5;
+}
+
 function normalizeKeyword(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }
@@ -200,6 +213,7 @@ async function searchYouTubeKeyword(
   for (const video of videos) {
     if (existingIds.has(video.videoId)) continue;
     if (video.viewCount < cfg.minYoutubeViews) continue;
+    if (!isLatinScript(video.title)) continue;
     const publishedAt = parsePublishedAt(video.publishedAt);
     if (publishedAt && publishedAt < cutoffDate) continue;
 

@@ -10,6 +10,9 @@ if (process.env.NODE_ENV === "production") {
 import "./workers/discovery.worker";
 import "./workers/generation.worker";
 import "./workers/posting.worker";
+import "./workers/hv-discovery.worker";
+import "./workers/hv-generation.worker";
+import "./workers/hv-posting.worker";
 
 console.log("Queue worker started");
 console.log("Environment:", process.env.NODE_ENV);

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "@/server/trpc";
 import { analyzeSite } from "@/services/discovery/site-analyzer";
-import { discoveryQueue, postingQueue, type DiscoveryJobData, type PostingJobData } from "@/queue/queues";
+import { discoveryQueue, postingQueue, hvDiscoveryQueue, type DiscoveryJobData, type PostingJobData, type HVDiscoveryJobData } from "@/queue/queues";
 import { getUserPlan } from "@/server/utils/plan";
 import { getTotalCredits } from "@/server/utils/credits";
 import { redis } from "@/server/utils/redis";
@@ -141,6 +141,12 @@ export const siteRouter = router({
         siteId: site.id,
         triggeredBy: "manual",
       } satisfies DiscoveryJobData);
+
+      // Auto-trigger HV discovery
+      await hvDiscoveryQueue.add("hv-discover", {
+        siteId: site.id,
+        triggeredBy: "manual",
+      } satisfies HVDiscoveryJobData);
 
       return site;
     }),

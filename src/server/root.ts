@@ -3,6 +3,8 @@ import { userRouter } from "@/routers/user";
 import { siteRouter } from "@/routers/site";
 import { opportunityRouter } from "@/routers/opportunity";
 import { commentRouter } from "@/routers/comment";
+import { hvOpportunityRouter } from "@/routers/hv-opportunity";
+import { hvCommentRouter } from "@/routers/hv-comment";
 import { adminRouter } from "@/routers/admin";
 
 export const appRouter = router({
@@ -10,6 +12,8 @@ export const appRouter = router({
   site: siteRouter,
   opportunity: opportunityRouter,
   comment: commentRouter,
+  hvOpportunity: hvOpportunityRouter,
+  hvComment: hvCommentRouter,
   admin: adminRouter,
 });
 

@@ -1,7 +1,7 @@
 import { Worker, type Job } from "bullmq";
 import { redisConnection } from "@/server/utils/redis";
 import { prisma } from "@/server/utils/db";
-import type { PostingJobData } from "@/queue/queues";
+import { type HVPostingJobData, jobLog, jobWarn, jobError } from "@/queue/queues";
 import { postingRegistry } from "@/services/posting/provider";
 import { hasEnoughCredits, deductCredits } from "@/server/utils/credits";
 import { CREDIT_COSTS } from "@/constants/credits";
@@ -31,32 +31,33 @@ function normalizeSocialPlugYouTubeCommentText(text: string): string {
   return padded.join("\n");
 }
 
-async function processPosting(job: Job<PostingJobData>) {
-  const { commentId } = job.data;
+async function processHVPosting(job: Job<HVPostingJobData>) {
+  const { hvCommentId } = job.data;
 
-  await job.log(`Processing comment ${commentId}`);
+  await jobLog(job, "hv-posting", `Processing HV comment ${hvCommentId}`);
 
-  const comment = await prisma.comment.findUniqueOrThrow({
-    where: { id: commentId },
+  const comment = await prisma.hVComment.findUniqueOrThrow({
+    where: { id: hvCommentId },
     include: {
-      opportunity: true,
+      hvOpportunity: true,
       site: true,
     },
   });
 
-  const { opportunity } = comment;
+  const { hvOpportunity: opportunity } = comment;
 
-  await job.log(
+  await jobLog(
+    job, "hv-posting",
     `Platform: ${opportunity.platform} | URL: ${opportunity.contentUrl}`,
   );
 
   // Update statuses to POSTING
   await prisma.$transaction([
-    prisma.comment.update({
-      where: { id: commentId },
-      data: { status: "APPROVED" }, // Keep APPROVED until actual post
+    prisma.hVComment.update({
+      where: { id: hvCommentId },
+      data: { status: "APPROVED" },
     }),
-    prisma.opportunity.update({
+    prisma.hVOpportunity.update({
       where: { id: opportunity.id },
       data: { status: "POSTING" },
     }),
@@ -65,14 +66,13 @@ async function processPosting(job: Job<PostingJobData>) {
   const provider = postingRegistry.getForPlatform(opportunity.platform);
   if (!provider) {
     const msg = `No posting provider registered for ${opportunity.platform}`;
-    console.error(`[posting] ${msg}`);
-    await job.log(`ERROR: ${msg}`);
+    await jobError(job, "hv-posting", msg);
     await prisma.$transaction([
-      prisma.comment.update({
-        where: { id: commentId },
+      prisma.hVComment.update({
+        where: { id: hvCommentId },
         data: { status: "FAILED", errorMessage: msg },
       }),
-      prisma.opportunity.update({
+      prisma.hVOpportunity.update({
         where: { id: opportunity.id },
         data: { status: "FAILED" },
       }),
@@ -80,22 +80,21 @@ async function processPosting(job: Job<PostingJobData>) {
     return;
   }
 
-  await job.log(`Provider selected: ${provider.name}`);
+  await jobLog(job, "hv-posting", `Provider selected: ${provider.name}`);
 
-  // Credit pre-check — insufficient credits is not retryable
+  // Credit pre-check with HV costs
   const platformKey = opportunity.platform.toLowerCase() as "reddit" | "youtube";
-  const creditCost = CREDIT_COSTS.daily[platformKey];
+  const creditCost = CREDIT_COSTS.highValue[platformKey];
   const creditCheck = await hasEnoughCredits(comment.site.userId, creditCost);
   if (!creditCheck.hasEnough) {
-    const msg = `Insufficient credits — purchase more at billing. Available: ${creditCheck.totalCredits}`;
-    console.warn(`[posting] Comment ${commentId}: ${msg}`);
-    await job.log(`SKIPPED: ${msg}`);
+    const msg = `Insufficient credits for HV posting (need ${creditCost}). Available: ${creditCheck.totalCredits}`;
+    await jobWarn(job, "hv-posting", `Comment ${hvCommentId}: ${msg}`);
     await prisma.$transaction([
-      prisma.comment.update({
-        where: { id: commentId },
+      prisma.hVComment.update({
+        where: { id: hvCommentId },
         data: { status: "DRAFT", errorMessage: msg },
       }),
-      prisma.opportunity.update({
+      prisma.hVOpportunity.update({
         where: { id: opportunity.id },
         data: { status: "PENDING_REVIEW" },
       }),
@@ -108,7 +107,7 @@ async function processPosting(job: Job<PostingJobData>) {
       ? normalizeSocialPlugYouTubeCommentText(comment.text)
       : comment.text;
 
-  await job.log(`Submitting order to ${provider.name}`);
+  await jobLog(job, "hv-posting", `Submitting order to ${provider.name}`);
 
   const result = await provider.createCommentOrder({
     contentUrl: opportunity.contentUrl,
@@ -118,8 +117,8 @@ async function processPosting(job: Job<PostingJobData>) {
 
   if (result.success) {
     await prisma.$transaction([
-      prisma.comment.update({
-        where: { id: commentId },
+      prisma.hVComment.update({
+        where: { id: hvCommentId },
         data: {
           status: "POSTED",
           providerId: provider.name,
@@ -127,107 +126,92 @@ async function processPosting(job: Job<PostingJobData>) {
           postedAt: new Date(),
         },
       }),
-      prisma.opportunity.update({
+      prisma.hVOpportunity.update({
         where: { id: opportunity.id },
         data: { status: "POSTED" },
       }),
     ]);
 
-    // Update discovery run posted count
-    await prisma.discoveryRun.update({
-      where: { id: opportunity.discoveryRunId },
-      data: { postedCount: { increment: 1 } },
-    });
-
-    // Deduct credits for the posted comment
+    // Deduct HV credits
     try {
       await deductCredits({
         userId: comment.site.userId,
         amount: creditCost,
         reason: "CAMPAIGN_USAGE",
-        reasonExtra: `Comment ${commentId} on ${opportunity.platform}`,
+        reasonExtra: `HV Comment ${hvCommentId} on ${opportunity.platform} (${creditCost} credits)`,
         throwOnInsufficient: false,
       });
     } catch (creditErr) {
-      console.error(`[posting] CRITICAL: Failed to deduct credit for comment ${commentId}:`, creditErr);
+      await jobError(job, "hv-posting", `CRITICAL: Failed to deduct credit for HV comment ${hvCommentId}: ${creditErr}`);
     }
 
-    console.log(
-      `[posting] Comment ${commentId} posted via ${provider.name} (order: ${result.orderId})`,
-    );
-    await job.log(`Posted successfully — order: ${result.orderId}`);
+    await jobLog(job, "hv-posting", `HV Comment ${hvCommentId} posted via ${provider.name} (order: ${result.orderId})`);
   } else if (result.retryable) {
-    // Throw to let BullMQ retry with exponential backoff
-    await job.log(`Retryable failure: ${result.error}`);
-    throw new Error(`Posting failed (retryable): ${result.error}`);
+    await jobWarn(job, "hv-posting", `Retryable failure: ${result.error}`);
+    throw new Error(`HV Posting failed (retryable): ${result.error}`);
   } else {
     await prisma.$transaction([
-      prisma.comment.update({
-        where: { id: commentId },
+      prisma.hVComment.update({
+        where: { id: hvCommentId },
         data: {
           status: "FAILED",
           providerId: provider.name,
           errorMessage: result.error,
         },
       }),
-      prisma.opportunity.update({
+      prisma.hVOpportunity.update({
         where: { id: opportunity.id },
         data: { status: "FAILED" },
       }),
     ]);
-    console.error(
-      `[posting] Comment ${commentId} failed (non-retryable): ${result.error}`,
-    );
-    await job.log(`Non-retryable failure: ${result.error}`);
+    await jobError(job, "hv-posting", `HV Comment ${hvCommentId} failed (non-retryable): ${result.error}`);
   }
 }
 
-export const postingWorker = new Worker<PostingJobData>(
-  "posting",
-  processPosting,
+export const hvPostingWorker = new Worker<HVPostingJobData>(
+  "hv-posting",
+  processHVPosting,
   {
     connection: redisConnection,
-    concurrency: 3,
+    concurrency: 2,
   },
 );
 
-postingWorker.on("completed", (job) => {
-  console.log(`[posting] Job ${job.id} completed`);
+hvPostingWorker.on("completed", (job) => {
+  console.log(`[hv-posting] Job ${job.id} completed`);
 });
 
-postingWorker.on("failed", async (job, err) => {
-  console.error(`[posting] Job ${job?.id} failed:`, err.message);
+hvPostingWorker.on("failed", async (job, err) => {
+  console.error(`[hv-posting] Job ${job?.id} failed:`, err.message);
 
-  // When all retries are exhausted, reset the comment back to the queue
-  // so users can re-approve it later
   if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) {
-    const { commentId } = job.data as PostingJobData;
+    const { hvCommentId } = job.data as HVPostingJobData;
     try {
-      const comment = await prisma.comment.findUnique({
-        where: { id: commentId },
-        select: { opportunityId: true },
+      const comment = await prisma.hVComment.findUnique({
+        where: { id: hvCommentId },
+        select: { hvOpportunityId: true },
       });
       if (comment) {
         await prisma.$transaction([
-          prisma.comment.update({
-            where: { id: commentId },
+          prisma.hVComment.update({
+            where: { id: hvCommentId },
             data: {
               status: "DRAFT",
               errorMessage: `Posting failed after ${job.attemptsMade} attempts: ${err.message}`,
             },
           }),
-          prisma.opportunity.update({
-            where: { id: comment.opportunityId },
+          prisma.hVOpportunity.update({
+            where: { id: comment.hvOpportunityId },
             data: { status: "PENDING_REVIEW" },
           }),
         ]);
         console.log(
-          `[posting] Comment ${commentId} returned to queue after ${job.attemptsMade} exhausted retries`,
+          `[hv-posting] HV Comment ${hvCommentId} returned to queue after ${job.attemptsMade} exhausted retries`,
         );
       }
     } catch (dbErr) {
       console.error(
-        `[posting] Failed to return comment ${commentId} to queue:`,
+        `[hv-posting] Failed to return HV comment ${hvCommentId} to queue:`,
         dbErr,
       );
     }

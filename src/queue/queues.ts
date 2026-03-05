@@ -1,5 +1,29 @@
-import { Queue, DefaultJobOptions } from "bullmq";
+import { Queue, DefaultJobOptions, type Job } from "bullmq";
 import { redisConnection } from "@/server/utils/redis";
+
+const isProd = process.env.NODE_ENV === "production";
+
+/**
+ * Log to both BullMQ job logs and console (console only in non-prod).
+ */
+export async function jobLog(job: Job, tag: string, message: string) {
+  await job.log(message);
+  if (!isProd) {
+    console.log(`[${tag}] ${message}`);
+  }
+}
+
+export async function jobWarn(job: Job, tag: string, message: string) {
+  await job.log(`WARN: ${message}`);
+  if (!isProd) {
+    console.warn(`[${tag}] ${message}`);
+  }
+}
+
+export async function jobError(job: Job, tag: string, message: string) {
+  await job.log(`ERROR: ${message}`);
+  console.error(`[${tag}] ${message}`);
+}
 
 export interface DiscoveryJobData {
   siteId: string;
@@ -31,6 +55,24 @@ export function createQueue(name: string) {
   });
 }
 
+export interface HVDiscoveryJobData {
+  siteId: string;
+  triggeredBy: "manual" | "schedule";
+  queryCount?: number;
+}
+
+export interface HVGenerationJobData {
+  hvOpportunityId: string;
+}
+
+export interface HVPostingJobData {
+  hvCommentId: string;
+}
+
 export const discoveryQueue = createQueue("discovery");
 export const generationQueue = createQueue("generation");
 export const postingQueue = createQueue("posting");
+
+export const hvDiscoveryQueue = createQueue("hv-discovery");
+export const hvGenerationQueue = createQueue("hv-generation");
+export const hvPostingQueue = createQueue("hv-posting");

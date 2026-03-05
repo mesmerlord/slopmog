@@ -13,18 +13,16 @@ const VariantSchema = z.object({
   reasons: z.array(z.string()),
 });
 
-const GenerationSchema = (count: number) =>
-  z.object({
-    noRelevantComment: z.boolean(),
-    variants: z.array(VariantSchema).length(count),
-  });
+const HVGenerationSchema = z.object({
+  noRelevantComment: z.boolean(),
+  variants: z.array(VariantSchema),
+});
 
 function selectPersona(postType: string, specifiedPersona?: string): string {
   if (specifiedPersona && specifiedPersona !== "auto" && PERSONA_MAP[specifiedPersona]) {
     return specifiedPersona;
   }
 
-  // Auto-select based on post type
   const mapping: Record<string, string> = {
     question: "helpful",
     recommendation: "chill",
@@ -46,7 +44,7 @@ function getPlatformRules(platform?: string): string {
 - No Reddit-specific language (no "OP", no "upvoted", no subreddit references)
 - YouTube comments are casual, direct, and low-effort. Think quick reactions, not blog posts.
 - Emojis are acceptable but use sparingly
-- Don't reference "threads" or "posts" — say "video" or "this"
+- Don't reference "threads" or "posts" -- say "video" or "this"
 - Don't tell a long story or provide detailed background. Be brief.`;
   }
 
@@ -55,14 +53,22 @@ function getPlatformRules(platform?: string): string {
 - Reddit-native language is fine ("OP", references to the post)
 - Longer comments are acceptable if they add value (3-6 sentences)
 - No emojis unless the subreddit culture uses them
-- Don't be overly formatted — minimal markdown`;
+- Don't be overly formatted -- minimal markdown`;
 }
 
-export async function generateComment(
-  input: CommentGenerationInput,
+export interface HVCommentGenerationInput extends CommentGenerationInput {
+  citationContext: {
+    citingModels: string[];
+    citingQueries: string[];
+    citationScore: number;
+  };
+}
+
+export async function generateHVComment(
+  input: HVCommentGenerationInput,
 ): Promise<CommentGenerationResult> {
   const personaId = selectPersona(input.postType, input.persona);
-  const persona = PERSONA_MAP[personaId] ?? PERSONAS[1]; // fallback to "chill"
+  const persona = PERSONA_MAP[personaId] ?? PERSONAS[1];
 
   const existingCommentsText = input.existingComments.length > 0
     ? input.existingComments
@@ -71,22 +77,27 @@ export async function generateComment(
         .join("\n")
     : "No existing comments";
 
-  const replyContext = input.replyTarget
-    ? `\nYou are REPLYING to this comment by ${input.replyTarget.commentAuthor}: "${input.replyTarget.commentBody}"`
-    : "";
+  const variantCount = input.platform === "YOUTUBE" ? 5 : 3;
 
-  const variantCount = input.platform === "YOUTUBE" ? 5 : 1;
+  const citationInfo = `This is a HIGH-VALUE thread. It is actively being cited by AI models (${input.citationContext.citingModels.join(", ")}) when users ask decision-making questions like:
+${input.citationContext.citingQueries.slice(0, 3).map((q) => `- "${q}"`).join("\n")}
+
+Citation score: ${(input.citationContext.citationScore * 100).toFixed(0)}% (cited by ${input.citationContext.citingModels.length}/4 AI models)
+
+A well-placed comment here has OUTSIZED IMPACT because AI models actively read and cite this thread when making recommendations. Your comment needs to be exceptionally natural and valuable.`;
 
   const result = await chatCompletionJSON({
     model: MODELS.CLAUDE_SONNET,
     messages: [
       {
         role: "system",
-        content: `You generate authentic social media comments that naturally mention a brand. Your goal is to write comments that sound like a real person — not an ad.
+        content: `You generate authentic social media comments that naturally mention a brand. Your goal is to write comments that sound like a real person -- not an ad.
+
+${citationInfo}
 
 ${getPlatformRules(input.platform)}
 
-${persona.promptInstructions || "Write in a natural, casual tone. No specific persona rules — just be authentic."}
+${persona.promptInstructions || "Write in a natural, casual tone. No specific persona rules -- just be authentic."}
 
 CRITICAL RULES:
 - The comment MUST feel like a genuine contribution to the conversation
@@ -96,6 +107,7 @@ CRITICAL RULES:
 - Never start with the brand name
 - The comment should provide value even WITHOUT the brand mention
 - Read the existing comments to avoid repeating what's already been said
+- Reference specific details from the thread and existing comments to sound authentic
 
 ANTI-AI-SLOP RULES (these are dead giveaways that get comments flagged):
 - NEVER use em-dashes (\u2014). Use commas, periods, or parentheses instead
@@ -110,9 +122,11 @@ ANTI-AI-SLOP RULES (these are dead giveaways that get comments flagged):
 - Real people make typos, use incomplete thoughts, and trail off
 - Real Reddit comments are messy, opinionated, and sometimes tangential
 
-Generate exactly ${variantCount} comment variant${variantCount > 1 ? "s" : ""}. For each, include:
+QUALITY BAR: This is a high-value placement. Only return variants with qualityScore >= 0.8. If you can't hit that bar, set noRelevantComment to true.
+
+Generate exactly ${variantCount} comment variants. For each, include:
 - text: the comment text
-- qualityScore: 0.0-1.0 self-assessment (0.8+ = sounds genuinely human, 0.5-0.8 = decent, <0.5 = feels like an ad)
+- qualityScore: 0.0-1.0 self-assessment (0.8+ = sounds genuinely human, <0.8 = don't include)
 - reasons: 2-3 bullet points explaining the score
 
 Return JSON: { noRelevantComment: boolean, variants: [...] }`,
@@ -125,7 +139,6 @@ Title: ${input.postTitle}
 ${input.postBody ? `Body: ${input.postBody.slice(0, 1500)}` : ""}
 Source: ${input.sourceContext}
 Matched keyword: ${input.matchedKeyword}
-${replyContext}
 
 Brand: ${input.businessName}
 What they do: ${input.businessDescription}
@@ -138,25 +151,34 @@ ${existingCommentsText}`,
       },
     ],
     temperature: 0.85,
-    schema: GenerationSchema(variantCount),
+    schema: HVGenerationSchema,
   });
 
   if (result.noRelevantComment || result.variants.length === 0) {
     return {
-      best: { text: "", temperature: 0.85, qualityScore: 0, reasons: ["No natural comment possible"] },
+      best: { text: "", temperature: 0.85, qualityScore: 0, reasons: ["No natural comment possible for this high-value thread"] },
       variants: [],
       noRelevantComment: true,
     };
   }
 
-  const variants: GeneratedComment[] = result.variants.map((v) => ({
-    text: v.text,
-    temperature: 0.85,
-    qualityScore: v.qualityScore,
-    reasons: v.reasons,
-  }));
+  const variants: GeneratedComment[] = result.variants
+    .map((v) => ({
+      text: v.text,
+      temperature: 0.85,
+      qualityScore: v.qualityScore,
+      reasons: v.reasons,
+    }))
+    .filter((v) => v.qualityScore >= 0.8);
 
-  // Sort by quality score descending
+  if (variants.length === 0) {
+    return {
+      best: { text: "", temperature: 0.85, qualityScore: 0, reasons: ["All variants below quality threshold (0.8) for high-value thread"] },
+      variants: [],
+      noRelevantComment: true,
+    };
+  }
+
   variants.sort((a, b) => b.qualityScore - a.qualityScore);
 
   return {
