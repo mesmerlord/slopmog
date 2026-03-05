@@ -7,6 +7,7 @@ import { generateDecisionQueries } from "@/services/hv-discovery/query-generator
 import { runCitationSearch } from "@/services/hv-discovery/citation-searcher";
 import { aggregateCitations } from "@/services/hv-discovery/scorer";
 import { validateRedditThread, validateYouTubeVideo } from "@/services/hv-discovery/url-validator";
+import { getRedditPostWithComments, getVideoDetails } from "@/services/discovery/scrape-creators";
 import type { HVSiteContext, ModelCitationResult } from "@/services/hv-discovery/types";
 
 const MAX_AUTO_GENERATE = 5;
@@ -28,10 +29,21 @@ function parseSiteKeywordConfig(keywordConfig: unknown): HVSiteContext["keywordC
   };
 }
 
+interface EnrichmentData {
+  title?: string;
+  body?: string;
+  sourceContext?: string;
+  author?: string;
+  viewCount?: number;
+  commentCount?: number;
+  publishedAt?: Date;
+}
+
 interface ValidationResult {
   valid: boolean;
   isLocked: boolean;
   isArchived: boolean;
+  enrichment?: EnrichmentData;
 }
 
 async function processHVDiscovery(job: Job<HVDiscoveryJobData>) {
@@ -182,15 +194,51 @@ async function processHVDiscovery(job: Job<HVDiscoveryJobData>) {
 
           if (!validation) {
             if (citation.platform === "REDDIT") {
-              const result = await validateRedditThread(citation.url);
-              validation = {
-                valid: result.valid,
-                isLocked: result.isLocked ?? false,
-                isArchived: result.isArchived ?? false,
-              };
+              // Use combined endpoint: validates + enriches in one call
+              const postWithComments = await getRedditPostWithComments(citation.url);
+              if (postWithComments) {
+                const { post } = postWithComments;
+                const createdUtc = Number(post.createdAt);
+                validation = {
+                  valid: true,
+                  isLocked: false,
+                  isArchived: false,
+                  enrichment: {
+                    title: post.title || undefined,
+                    body: post.body || undefined,
+                    sourceContext: post.subreddit ? `r/${post.subreddit}` : undefined,
+                    author: post.author || undefined,
+                    commentCount: post.numComments || undefined,
+                    publishedAt: createdUtc > 0 ? new Date(createdUtc * 1000) : undefined,
+                  },
+                };
+              } else {
+                // Fallback to simple validation if combined call fails
+                const result = await validateRedditThread(citation.url);
+                validation = {
+                  valid: result.valid,
+                  isLocked: result.isLocked ?? false,
+                  isArchived: result.isArchived ?? false,
+                };
+              }
             } else if (citation.platform === "YOUTUBE") {
               const result = await validateYouTubeVideo(citation.url);
-              validation = { valid: result.valid, isLocked: false, isArchived: false };
+              let enrichment: EnrichmentData | undefined;
+              if (result.valid) {
+                const details = await getVideoDetails(citation.url);
+                if (details) {
+                  enrichment = {
+                    title: details.title || undefined,
+                    body: details.description || undefined,
+                    sourceContext: details.channelName || undefined,
+                    author: details.channelName || undefined,
+                    viewCount: details.viewCount || undefined,
+                    commentCount: details.commentCount || undefined,
+                    publishedAt: details.publishedAt ? new Date(details.publishedAt) : undefined,
+                  };
+                }
+              }
+              validation = { valid: result.valid, isLocked: false, isArchived: false, enrichment };
             } else {
               validation = { valid: false, isLocked: false, isArchived: false };
             }
@@ -198,6 +246,10 @@ async function processHVDiscovery(job: Job<HVDiscoveryJobData>) {
           }
 
           if (!validation.valid) continue;
+
+          const enrichment = validation.enrichment;
+          const enrichedTitle = enrichment?.title ?? citation.title ?? `${citation.platform} ${citation.externalId}`;
+          const enrichedSourceContext = enrichment?.sourceContext ?? citation.domain;
 
           const opportunity = await prisma.hVOpportunity.upsert({
             where: { siteId_externalId: { siteId, externalId: citation.externalId } },
@@ -208,8 +260,13 @@ async function processHVDiscovery(job: Job<HVDiscoveryJobData>) {
               status: "DISCOVERED",
               externalId: citation.externalId,
               contentUrl: citation.url,
-              title: citation.title ?? `${citation.platform} ${citation.externalId}`,
-              sourceContext: citation.domain,
+              title: enrichedTitle,
+              body: enrichment?.body,
+              sourceContext: enrichedSourceContext,
+              author: enrichment?.author,
+              viewCount: enrichment?.viewCount,
+              commentCount: enrichment?.commentCount,
+              publishedAt: enrichment?.publishedAt,
               citationCount: citation.citationCount,
               citingModels: citation.citingModels,
               citingQueries: citation.citingQueries,
@@ -219,6 +276,13 @@ async function processHVDiscovery(job: Job<HVDiscoveryJobData>) {
               validatedAt: new Date(),
             },
             update: {
+              title: enrichedTitle,
+              body: enrichment?.body,
+              sourceContext: enrichedSourceContext,
+              author: enrichment?.author,
+              viewCount: enrichment?.viewCount,
+              commentCount: enrichment?.commentCount,
+              publishedAt: enrichment?.publishedAt,
               citationCount: citation.citationCount,
               citingModels: citation.citingModels,
               citingQueries: citation.citingQueries,

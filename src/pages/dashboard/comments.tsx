@@ -6,6 +6,7 @@ import {
   Search,
   ArrowUpDown,
   Globe,
+  Sparkles,
 } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -24,6 +25,31 @@ function PlatformBadge({ platform }: { platform: string }) {
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${colors}`}>
       {platform === "REDDIT" ? "Reddit" : "YouTube"}
     </span>
+  );
+}
+
+const MODEL_COLORS: Record<string, string> = {
+  gemini: "bg-blue-100 text-blue-700",
+  claude: "bg-orange-100 text-orange-700",
+  gpt: "bg-green-100 text-green-700",
+  grok: "bg-purple-100 text-purple-700",
+};
+
+function CitationBadge({ models, score }: { models: string[]; score: number }) {
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {models.map((m) => (
+        <span
+          key={m}
+          className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold ${MODEL_COLORS[m] ?? "bg-gray-100 text-gray-600"}`}
+        >
+          {m}
+        </span>
+      ))}
+      <span className="text-[10px] font-semibold text-charcoal-light">
+        {Math.round(score * 100)}% citation
+      </span>
+    </div>
   );
 }
 
@@ -46,13 +72,19 @@ export default function CommentsPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const postedQuery = trpc.comment.listPosted.useQuery({
+  const filterInput = {
     limit: 20,
     search: debouncedSearchTerm || undefined,
     platform: platformFilter === "ALL" ? undefined : platformFilter,
     siteId: siteFilter === "ALL" ? undefined : siteFilter,
     sortBy,
-  }, {
+  } as const;
+
+  const postedQuery = trpc.comment.listPosted.useQuery(filterInput, {
+    placeholderData: (previousData) => previousData,
+  });
+
+  const hvPostedQuery = trpc.hvComment.listPosted.useQuery(filterInput, {
     placeholderData: (previousData) => previousData,
   });
 
@@ -61,12 +93,19 @@ export default function CommentsPage() {
   const filteredCount = queryData?.filteredCount ?? 0;
   const totalCount = queryData?.totalCount ?? 0;
 
+  const hvData = hvPostedQuery.data;
+  const hvComments = hvData?.items ?? [];
+  const hvFilteredCount = hvData?.filteredCount ?? 0;
+  const hvTotalCount = hvData?.totalCount ?? 0;
+
   const hasActiveControls =
     searchTerm.trim().length > 0 ||
     platformFilter !== "ALL" ||
     siteFilter !== "ALL" ||
     sortBy !== "newest";
-  const hasAnyComments = totalCount > 0;
+  const hasAnyComments = totalCount > 0 || hvTotalCount > 0;
+
+  const isLoading = (!queryData && postedQuery.isLoading) || (!hvData && hvPostedQuery.isLoading);
 
   const resetControls = () => {
     setSearchTerm("");
@@ -89,7 +128,7 @@ export default function CommentsPage() {
         ]}
       />
 
-      {!queryData && postedQuery.isLoading ? (
+      {isLoading ? (
         <LoadingState variant="spinner" text="Loading comments..." />
       ) : !hasAnyComments ? (
         <EmptyState
@@ -174,81 +213,183 @@ export default function CommentsPage() {
                 </button>
               </div>
             </div>
-            <p className="mt-2 text-xs text-charcoal-light">
-              {hasActiveControls
-                ? `Showing ${comments.length} of ${filteredCount} matches (${totalCount} total posted)`
-                : `Showing ${comments.length} of ${totalCount}`}
-              {postedQuery.isFetching ? " · Updating..." : ""}
-            </p>
           </div>
 
-          {/* Comments list */}
-          {!comments.length ? (
-            <div className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-8 text-center">
-              <p className="text-sm font-semibold text-charcoal">No comments match these filters.</p>
-              <p className="text-xs text-charcoal-light mt-1">Try broadening your search or resetting filters.</p>
-              <button
-                onClick={resetControls}
-                disabled={!hasActiveControls}
-                className={`mt-3 inline-flex h-8 items-center rounded-full border border-charcoal/[0.12] px-3 text-xs font-bold transition-all ${
-                  hasActiveControls
-                    ? "text-charcoal-light hover:text-charcoal hover:border-charcoal/[0.2]"
-                    : "opacity-50"
-                }`}
-              >
-                Reset Filters
-              </button>
+          {/* Regular Comments Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageSquare size={14} className="text-teal" />
+                <h2 className="text-sm font-bold text-charcoal">Daily Comments</h2>
+              </div>
+              <p className="text-xs text-charcoal-light">
+                {hasActiveControls
+                  ? `${comments.length} of ${filteredCount} matches (${totalCount} total)`
+                  : `${comments.length} of ${totalCount}`}
+                {postedQuery.isFetching ? " · Updating..." : ""}
+              </p>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {comments.map((comment) => (
-                <div
-                  key={comment.id}
-                  className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-5"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <PlatformBadge platform={comment.opportunity.platform} />
-                      <span className="text-xs text-charcoal-light">
-                        {comment.opportunity.sourceContext}
-                      </span>
-                      <span className="text-xs text-charcoal-light/50">|</span>
-                      <span className="text-xs text-charcoal-light">
-                        {comment.site.name}
-                      </span>
-                      {comment.opportunity.matchedKeyword && (
-                        <>
-                          <span className="text-xs text-charcoal-light/50">|</span>
-                          <span className="text-xs text-charcoal-light">
-                            Keyword: <span className="font-semibold">{comment.opportunity.matchedKeyword}</span>
-                          </span>
-                        </>
+
+            {!comments.length ? (
+              <div className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-6 text-center">
+                <p className="text-sm font-semibold text-charcoal">
+                  {totalCount === 0 ? "No daily comments posted yet." : "No daily comments match these filters."}
+                </p>
+                {hasActiveControls && totalCount > 0 && (
+                  <button
+                    onClick={resetControls}
+                    className="mt-2 inline-flex h-8 items-center rounded-full border border-charcoal/[0.12] px-3 text-xs font-bold text-charcoal-light hover:text-charcoal hover:border-charcoal/[0.2] transition-all"
+                  >
+                    Reset Filters
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {comments.map((comment) => (
+                  <div
+                    key={comment.id}
+                    className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-5"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <PlatformBadge platform={comment.opportunity.platform} />
+                        <span className="text-xs text-charcoal-light">
+                          {comment.opportunity.sourceContext}
+                        </span>
+                        <span className="text-xs text-charcoal-light/50">|</span>
+                        <span className="text-xs text-charcoal-light">
+                          {comment.site.name}
+                        </span>
+                        {comment.opportunity.matchedKeyword && (
+                          <>
+                            <span className="text-xs text-charcoal-light/50">|</span>
+                            <span className="text-xs text-charcoal-light">
+                              Keyword: <span className="font-semibold">{comment.opportunity.matchedKeyword}</span>
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      {comment.postedAt && (
+                        <span className="text-xs text-charcoal-light shrink-0 ml-2">
+                          {new Date(comment.postedAt).toLocaleDateString()}
+                        </span>
                       )}
                     </div>
-                    {comment.postedAt && (
-                      <span className="text-xs text-charcoal-light shrink-0 ml-2">
-                        {new Date(comment.postedAt).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
 
-                  <a
-                    href={comment.opportunity.contentUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-semibold text-charcoal hover:text-teal transition-colors flex items-center gap-1 mb-2"
-                  >
-                    {comment.opportunity.title}
-                    <ExternalLink size={12} className="shrink-0 text-charcoal-light" />
-                  </a>
+                    <a
+                      href={comment.opportunity.contentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-semibold text-charcoal hover:text-teal transition-colors flex items-center gap-1 mb-2"
+                    >
+                      {comment.opportunity.title}
+                      <ExternalLink size={12} className="shrink-0 text-charcoal-light" />
+                    </a>
 
-                  <div className="bg-charcoal/[0.02] rounded-brand-sm p-3 border border-charcoal/[0.04]">
-                    <p className="text-sm text-charcoal whitespace-pre-wrap">{comment.text}</p>
+                    <div className="bg-charcoal/[0.02] rounded-brand-sm p-3 border border-charcoal/[0.04]">
+                      <p className="text-sm text-charcoal whitespace-pre-wrap">{comment.text}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="relative py-2">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-charcoal/[0.08]" />
             </div>
-          )}
+          </div>
+
+          {/* HV Comments Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles size={14} className="text-sunny" />
+                <h2 className="text-sm font-bold text-charcoal">High-Value Comments</h2>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-sunny/20 text-yellow-700">
+                  HV
+                </span>
+              </div>
+              <p className="text-xs text-charcoal-light">
+                {hasActiveControls
+                  ? `${hvComments.length} of ${hvFilteredCount} matches (${hvTotalCount} total)`
+                  : `${hvComments.length} of ${hvTotalCount}`}
+                {hvPostedQuery.isFetching ? " · Updating..." : ""}
+              </p>
+            </div>
+
+            {!hvComments.length ? (
+              <div className="bg-white rounded-brand shadow-brand-sm border border-sunny/20 p-6 text-center">
+                <p className="text-sm font-semibold text-charcoal">
+                  {hvTotalCount === 0 ? "No high-value comments posted yet." : "No high-value comments match these filters."}
+                </p>
+                <p className="text-xs text-charcoal-light mt-1">
+                  {hvTotalCount === 0
+                    ? "Run HV Discovery to find threads AI chatbots are citing, then approve them from the HV Queue."
+                    : "Try broadening your search or resetting filters."}
+                </p>
+                {hasActiveControls && hvTotalCount > 0 && (
+                  <button
+                    onClick={resetControls}
+                    className="mt-2 inline-flex h-8 items-center rounded-full border border-charcoal/[0.12] px-3 text-xs font-bold text-charcoal-light hover:text-charcoal hover:border-charcoal/[0.2] transition-all"
+                  >
+                    Reset Filters
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {hvComments.map((comment) => (
+                  <div
+                    key={comment.id}
+                    className="bg-white rounded-brand shadow-brand-sm border border-sunny/20 p-5"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <PlatformBadge platform={comment.hvOpportunity.platform} />
+                        <span className="text-xs text-charcoal-light">
+                          {comment.hvOpportunity.sourceContext}
+                        </span>
+                        <span className="text-xs text-charcoal-light/50">|</span>
+                        <span className="text-xs text-charcoal-light">
+                          {comment.site.name}
+                        </span>
+                      </div>
+                      {comment.postedAt && (
+                        <span className="text-xs text-charcoal-light shrink-0 ml-2">
+                          {new Date(comment.postedAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+
+                    <a
+                      href={comment.hvOpportunity.contentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-semibold text-charcoal hover:text-teal transition-colors flex items-center gap-1 mb-2"
+                    >
+                      {comment.hvOpportunity.title}
+                      <ExternalLink size={12} className="shrink-0 text-charcoal-light" />
+                    </a>
+
+                    <div className="mb-2">
+                      <CitationBadge
+                        models={comment.hvOpportunity.citingModels}
+                        score={comment.hvOpportunity.citationScore}
+                      />
+                    </div>
+
+                    <div className="bg-sunny/[0.04] rounded-brand-sm p-3 border border-sunny/[0.1]">
+                      <p className="text-sm text-charcoal whitespace-pre-wrap">{comment.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </DashboardLayout>

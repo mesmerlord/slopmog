@@ -160,6 +160,54 @@ export async function getRedditComments(postUrl: string): Promise<RedditComment[
   }));
 }
 
+// ─── Reddit post + comments (combined endpoint) ─────────────
+
+interface RedditPostCommentsResponse {
+  post?: Record<string, unknown>;
+  comments?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+}
+
+export interface RedditPostWithComments {
+  post: RedditPost;
+  comments: RedditComment[];
+}
+
+/**
+ * Fetches a Reddit post and its comments in a single API call.
+ * The /reddit/post/comments endpoint returns both `post` and `comments`.
+ */
+export async function getRedditPostWithComments(postUrl: string): Promise<RedditPostWithComments | null> {
+  console.log(`[scrape-creators] Fetching Reddit post + comments: ${postUrl}`);
+
+  try {
+    const data = await apiGet<RedditPostCommentsResponse>("/reddit/post/comments", {
+      url: postUrl,
+    }, CACHE_TTL_DETAIL);
+
+    const rawPost = data.post;
+    const post = rawPost ? mapRedditPost(rawPost) : null;
+    if (!post) return null;
+
+    const rawComments = data.comments ?? [];
+    const comments = Array.isArray(rawComments)
+      ? rawComments.map((c) => ({
+          id: String(c.id ?? c.name ?? ""),
+          author: String(c.author ?? ""),
+          body: String(c.body ?? c.text ?? ""),
+          score: Number(c.score ?? c.ups ?? 0),
+          createdAt: String(c.createdAt ?? c.created_at ?? c.created_utc ?? ""),
+          isTopLevel: Boolean(c.isTopLevel ?? c.is_top_level ?? !c.parent_id?.toString().startsWith("t1_")),
+        }))
+      : [];
+
+    return { post, comments };
+  } catch (err) {
+    console.error(`[scrape-creators] Failed to get Reddit post + comments:`, err);
+    return null;
+  }
+}
+
 // ─── YouTube (re-exported from scripts pattern) ──────────────
 
 export interface YouTubeVideo {
@@ -279,17 +327,20 @@ export async function getVideoDetails(videoUrl: string): Promise<YouTubeVideoDet
       url: videoUrl,
     }, CACHE_TTL_DETAIL);
 
+    const channel = data.channel as Record<string, unknown> | undefined;
+    const channelName = channel ? String(channel.title ?? "") : String(data.channelName ?? data.channel_name ?? data.channelTitle ?? "");
+
     return {
-      videoId: String(data.videoId ?? data.video_id ?? data.id ?? ""),
+      videoId: String(data.id ?? data.videoId ?? data.video_id ?? ""),
       title: String(data.title ?? ""),
       description: String(data.description ?? ""),
-      channelName: String(data.channelName ?? data.channel_name ?? data.channelTitle ?? ""),
-      viewCount: Number(data.viewCount ?? data.view_count ?? 0),
-      likeCount: Number(data.likeCount ?? data.like_count ?? 0),
-      commentCount: Number(data.commentCount ?? data.comment_count ?? 0),
-      publishedAt: String(data.publishedAt ?? data.published_at ?? ""),
-      duration: String(data.duration ?? ""),
-      tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
+      channelName,
+      viewCount: Number(data.viewCountInt ?? data.viewCount ?? data.view_count ?? 0),
+      likeCount: Number(data.likeCountInt ?? data.likeCount ?? data.like_count ?? 0),
+      commentCount: Number(data.commentCountInt ?? data.commentCount ?? data.comment_count ?? 0),
+      publishedAt: String(data.publishDate ?? data.publishedAt ?? data.published_at ?? ""),
+      duration: String(data.durationFormatted ?? data.duration ?? ""),
+      tags: Array.isArray(data.keywords) ? data.keywords.map(String) : Array.isArray(data.tags) ? data.tags.map(String) : [],
     };
   } catch (err) {
     console.error(`[scrape-creators] Failed to get video details:`, err);
