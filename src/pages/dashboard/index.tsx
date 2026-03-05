@@ -25,9 +25,13 @@ import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
 import { timeAgo } from "@/utils/format-time";
 import { getServerAuthSession } from "@/server/utils/auth";
+import { useTrackPayment } from "@/hooks/useTrackPayment";
 
 export default function DashboardIndexPage() {
   const router = useRouter();
+
+  // Track GA4 purchase event after Stripe checkout
+  useTrackPayment();
 
   // Success toast after Stripe checkout
   useEffect(() => {

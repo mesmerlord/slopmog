@@ -321,6 +321,16 @@ export const userRouter = router({
     return { url: portalSession.url };
   }),
 
+  getCheckoutSession: protectedProcedure
+    .input(z.object({ sessionId: z.string() }))
+    .query(async ({ input }) => {
+      const session = await stripe.checkout.sessions.retrieve(input.sessionId);
+      return {
+        amountPaid: session.amount_total,
+        currency: session.currency ?? "usd",
+      };
+    }),
+
   getPlanInfo: protectedProcedure.query(async ({ ctx }) => {
     return getUserPlan(ctx.session.user.id);
   }),

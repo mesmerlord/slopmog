@@ -1,3 +1,5 @@
+const { withSentryConfig } = require("@sentry/nextjs");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -13,4 +15,15 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+if (process.env.NODE_ENV === "production") {
+  module.exports = withSentryConfig(nextConfig, {
+    org: "slopmog",
+    project: "slopmog",
+    silent: true,
+    hideSourceMaps: false,
+    widenClientFileUpload: true,
+    disableLogger: true,
+  });
+} else {
+  module.exports = nextConfig;
+}
