@@ -54,7 +54,7 @@ export default function Nav({ variant = "app", onScrollTo }: NavProps) {
         ? [
             { label: "How It Works", href: "#how", onClick: handleNavClick("how") },
             { label: "Demo", href: "#demo", onClick: handleNavClick("demo") },
-            { label: "Pricing", href: "#pricing", onClick: handleNavClick("pricing") },
+            { label: "Pricing", href: routes.pricing },
             { label: "FAQ", href: "#faq", onClick: handleNavClick("faq") },
           ]
         : [

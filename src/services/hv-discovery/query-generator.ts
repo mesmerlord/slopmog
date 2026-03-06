@@ -1,73 +1,126 @@
 import { z } from "zod";
-import { chatCompletionJSON, MODELS } from "@/lib/openrouter";
+import {
+  chatCompletionJSON,
+  chatCompletion,
+  MODELS,
+  HV_WEB_SEARCH_OPTIONS,
+} from "@/lib/openrouter";
 import type { HVSiteContext, GeneratedQuery } from "./types";
 
 const QuerySchema = z.object({
   queries: z.array(
     z.object({
       query: z.string(),
-      category: z.enum(["COMPARISON", "RECOMMENDATION", "REVIEW", "HOW_TO", "PROBLEM_SOLVING"]),
+      category: z.enum([
+        "COMPARISON",
+        "RECOMMENDATION",
+        "REVIEW",
+        "HOW_TO",
+        "PROBLEM_SOLVING",
+      ]),
     }),
   ),
 });
 
+/**
+ * Step 1: Research the site with web search to understand everything it offers.
+ * Step 2: Generate diverse queries in one shot based on that research.
+ */
 export async function generateDecisionQueries(
   siteContext: HVSiteContext,
   existingQueries: string[],
-  count: number = 10,
+  count: number = 40,
 ): Promise<GeneratedQuery[]> {
-  const existingList = existingQueries.length > 0
-    ? `\nAlready generated queries (DO NOT repeat these):\n${existingQueries.map((q) => `- ${q}`).join("\n")}`
-    : "";
+  // Step 1: Deep research on the site using Sonnet + web search
+  const siteResearch = await chatCompletion({
+    model: `${MODELS.CLAUDE_SONNET}:nitro`,
+    messages: [
+      {
+        role: "system",
+        content: `You are a product analyst. Research the given website thoroughly and produce a detailed breakdown of everything it offers. Be specific — list every feature, use case, pricing tier, target audience, and differentiator you can find. Don't summarize generically, give concrete details.`,
+      },
+      {
+        role: "user",
+        content: `Research this product/service in detail:
+
+Name: ${siteContext.name}
+URL: ${siteContext.url}
+Description: ${siteContext.description}
+Value props: ${siteContext.valueProps.join(", ")}
+
+I need:
+1. ALL features and capabilities (be specific — not "photo editing" but "AI background removal, face retouching, batch processing, etc.")
+2. Every use case / target audience (freelancers, agencies, e-commerce sellers, dating profile photos, etc.)
+3. Pricing model and tiers
+4. Key differentiators vs competitors
+5. Pain points it solves
+6. Platforms/integrations it works with`,
+      },
+    ],
+    temperature: 0.3,
+    maxTokens: 10000,
+    webSearchOptions: HV_WEB_SEARCH_OPTIONS,
+  });
+
+  console.log(
+    `[hv-query-gen] Site research complete (${siteResearch.length} chars)`,
+  );
+
+  // Step 2: Generate queries using the research
+  const existingList =
+    existingQueries.length > 0
+      ? `\nAlready generated queries (DO NOT repeat or rephrase these):\n${existingQueries.map((q) => `- ${q}`).join("\n")}`
+      : "";
 
   const result = await chatCompletionJSON({
     model: MODELS.CLAUDE_SONNET,
     messages: [
       {
         role: "system",
-        content: `You are an expert at understanding what people search for when they're looking for a product or solution like the one described below.
+        content: `You generate search queries that potential customers would type into AI chatbots (ChatGPT, Claude, Gemini, Grok). The AI models will use web search and cite Reddit threads and YouTube videos in their answers — we want to find those threads/videos.
 
-Your job: generate queries that a potential customer of this business might type into an AI chatbot (ChatGPT, Claude, Gemini, Grok). We want queries where AI models with web search will CITE real Reddit threads and YouTube videos in their answers.
-
-The goal: find threads/videos where this business could naturally be recommended. We'll later post comments in those threads mentioning the business.
-
-CRITICAL RULES:
-- EVERY query must be relevant to the business described. A thread surfaced by the query should be one where the business could naturally be mentioned.
-- NEVER generate competitor-vs-competitor queries that don't involve the business. "X vs Y" is only useful if X or Y is the business itself, or if the query is about the problem the business solves.
-- Focus on the PROBLEMS the business solves, not on competitor tool shopping.
-- The best queries are ones where someone is looking for a solution that this business provides.
+CRITICAL — DIVERSITY RULES:
+- Each query must target a DIFFERENT angle. Don't just rephrase the same idea.
+- Cover ALL features, use cases, and audiences from the research. Don't fixate on one.
+- Vary the query structure: some questions, some fragments, some comparisons, some problem statements.
+- Mix specificity levels: some broad ("best AI photo editor"), some narrow ("how to fix grainy photos from phone camera").
+- Don't cluster around competitors — spread across the full problem space.
+- Real people don't type the same way twice. Make each query feel like a different person asking.
 
 Categories:
-- COMPARISON: The business vs a competitor, or the business's approach vs alternatives
-- RECOMMENDATION: "Best tool for [thing the business does]", "What should I use for [problem]?"
-- REVIEW: "Has anyone used [business] or similar tools for [use case]?"
-- HOW_TO: "How do I [accomplish thing the business helps with]?"
-- PROBLEM_SOLVING: "I'm struggling with [problem the business solves]"
+- COMPARISON: The business vs a specific competitor, or business approach vs alternatives
+- RECOMMENDATION: "Best tool for [specific thing]", "What should I use for [specific problem]?"
+- REVIEW: "Has anyone used [tool] for [specific use case]?" or "[tool] review for [niche]"
+- HOW_TO: "How do I [specific task the business helps with]?"
+- PROBLEM_SOLVING: "I'm struggling with [specific pain point]", "[situation] and need help"
 
 Query style:
-- Short and natural, 3-12 words
-- Mix of questions and fragments
-- Think "what would a potential customer type into ChatGPT"
-- Include the business name in ~30% of queries, competitor names in ~20% (always paired with the business or its problem space)
-- ~50% should be pure problem-space queries about what the business solves`,
+- 3-15 words, natural and conversational
+- Think "what would someone type into ChatGPT at 11pm trying to solve their problem"
+- ~25% include the business name
+- ~15% include a competitor name (always in context of the business's problem space)
+- ~60% are pure problem-space / use-case queries
+- NO generic filler queries like "best tool 2025" — every query should have a specific angle`,
       },
       {
         role: "user",
-        content: `Generate ${count} queries for this business:
+        content: `Generate ${count} diverse queries for this business.
 
 Business: ${siteContext.name} (${siteContext.url})
-What it does: ${siteContext.description}
-Key value props: ${siteContext.valueProps.join(", ")}
-Competitors: ${siteContext.keywordConfig.competitors.join(", ")}
-Feature keywords: ${siteContext.keywordConfig.features.join(", ")}
+Competitors: ${siteContext.keywordConfig.competitors.join(", ") || "none listed"}
+Feature keywords: ${siteContext.keywordConfig.features.join(", ") || "none listed"}
 
-Remember: every query must surface threads where ${siteContext.name} could be naturally recommended. No competitor-vs-competitor queries unless ${siteContext.name} is part of the comparison.
+Here is detailed research about what this business offers:
+
+${siteResearch}
 ${existingList}
+
+Generate exactly ${count} queries. Every single one must target a different angle — if I see two queries that would surface the same Reddit thread, you've failed.
 
 Return JSON: { queries: [{ query: string, category: string }] }`,
       },
     ],
-    temperature: 0.7,
+    temperature: 0.8,
     schema: QuerySchema,
   });
 

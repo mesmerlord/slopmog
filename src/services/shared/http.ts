@@ -8,6 +8,39 @@ export interface RateLimitConfig {
   windowMs: number;
 }
 
+// ─── Cooldown stagger (in-memory) ───────────────────────────
+// After hitting a rate limit, serialize subsequent requests through a chain
+// so they trickle out instead of stampeding all at once.
+
+const cooldownUntil = new Map<string, number>();
+const requestChain = new Map<string, Promise<void>>();
+
+async function waitForCooldown(config: RateLimitConfig): Promise<void> {
+  const until = cooldownUntil.get(config.key) ?? 0;
+  if (Date.now() >= until) return;
+
+  const staggerMs = Math.ceil(config.windowMs / config.maxRequests); // ~2s for scrapecreators
+
+  const prev = requestChain.get(config.key) ?? Promise.resolve();
+  let resolve: () => void;
+  const next = new Promise<void>((r) => { resolve = r; });
+  requestChain.set(config.key, next);
+
+  await prev;
+
+  const remaining = (cooldownUntil.get(config.key) ?? 0) - Date.now();
+  if (remaining > 0) {
+    const waitMs = Math.min(staggerMs, remaining) + Math.floor(Math.random() * 500);
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
+
+  resolve!();
+}
+
+function markCooldown(key: string, resetMs: number): void {
+  cooldownUntil.set(key, Date.now() + resetMs);
+}
+
 export async function checkRateLimit(config: RateLimitConfig): Promise<{
   allowed: boolean;
   remaining: number;
@@ -83,6 +116,9 @@ export async function fetchWithRetry<T>(
   const config = { ...DEFAULT_RETRY, ...retryOpts };
 
   if (rateLimit) {
+    // If we recently hit a rate limit, queue behind other requests to stagger
+    await waitForCooldown(rateLimit);
+
     const maxRateLimitWaits = 3;
     for (let rlAttempt = 0; rlAttempt <= maxRateLimitWaits; rlAttempt++) {
       const check = await checkRateLimit(rateLimit);
@@ -95,7 +131,9 @@ export async function fetchWithRetry<T>(
         );
       }
 
-      // Add jitter to stagger concurrent waiters and prevent thundering herd
+      // Mark cooldown so concurrent/future requests stagger instead of stampeding
+      markCooldown(rateLimit.key, check.resetMs);
+
       const jitterMs = Math.floor(Math.random() * 3000);
       const waitMs = check.resetMs + jitterMs;
       console.log(`[http] Rate limited on ${rateLimit.key}, waiting ${Math.round(waitMs / 1000)}s (attempt ${rlAttempt + 1}/${maxRateLimitWaits})`);

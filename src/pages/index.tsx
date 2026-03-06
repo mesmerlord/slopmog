@@ -5,17 +5,8 @@ import Seo from "@/components/Seo";
 import MascotBlob from "@/components/MascotBlob";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
+import PricingCards from "@/components/PricingCards";
 import { ALTERNATIVES, routes } from "@/lib/constants";
-
-/* ─── Check icon for pricing features ─── */
-function CheckIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0 mt-0.5">
-      <circle cx="9" cy="9" r="8" stroke="#2EC4B6" strokeWidth="1.5" />
-      <path d="M6 9l2 2 4-4" stroke="#2EC4B6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 /* ─── FAQ plus icon ─── */
 function PlusIcon() {
@@ -516,66 +507,8 @@ export default function Home() {
           <h2 className="reveal text-[clamp(1.8rem,4vw,2.6rem)] text-charcoal mb-4">Pick Your Speed</h2>
           <p className="reveal text-[1.05rem] text-charcoal-light max-w-[540px] mx-auto mb-14 max-md:mb-9">Your competitors figured this out last quarter. Time to catch up.</p>
 
-          <div className="reveal grid grid-cols-3 max-md:grid-cols-1 gap-6 max-w-[960px] max-md:max-w-[400px] mx-auto items-start">
-            {/* Tier 1 */}
-            <div className="bg-white rounded-brand-lg px-7 py-9 max-md:px-[22px] max-md:py-7 shadow-brand-sm border-2 border-charcoal/[0.06] hover:-translate-y-1 hover:shadow-brand-lg transition-all relative">
-              <div className="font-heading text-[1.2rem] font-bold text-charcoal mb-2">Test the Waters</div>
-              <div className="font-heading text-[2.4rem] max-md:text-[2rem] font-bold text-charcoal mb-1">$49<span className="text-[0.9rem] font-medium text-charcoal-light">/mo</span></div>
-              <div className="text-[0.85rem] text-charcoal-light mb-6">Dip your toes in</div>
-              <ul className="list-none mb-7 text-left">
-                <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> 15 comments posted per month</li>
-                <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> Target up to 3 keywords</li>
-                <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> See which comments are live</li>
-                <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> AI writes them, you just approve</li>
-              </ul>
-              {session ? (
-                <Link href={routes.dashboard.sites.new} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">Add Your Site</Link>
-              ) : (
-                <Link href={routes.auth.register} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">Get Started</Link>
-              )}
-            </div>
-
-            {/* Tier 2 — Popular */}
-            <div className="bg-white rounded-brand-lg px-7 py-9 max-md:px-[22px] max-md:py-7 shadow-brand-md border-2 border-teal scale-[1.04] max-md:scale-100 z-[2] hover:scale-[1.04] hover:-translate-y-1 max-md:hover:scale-100 max-md:hover:-translate-y-1 transition-all relative">
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-teal text-white px-5 py-1.5 rounded-full text-[0.75rem] font-bold uppercase tracking-wide whitespace-nowrap">Most Popular</div>
-              <div className="font-heading text-[1.2rem] font-bold text-charcoal mb-2">Make Waves</div>
-              <div className="font-heading text-[2.4rem] max-md:text-[2rem] font-bold text-charcoal mb-1">$99<span className="text-[0.9rem] font-medium text-charcoal-light">/mo</span></div>
-              <div className="text-[0.85rem] text-charcoal-light mb-6">For brands ready to show up</div>
-              <ul className="list-none mb-7 text-left">
-                <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> 40 comments posted per month</li>
-                <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> Target up to 10 keywords</li>
-                <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> Track when AI chatbots mention you</li>
-                <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> Weekly performance reports</li>
-                <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> Priority support</li>
-              </ul>
-              {session ? (
-                <Link href={routes.dashboard.sites.new} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-coral bg-coral text-white shadow-[0_4px_16px_rgba(255,107,107,0.25)] hover:bg-coral-dark hover:border-coral-dark hover:-translate-y-0.5 transition-all">Add Your Site</Link>
-              ) : (
-                <Link href={routes.auth.register} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-coral bg-coral text-white shadow-[0_4px_16px_rgba(255,107,107,0.25)] hover:bg-coral-dark hover:border-coral-dark hover:-translate-y-0.5 transition-all">Get Started</Link>
-              )}
-              <div className="pricing-mascot-ctx absolute -bottom-4 -right-5 z-[3]">
-                <MascotBlob />
-              </div>
-            </div>
-
-            {/* Tier 3 */}
-            <div className="bg-white rounded-brand-lg px-7 py-9 max-md:px-[22px] max-md:py-7 shadow-brand-sm border-2 border-charcoal/[0.06] hover:-translate-y-1 hover:shadow-brand-lg transition-all relative">
-              <div className="font-heading text-[1.2rem] font-bold text-charcoal mb-2">Own the Ocean</div>
-              <div className="font-heading text-[2.4rem] max-md:text-[2rem] font-bold text-charcoal mb-1">$199<span className="text-[0.9rem] font-medium text-charcoal-light">/mo</span></div>
-              <div className="text-[0.85rem] text-charcoal-light mb-6">Serious brand domination</div>
-              <ul className="list-none mb-7 text-left">
-                <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> 100 comments posted per month</li>
-                <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> Unlimited keyword targeting</li>
-                <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> Full analytics dashboard</li>
-                <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> Track AI chatbot mentions</li>
-                <li className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal"><CheckIcon /> Priority support + strategy call</li>
-              </ul>
-              {session ? (
-                <Link href={routes.dashboard.sites.new} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">Add Your Site</Link>
-              ) : (
-                <Link href={routes.auth.register} className="block w-full py-3.5 rounded-full font-bold text-[0.95rem] text-center border-2 border-teal text-teal bg-transparent hover:bg-teal hover:text-white transition-all">Get Started</Link>
-              )}
-            </div>
+          <div className="reveal">
+            <PricingCards />
           </div>
         </div>
       </section>

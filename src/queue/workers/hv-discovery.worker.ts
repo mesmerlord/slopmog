@@ -9,6 +9,7 @@ import { aggregateCitations } from "@/services/hv-discovery/scorer";
 import { validateRedditThread, validateYouTubeVideo } from "@/services/hv-discovery/url-validator";
 import { getRedditPostWithComments, getVideoDetails } from "@/services/discovery/scrape-creators";
 import type { HVSiteContext, ModelCitationResult } from "@/services/hv-discovery/types";
+import { pMap } from "@/services/shared/parallel";
 
 const MAX_AUTO_GENERATE = 5;
 
@@ -53,7 +54,7 @@ interface ValidationResult {
 }
 
 async function processHVDiscovery(job: Job<HVDiscoveryJobData>) {
-  const { siteId, queryCount = 10 } = job.data;
+  const { siteId, queryCount = 40 } = job.data;
 
   await jobLog(job, "hv-discovery", `Starting HV discovery for site ${siteId}`);
 
@@ -125,227 +126,219 @@ async function processHVDiscovery(job: Job<HVDiscoveryJobData>) {
 
     await jobLog(job, "hv-discovery", `Saved ${savedQueries.length} queries`);
 
-    // 5. Process queries one at a time — surface opportunities incrementally
-    const allResultsSoFar: ModelCitationResult[] = [];
+    // 5. Fire ALL queries across all models in parallel
+    await jobLog(job, "hv-discovery", `Searching ${savedQueries.length} queries across all models in parallel...`);
+
+    const allResults = await runCitationSearch(savedQueries);
+
+    if (await isHVRunCancelled(run.id)) {
+      await jobLog(job, "hv-discovery", `Run cancelled — stopping after search`);
+      return;
+    }
+
+    // 6. Save responses and citations to DB
     let totalCitations = 0;
-    let opportunitiesCreated = 0;
-    const queuedOpportunityIds = new Set<string>();
-    // Cache URL validation results to avoid re-fetching across iterations
+    for (const result of allResults) {
+      try {
+        const hvQuery = await prisma.hVQuery.findUnique({
+          where: { siteId_query: { siteId, query: result.query } },
+        });
+        if (!hvQuery) continue;
+
+        const response = await prisma.hVQueryResponse.upsert({
+          where: { queryId_model: { queryId: hvQuery.id, model: result.model } },
+          create: {
+            queryId: hvQuery.id,
+            model: result.model,
+            responseText: result.responseText.slice(0, 50000),
+            tokensUsed: result.tokensUsed,
+          },
+          update: {
+            responseText: result.responseText.slice(0, 50000),
+            tokensUsed: result.tokensUsed,
+          },
+        });
+
+        for (const citation of result.citations) {
+          try {
+            await prisma.hVCitation.create({
+              data: {
+                responseId: response.id,
+                url: citation.url,
+                domain: citation.domain,
+                title: citation.title,
+                platform: citation.platform,
+              },
+            });
+            totalCitations++;
+          } catch {
+            // Duplicate or other constraint, skip
+          }
+        }
+      } catch (err) {
+        await jobWarn(job, "hv-discovery", `Failed to save response for model ${result.model}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    await jobLog(job, "hv-discovery", `Saved ${totalCitations} citations from ${allResults.length} model responses`);
+
+    // 7. Aggregate and score all citations
+    const aggregated = aggregateCitations(allResults, savedQueries.length);
+
+    await jobLog(job, "hv-discovery", `Found ${aggregated.length} unique Reddit/YouTube URLs — validating...`);
+
+    // 8. Validate URLs in parallel (concurrency-limited to avoid hammering scrapers)
+    const VALIDATION_CONCURRENCY = 8;
     const validationCache = new Map<string, ValidationResult>();
 
-    for (let qi = 0; qi < savedQueries.length; qi++) {
-      if (await isHVRunCancelled(run.id)) {
-        await jobLog(job, "hv-discovery", `Run cancelled — stopping query loop`);
-        break;
-      }
-
-      const query = savedQueries[qi];
-      const queryNum = qi + 1;
-
-      await jobLog(job, "hv-discovery", `[${queryNum}/${savedQueries.length}] Searching: "${query.slice(0, 60)}${query.length > 60 ? "..." : ""}"`);
-
-      // Run 4 model calls for this single query in parallel
-      const queryResults = await runCitationSearch([query]);
-
-      // Save responses and citations for this query
-      for (const result of queryResults) {
-        try {
-          const hvQuery = await prisma.hVQuery.findUnique({
-            where: { siteId_query: { siteId, query: result.query } },
-          });
-          if (!hvQuery) continue;
-
-          const response = await prisma.hVQueryResponse.upsert({
-            where: { queryId_model: { queryId: hvQuery.id, model: result.model } },
-            create: {
-              queryId: hvQuery.id,
-              model: result.model,
-              responseText: result.responseText.slice(0, 50000),
-              tokensUsed: result.tokensUsed,
-            },
-            update: {
-              responseText: result.responseText.slice(0, 50000),
-              tokensUsed: result.tokensUsed,
-            },
-          });
-
-          for (const citation of result.citations) {
-            try {
-              await prisma.hVCitation.create({
-                data: {
-                  responseId: response.id,
-                  url: citation.url,
-                  domain: citation.domain,
-                  title: citation.title,
-                  platform: citation.platform,
-                },
-              });
-              totalCitations++;
-            } catch {
-              // Duplicate or other constraint, skip
-            }
-          }
-        } catch (err) {
-          await jobWarn(job, "hv-discovery", `Failed to save response for model ${result.model}: ${err instanceof Error ? err.message : String(err)}`);
-        }
-      }
-
-      allResultsSoFar.push(...queryResults);
-
-      // Re-aggregate ALL citations collected so far
-      // Use savedQueries.length (not queryNum) so scores are stable relative to the full run
-      const aggregated = aggregateCitations(allResultsSoFar, savedQueries.length);
-
-      // Validate and upsert opportunities incrementally
-      let newThisQuery = 0;
-      for (const citation of aggregated) {
-        try {
-          // Check validation cache first
-          let validation = validationCache.get(citation.normalizedUrl);
-
-          if (!validation) {
-            if (citation.platform === "REDDIT") {
-              // Use combined endpoint: validates + enriches in one call
-              const postWithComments = await getRedditPostWithComments(citation.url);
-              if (postWithComments) {
-                const { post } = postWithComments;
-                const createdUtc = Number(post.createdAt);
-                validation = {
-                  valid: true,
-                  isLocked: false,
-                  isArchived: false,
-                  enrichment: {
-                    title: post.title || undefined,
-                    body: post.body || undefined,
-                    sourceContext: post.subreddit ? `r/${post.subreddit}` : undefined,
-                    author: post.author || undefined,
-                    commentCount: post.numComments || undefined,
-                    publishedAt: createdUtc > 0 ? new Date(createdUtc * 1000) : undefined,
-                  },
-                };
-              } else {
-                // Fallback to simple validation if combined call fails
-                const result = await validateRedditThread(citation.url);
-                validation = {
-                  valid: result.valid,
-                  isLocked: result.isLocked ?? false,
-                  isArchived: result.isArchived ?? false,
-                };
-              }
-            } else if (citation.platform === "YOUTUBE") {
-              const result = await validateYouTubeVideo(citation.url);
-              let enrichment: EnrichmentData | undefined;
-              if (result.valid) {
-                const details = await getVideoDetails(citation.url);
-                if (details) {
-                  enrichment = {
-                    title: details.title || undefined,
-                    body: details.description || undefined,
-                    sourceContext: details.channelName || undefined,
-                    author: details.channelName || undefined,
-                    viewCount: details.viewCount || undefined,
-                    commentCount: details.commentCount || undefined,
-                    publishedAt: details.publishedAt ? new Date(details.publishedAt) : undefined,
-                  };
-                }
-              }
-              validation = { valid: result.valid, isLocked: false, isArchived: false, enrichment };
-            } else {
-              validation = { valid: false, isLocked: false, isArchived: false };
-            }
-            validationCache.set(citation.normalizedUrl, validation);
-          }
-
-          if (!validation.valid) continue;
-
-          const enrichment = validation.enrichment;
-          const enrichedTitle = enrichment?.title ?? citation.title ?? `${citation.platform} ${citation.externalId}`;
-          const enrichedSourceContext = enrichment?.sourceContext ?? citation.domain;
-
-          const opportunity = await prisma.hVOpportunity.upsert({
-            where: { siteId_externalId: { siteId, externalId: citation.externalId } },
-            create: {
-              siteId,
-              discoveryRunId: run.id,
-              platform: citation.platform,
-              status: "DISCOVERED",
-              externalId: citation.externalId,
-              contentUrl: citation.url,
-              title: enrichedTitle,
-              body: enrichment?.body,
-              sourceContext: enrichedSourceContext,
-              author: enrichment?.author,
-              viewCount: enrichment?.viewCount,
-              commentCount: enrichment?.commentCount,
-              publishedAt: enrichment?.publishedAt,
-              citationCount: citation.citationCount,
-              citingModels: citation.citingModels,
-              citingQueries: citation.citingQueries,
-              citationScore: citation.citationScore,
-              isLocked: validation.isLocked,
-              isArchived: validation.isArchived,
-              validatedAt: new Date(),
-            },
-            update: {
-              title: enrichedTitle,
-              body: enrichment?.body,
-              sourceContext: enrichedSourceContext,
-              author: enrichment?.author,
-              viewCount: enrichment?.viewCount,
-              commentCount: enrichment?.commentCount,
-              publishedAt: enrichment?.publishedAt,
-              citationCount: citation.citationCount,
-              citingModels: citation.citingModels,
-              citingQueries: citation.citingQueries,
-              citationScore: citation.citationScore,
-              isLocked: validation.isLocked,
-              isArchived: validation.isArchived,
-              validatedAt: new Date(),
-            },
-          });
-
-          // Track new opportunities (created = DISCOVERED means we just made it)
-          if (opportunity.status === "DISCOVERED") {
-            newThisQuery++;
-          }
-
-          // Queue generation for top opportunities as they emerge
-          if (
-            queuedOpportunityIds.size < MAX_AUTO_GENERATE &&
-            !queuedOpportunityIds.has(opportunity.id) &&
-            opportunity.status === "DISCOVERED"
-          ) {
-            // Check it doesn't already have a comment from a previous run
-            const existingComment = await prisma.hVComment.count({
-              where: { hvOpportunityId: opportunity.id },
+    const validateOne = async (citation: typeof aggregated[number]): Promise<void> => {
+      try {
+        if (citation.platform === "REDDIT") {
+          const postWithComments = await getRedditPostWithComments(citation.url);
+          if (postWithComments) {
+            const { post } = postWithComments;
+            const createdUtc = Number(post.createdAt);
+            validationCache.set(citation.normalizedUrl, {
+              valid: true,
+              isLocked: false,
+              isArchived: false,
+              enrichment: {
+                title: post.title || undefined,
+                body: post.body || undefined,
+                sourceContext: post.subreddit ? `r/${post.subreddit}` : undefined,
+                author: post.author || undefined,
+                commentCount: post.numComments || undefined,
+                publishedAt: createdUtc > 0 ? new Date(createdUtc * 1000) : undefined,
+              },
             });
-
-            if (existingComment === 0) {
-              await hvGenerationQueue.add("hv-generate", {
-                hvOpportunityId: opportunity.id,
-              } satisfies HVGenerationJobData);
-              queuedOpportunityIds.add(opportunity.id);
+          } else {
+            const result = await validateRedditThread(citation.url);
+            validationCache.set(citation.normalizedUrl, {
+              valid: result.valid,
+              isLocked: result.isLocked ?? false,
+              isArchived: result.isArchived ?? false,
+            });
+          }
+        } else if (citation.platform === "YOUTUBE") {
+          const result = await validateYouTubeVideo(citation.url);
+          let enrichment: EnrichmentData | undefined;
+          if (result.valid) {
+            const details = await getVideoDetails(citation.url);
+            if (details) {
+              enrichment = {
+                title: details.title || undefined,
+                body: details.description || undefined,
+                sourceContext: details.channelName || undefined,
+                author: details.channelName || undefined,
+                viewCount: details.viewCount || undefined,
+                commentCount: details.commentCount || undefined,
+                publishedAt: details.publishedAt ? new Date(details.publishedAt) : undefined,
+              };
             }
           }
-        } catch (err) {
-          await jobWarn(job, "hv-discovery", `Failed to save opportunity for ${citation.url}: ${err instanceof Error ? err.message : String(err)}`);
+          validationCache.set(citation.normalizedUrl, { valid: result.valid, isLocked: false, isArchived: false, enrichment });
+        } else {
+          validationCache.set(citation.normalizedUrl, { valid: false, isLocked: false, isArchived: false });
         }
+      } catch {
+        validationCache.set(citation.normalizedUrl, { valid: false, isLocked: false, isArchived: false });
       }
+    };
 
-      opportunitiesCreated = aggregated.filter((c) => validationCache.get(c.normalizedUrl)?.valid).length;
+    await pMap(aggregated, (c) => validateOne(c).catch(() => {}), VALIDATION_CONCURRENCY);
 
-      // Update run counts progressively
-      await prisma.hVDiscoveryRun.update({
-        where: { id: run.id },
-        data: {
-          queriesUsed: savedQueries.slice(0, queryNum),
-          citationsFound: totalCitations,
-          opportunitiesCreated,
-        },
-      });
+    await jobLog(job, "hv-discovery", `Validation done — ${Array.from(validationCache.values()).filter((v) => v.valid).length}/${aggregated.length} valid`);
 
-      await jobLog(job, "hv-discovery", `[${queryNum}/${savedQueries.length}] ${newThisQuery > 0 ? `+${newThisQuery} new` : "no new"} opportunities (${opportunitiesCreated} total, ${queuedOpportunityIds.size} generating)`);
+    // 9. Create/update opportunities
+    let opportunitiesCreated = 0;
+    const queuedOpportunityIds = new Set<string>();
+
+    for (const citation of aggregated) {
+      const validation = validationCache.get(citation.normalizedUrl);
+      if (!validation?.valid) continue;
+
+      try {
+        const enrichment = validation.enrichment;
+        const enrichedTitle = enrichment?.title ?? citation.title ?? `${citation.platform} ${citation.externalId}`;
+        const enrichedSourceContext = enrichment?.sourceContext ?? citation.domain;
+
+        const opportunity = await prisma.hVOpportunity.upsert({
+          where: { siteId_externalId: { siteId, externalId: citation.externalId } },
+          create: {
+            siteId,
+            discoveryRunId: run.id,
+            platform: citation.platform,
+            status: "DISCOVERED",
+            externalId: citation.externalId,
+            contentUrl: citation.url,
+            title: enrichedTitle,
+            body: enrichment?.body,
+            sourceContext: enrichedSourceContext,
+            author: enrichment?.author,
+            viewCount: enrichment?.viewCount,
+            commentCount: enrichment?.commentCount,
+            publishedAt: enrichment?.publishedAt,
+            citationCount: citation.citationCount,
+            citingModels: citation.citingModels,
+            citingQueries: citation.citingQueries,
+            citationScore: citation.citationScore,
+            isLocked: validation.isLocked,
+            isArchived: validation.isArchived,
+            validatedAt: new Date(),
+          },
+          update: {
+            title: enrichedTitle,
+            body: enrichment?.body,
+            sourceContext: enrichedSourceContext,
+            author: enrichment?.author,
+            viewCount: enrichment?.viewCount,
+            commentCount: enrichment?.commentCount,
+            publishedAt: enrichment?.publishedAt,
+            citationCount: citation.citationCount,
+            citingModels: citation.citingModels,
+            citingQueries: citation.citingQueries,
+            citationScore: citation.citationScore,
+            isLocked: validation.isLocked,
+            isArchived: validation.isArchived,
+            validatedAt: new Date(),
+          },
+        });
+
+        opportunitiesCreated++;
+
+        // Queue generation for top opportunities
+        if (
+          queuedOpportunityIds.size < MAX_AUTO_GENERATE &&
+          !queuedOpportunityIds.has(opportunity.id) &&
+          opportunity.status === "DISCOVERED"
+        ) {
+          const existingComment = await prisma.hVComment.count({
+            where: { hvOpportunityId: opportunity.id },
+          });
+
+          if (existingComment === 0) {
+            await hvGenerationQueue.add("hv-generate", {
+              hvOpportunityId: opportunity.id,
+            } satisfies HVGenerationJobData);
+            queuedOpportunityIds.add(opportunity.id);
+          }
+        }
+      } catch (err) {
+        await jobWarn(job, "hv-discovery", `Failed to save opportunity for ${citation.url}: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
+
+    // Update run counts
+    await prisma.hVDiscoveryRun.update({
+      where: { id: run.id },
+      data: {
+        queriesUsed: savedQueries,
+        citationsFound: totalCitations,
+        opportunitiesCreated,
+      },
+    });
+
+    await jobLog(job, "hv-discovery", `${opportunitiesCreated} opportunities created, ${queuedOpportunityIds.size} queued for generation`);
 
     // 6. Final pass: ensure top MAX_AUTO_GENERATE have generation queued
     // Some may have been missed if they only crossed the threshold in later queries

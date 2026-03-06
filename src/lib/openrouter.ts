@@ -13,12 +13,17 @@ interface WebSearchPlugin {
   search_prompt?: string;
 }
 
+interface NativeWebSearchOptions {
+  search_context_size: "low" | "medium" | "high";
+}
+
 interface ChatCompletionOptions {
   model: string;
   messages: ChatMessage[];
   temperature?: number;
   maxTokens?: number;
   webSearch?: boolean | WebSearchPlugin;
+  webSearchOptions?: NativeWebSearchOptions;
 }
 
 interface UrlCitationAnnotation {
@@ -63,7 +68,14 @@ function getHeaders() {
 export async function chatCompletion(
   options: ChatCompletionOptions,
 ): Promise<string> {
-  const { model, messages, temperature = 0.7, maxTokens, webSearch } = options;
+  const {
+    model,
+    messages,
+    temperature = 0.7,
+    maxTokens,
+    webSearch,
+    webSearchOptions,
+  } = options;
 
   const body: Record<string, unknown> = {
     model,
@@ -72,7 +84,10 @@ export async function chatCompletion(
   };
   if (maxTokens) body.max_tokens = maxTokens;
 
-  if (webSearch) {
+  if (webSearchOptions) {
+    body.web_search_options = webSearchOptions;
+    body.plugins = [{ id: "web", max_results: 20 }];
+  } else if (webSearch) {
     const plugin: WebSearchPlugin =
       typeof webSearch === "object" ? webSearch : { id: "web" };
     body.plugins = [plugin];
@@ -146,10 +161,16 @@ export interface ParsedCitationUrl {
 export interface ChatCompletionWithCitationsResult {
   content: string;
   citations: ParsedCitationUrl[];
-  usage: { promptTokens: number; completionTokens: number; totalTokens: number };
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
 }
 
-function deduplicateCitationUrls(citations: ParsedCitationUrl[]): ParsedCitationUrl[] {
+function deduplicateCitationUrls(
+  citations: ParsedCitationUrl[],
+): ParsedCitationUrl[] {
   const seen = new Map<string, ParsedCitationUrl>();
   for (const c of citations) {
     const normalized = c.url.replace(/\/+$/, "").toLowerCase();
@@ -165,7 +186,14 @@ function deduplicateCitationUrls(citations: ParsedCitationUrl[]): ParsedCitation
 export async function chatCompletionWithCitations(
   options: ChatCompletionOptions,
 ): Promise<ChatCompletionWithCitationsResult> {
-  const { model, messages, temperature = 0.7, maxTokens, webSearch } = options;
+  const {
+    model,
+    messages,
+    temperature = 0.7,
+    maxTokens,
+    webSearch,
+    webSearchOptions,
+  } = options;
 
   const body: Record<string, unknown> = {
     model,
@@ -174,11 +202,18 @@ export async function chatCompletionWithCitations(
   };
   if (maxTokens) body.max_tokens = maxTokens;
 
-  if (webSearch) {
+  if (webSearchOptions) {
+    body.web_search_options = webSearchOptions;
+    body.plugins = [{ id: "web", max_results: 20 }];
+  } else if (webSearch) {
     const plugin: WebSearchPlugin =
       typeof webSearch === "object" ? webSearch : { id: "web" };
     body.plugins = [plugin];
   }
+
+  console.log(
+    `[openrouter-request] model=${body.model} | has_web_search_options=${!!body.web_search_options} | has_plugins=${!!body.plugins} | body_keys=${Object.keys(body).join(",")}`,
+  );
 
   const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
     method: "POST",
@@ -197,9 +232,29 @@ export async function chatCompletionWithCitations(
   const msg = data.choices?.[0]?.message;
   const content = msg?.content ?? "";
 
+  // Log raw response shape for debugging
+  console.log(
+    `[openrouter-citations] model=${model} | annotations=${msg?.annotations?.length ?? "undefined"} | content_length=${content.length} | keys=${Object.keys(msg ?? {}).join(",")}`,
+  );
+  if (msg && !msg.annotations?.length) {
+    // Log the raw message keys to see if citations come under a different field
+    const rawMsg = msg as Record<string, unknown>;
+    const extraKeys = Object.keys(rawMsg).filter(
+      (k) => !["role", "content", "annotations"].includes(k),
+    );
+    if (extraKeys.length) {
+      console.log(
+        `[openrouter-citations] Extra message fields: ${extraKeys.map((k) => `${k}=${JSON.stringify(rawMsg[k])?.slice(0, 200)}`).join(" | ")}`,
+      );
+    }
+  }
+
   // Extract citations from annotations only (OpenRouter web search — deterministic, real URLs)
   const annotationCitations: ParsedCitationUrl[] = (msg?.annotations ?? [])
-    .filter((a): a is UrlCitationAnnotation => a.type === "url_citation" && !!a.url_citation?.url)
+    .filter(
+      (a): a is UrlCitationAnnotation =>
+        a.type === "url_citation" && !!a.url_citation?.url,
+    )
     .map((a) => ({ url: a.url_citation.url, title: a.url_citation.title }));
 
   const citations = deduplicateCitationUrls(annotationCitations);
@@ -225,15 +280,34 @@ export const MODELS = {
 } as const;
 
 export const HV_ONLINE_MODELS = {
-  GEMINI_ONLINE: "google/gemini-3.1-pro-preview:online",
-  CLAUDE_ONLINE: "anthropic/claude-sonnet-4-6:online",
-  GPT_ONLINE: "openai/gpt-5.3-chat:online",
-  GROK_ONLINE: "x-ai/grok-4.1-fast:online",
+  GEMINI_ONLINE: "google/gemini-3.1-pro-preview",
+  GEMINI_FAST: "google/gemini-3-flash-preview",
+  CLAUDE_ONLINE: "anthropic/claude-sonnet-4-6",
+  CLAUDE_FAST: "anthropic/claude-haiku-4.5",
+  GPT_ONLINE: "openai/gpt-5.3-chat",
+  GPT_FAST: "openai/gpt-5-mini",
+  GROK_ONLINE: "x-ai/grok-4.1-fast",
 } as const;
+
+/** Which models to actually use for HV citation search */
+export const HV_ACTIVE_MODELS = [
+  HV_ONLINE_MODELS.GEMINI_FAST,
+  HV_ONLINE_MODELS.CLAUDE_FAST,
+  HV_ONLINE_MODELS.GPT_FAST,
+  HV_ONLINE_MODELS.GROK_ONLINE,
+] as const;
+
+/** Native web search config for HV citation search — high context for max citations */
+export const HV_WEB_SEARCH_OPTIONS: NativeWebSearchOptions = {
+  search_context_size: "high",
+};
 
 export const HV_MODEL_LABELS: Record<string, string> = {
   [HV_ONLINE_MODELS.GEMINI_ONLINE]: "gemini",
+  [HV_ONLINE_MODELS.GEMINI_FAST]: "gemini-flash",
   [HV_ONLINE_MODELS.CLAUDE_ONLINE]: "claude",
+  [HV_ONLINE_MODELS.CLAUDE_FAST]: "claude-haiku",
   [HV_ONLINE_MODELS.GPT_ONLINE]: "gpt",
+  [HV_ONLINE_MODELS.GPT_FAST]: "gpt-mini",
   [HV_ONLINE_MODELS.GROK_ONLINE]: "grok",
 };
