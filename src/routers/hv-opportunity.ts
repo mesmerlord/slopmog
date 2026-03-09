@@ -9,6 +9,7 @@ import {
   getRedditComments,
   getYouTubeComments,
 } from "@/services/discovery/scrape-creators";
+import { parseDiscoveryConfig } from "@/services/discovery/config";
 
 function toSingleLine(text: string): string {
   return text.replace(/\s*\n+\s*/g, " ").trim();
@@ -16,10 +17,11 @@ function toSingleLine(text: string): string {
 
 export const hvOpportunityRouter = router({
   triggerDiscovery: protectedProcedure
-    .input(z.object({ siteId: z.string(), queryCount: z.number().min(1).max(20).optional() }))
+    .input(z.object({ siteId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const site = await ctx.prisma.site.findFirst({
         where: { id: input.siteId, userId: ctx.session.user.id },
+        select: { id: true, active: true, discoveryConfig: true },
       });
 
       if (!site) {
@@ -30,10 +32,12 @@ export const hvOpportunityRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Site is not active" });
       }
 
+      const config = parseDiscoveryConfig(site.discoveryConfig);
+
       await hvDiscoveryQueue.add("hv-discover", {
         siteId: site.id,
         triggeredBy: "manual",
-        queryCount: input.queryCount,
+        queryCount: config.hvQueryCount,
       } satisfies HVDiscoveryJobData);
 
       return { queued: true };
@@ -49,8 +53,10 @@ export const hvOpportunityRouter = router({
         siteId: z.string().optional(),
         sortBy: z.enum([
           "citation_score",
-          "newest",
-          "oldest",
+          "posted_newest",
+          "posted_oldest",
+          "queue_newest",
+          "queue_oldest",
         ]).default("citation_score"),
       }),
     )
@@ -76,9 +82,13 @@ export const hvOpportunityRouter = router({
       const orderBy =
         input.sortBy === "citation_score"
           ? [{ citationScore: "desc" as const }, { createdAt: "desc" as const }]
-          : input.sortBy === "newest"
-            ? [{ createdAt: "desc" as const }]
-            : [{ createdAt: "asc" as const }];
+          : input.sortBy === "posted_newest"
+            ? [{ publishedAt: "desc" as const }, { createdAt: "desc" as const }]
+            : input.sortBy === "posted_oldest"
+              ? [{ publishedAt: "asc" as const }, { createdAt: "asc" as const }]
+              : input.sortBy === "queue_newest"
+                ? [{ createdAt: "desc" as const }]
+                : [{ createdAt: "asc" as const }];
 
       const [opportunities, filteredCount, totalPendingCount] = await Promise.all([
         ctx.prisma.hVOpportunity.findMany({

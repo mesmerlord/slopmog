@@ -22,6 +22,7 @@ const SETTINGS_FIELDS: SettingsField[] = [
   { key: "maxYoutubeAgeDays", label: "Max YouTube Age (days)", description: "Ignore videos older than this", min: 1, max: 365, step: 1 },
   { key: "maxRedditPages", label: "Max Reddit Pages", description: "Pages to scrape per keyword", min: 1, max: 20, step: 1 },
   { key: "dailyKeywordLimit", label: "Daily Keyword Limit", description: "How many keywords to search per discovery run", min: 1, max: 30, step: 1 },
+  { key: "hvQueryCount", label: "HV Query Count", description: "Queries to generate per HV discovery run", min: 5, max: 100, step: 5 },
   { key: "autoGenerateTopN", label: "Auto-Generate Top N", description: "Auto-generate comments for top N opportunities", min: 0, max: 50, step: 1 },
   { key: "autoGenerateMinScore", label: "Auto-Generate Min Score", description: "Min relevance score to auto-generate (0-1)", min: 0, max: 1, step: 0.05 },
 ];

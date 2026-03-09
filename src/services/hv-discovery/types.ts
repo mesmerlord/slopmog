@@ -49,3 +49,21 @@ export interface AggregatedCitation {
   citingQueries: string[];
   citationScore: number;
 }
+
+export interface EnrichmentData {
+  contentUrl?: string;
+  title?: string;
+  body?: string;
+  sourceContext?: string;
+  author?: string;
+  viewCount?: number;
+  commentCount?: number;
+  publishedAt?: Date;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  isLocked: boolean;
+  isArchived: boolean;
+  enrichment?: EnrichmentData;
+}

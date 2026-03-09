@@ -93,6 +93,7 @@ export const siteRouter = router({
           autoGenerateTopN: z.number().int().min(0).max(50),
           autoGenerateMinScore: z.number().min(0).max(1),
           dailyKeywordLimit: z.number().int().min(1).max(30),
+          hvQueryCount: z.number().int().min(5).max(100),
         }).optional(),
       }),
     )
@@ -514,6 +515,7 @@ export const siteRouter = router({
           autoGenerateTopN: z.number().int().min(0).max(50).optional(),
           autoGenerateMinScore: z.number().min(0).max(1).optional(),
           dailyKeywordLimit: z.number().int().min(1).max(30).optional(),
+          hvQueryCount: z.number().int().min(5).max(100).optional(),
         }),
       }),
     )

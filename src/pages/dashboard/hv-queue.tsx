@@ -14,6 +14,10 @@ import {
   Loader2,
   Lock,
   Zap,
+  ArrowUp,
+  MessageSquare,
+  Eye,
+  ThumbsUp,
 } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -74,8 +78,43 @@ function CitationBadge({ score, modelCount }: { score: number; modelCount: numbe
   );
 }
 
+function formatPostedDate(value: Date | string | null | undefined): string {
+  if (!value) return "Unknown";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown";
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+type HVOpportunityMetadata = {
+  score?: number;
+  permalink?: string;
+  subredditSubscribers?: number;
+  likeCount?: number;
+  channelId?: string;
+  thumbnail?: string;
+};
+
+function parseMetadata(value: unknown): HVOpportunityMetadata {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as HVOpportunityMetadata;
+  }
+  return {};
+}
+
+function formatCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}m`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}k`;
+  return String(n);
+}
+
 type PlatformFilter = "ALL" | "REDDIT" | "YOUTUBE";
-type HVSort = "citation_score" | "newest" | "oldest";
+type HVSort = "citation_score" | "posted_newest" | "posted_oldest" | "queue_newest" | "queue_oldest";
 
 interface HVQueueItemProps {
   opportunity: {
@@ -90,6 +129,9 @@ interface HVQueueItemProps {
     citationCount: number;
     isLocked: boolean;
     isArchived: boolean;
+    viewCount?: number | null;
+    commentCount?: number | null;
+    metadata?: unknown;
     publishedAt?: Date | string | null;
     site: { id: string; name: string; url: string };
     hvComments: Array<{ id: string; text: string; qualityScore: number; persona: string }>;
@@ -160,14 +202,65 @@ function HVQueueItem({
             )}
           </div>
 
-          {/* Model pills */}
-          <div className="flex items-center gap-2 mb-1.5">
+          {/* Model pills + metadata */}
+          <div className="flex flex-wrap items-center gap-2 mb-1.5">
             <ModelPills models={opportunity.citingModels} />
             <span className="text-xs text-charcoal-light">
               Score: {(opportunity.citationScore * 100).toFixed(0)}%
             </span>
             <span className="text-xs text-charcoal-light/50">|</span>
             <span className="text-xs text-charcoal-light">{opportunity.sourceContext}</span>
+            {(() => {
+              const meta = parseMetadata(opportunity.metadata);
+              return (
+                <>
+                  {opportunity.platform === "REDDIT" && (
+                    <>
+                      {meta.score != null && meta.score > 0 && (
+                        <>
+                          <span className="text-xs text-charcoal-light/50">|</span>
+                          <span className="text-xs text-charcoal-light flex items-center gap-0.5">
+                            <ArrowUp size={11} /> {formatCompact(meta.score)}
+                          </span>
+                        </>
+                      )}
+                      {opportunity.commentCount != null && opportunity.commentCount > 0 && (
+                        <>
+                          <span className="text-xs text-charcoal-light/50">|</span>
+                          <span className="text-xs text-charcoal-light flex items-center gap-0.5">
+                            <MessageSquare size={11} /> {formatCompact(opportunity.commentCount)}
+                          </span>
+                        </>
+                      )}
+                    </>
+                  )}
+                  {opportunity.platform === "YOUTUBE" && (
+                    <>
+                      {opportunity.viewCount != null && opportunity.viewCount > 0 && (
+                        <>
+                          <span className="text-xs text-charcoal-light/50">|</span>
+                          <span className="text-xs text-charcoal-light flex items-center gap-0.5">
+                            <Eye size={11} /> {formatCompact(opportunity.viewCount)}
+                          </span>
+                        </>
+                      )}
+                      {meta.likeCount != null && meta.likeCount > 0 && (
+                        <>
+                          <span className="text-xs text-charcoal-light/50">|</span>
+                          <span className="text-xs text-charcoal-light flex items-center gap-0.5">
+                            <ThumbsUp size={11} /> {formatCompact(meta.likeCount)}
+                          </span>
+                        </>
+                      )}
+                    </>
+                  )}
+                </>
+              );
+            })()}
+            <span className="text-xs text-charcoal-light/50">|</span>
+            <span className="text-xs font-semibold text-charcoal">
+              Posted: {formatPostedDate(opportunity.publishedAt)}
+            </span>
           </div>
 
           <a
@@ -576,8 +669,10 @@ export default function HVQueuePage() {
                   className="h-8 rounded-full border border-charcoal/[0.12] bg-white px-3 text-xs font-semibold text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30"
                 >
                   <option value="citation_score">Citation Score</option>
-                  <option value="newest">Newest</option>
-                  <option value="oldest">Oldest</option>
+                  <option value="posted_newest">Posted Date: Newest</option>
+                  <option value="posted_oldest">Posted Date: Oldest</option>
+                  <option value="queue_newest">Added To Queue: Newest</option>
+                  <option value="queue_oldest">Added To Queue: Oldest</option>
                 </select>
                 <button
                   onClick={resetControls}

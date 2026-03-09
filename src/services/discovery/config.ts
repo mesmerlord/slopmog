@@ -12,6 +12,7 @@ export interface DiscoveryConfig {
   autoGenerateTopN: number;
   autoGenerateMinScore: number;
   dailyKeywordLimit: number;
+  hvQueryCount: number;
 }
 
 export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
@@ -24,6 +25,7 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   autoGenerateTopN: 10,
   autoGenerateMinScore: 0.9,
   dailyKeywordLimit: 25,
+  hvQueryCount: 40,
 };
 
 export function parseDiscoveryConfig(raw: unknown): DiscoveryConfig {
@@ -49,5 +51,6 @@ export function parseDiscoveryConfig(raw: unknown): DiscoveryConfig {
       return Math.max(0, Math.min(1, val));
     })(),
     dailyKeywordLimit: num("dailyKeywordLimit", 1, 30),
+    hvQueryCount: num("hvQueryCount", 5, 100),
   };
 }
