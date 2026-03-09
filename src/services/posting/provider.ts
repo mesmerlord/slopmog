@@ -33,6 +33,10 @@ class PostingProviderRegistry {
     return undefined;
   }
 
+  getByName(name: string): PostingProvider | undefined {
+    return this.providers.find((p) => p.name === name);
+  }
+
   getForPlatform(platform: string): PostingProvider | undefined {
     return this.providers.find((p) => p.platform === platform);
   }

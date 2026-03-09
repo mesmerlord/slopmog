@@ -7,7 +7,7 @@ import { hasEnoughCredits, deductCredits } from "@/server/utils/credits";
 import { CREDIT_COSTS } from "@/constants/credits";
 
 // Register providers (side-effect imports)
-import "@/services/posting/upvotemax";
+import "@/services/posting/manual";
 import "@/services/posting/socialplug";
 
 const SOCIALPLUG_YOUTUBE_COMMENT_TARGET = 5;
@@ -63,7 +63,12 @@ async function processHVPosting(job: Job<HVPostingJobData>) {
     }),
   ]);
 
-  const provider = postingRegistry.getForPlatform(opportunity.platform);
+  // Reddit HV uses the manual provider (we post ourselves, verify via health checks)
+  // YouTube HV still uses socialplug
+  const provider = opportunity.platform === "REDDIT"
+    ? postingRegistry.getByName("manual")
+    : postingRegistry.getForPlatform(opportunity.platform);
+
   if (!provider) {
     const msg = `No posting provider registered for ${opportunity.platform}`;
     await jobError(job, "hv-posting", msg);
