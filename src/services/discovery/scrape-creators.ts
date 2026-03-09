@@ -160,6 +160,28 @@ export async function getRedditComments(postUrl: string): Promise<RedditComment[
   }));
 }
 
+// ─── Reddit live (no cache) ──────────────────────────────────
+
+export async function getRedditCommentsLive(postUrl: string): Promise<RedditComment[]> {
+  console.log(`[scrape-creators] Fetching Reddit comments (live): ${postUrl}`);
+
+  const data = await apiGet<RedditCommentsResponse>("/reddit/post/comments", {
+    url: postUrl,
+  });
+
+  const rawComments = data.comments ?? [];
+  if (!Array.isArray(rawComments)) return [];
+
+  return rawComments.map((c) => ({
+    id: String(c.id ?? c.name ?? ""),
+    author: String(c.author ?? ""),
+    body: String(c.body ?? c.text ?? ""),
+    score: Number(c.score ?? c.ups ?? 0),
+    createdAt: String(c.createdAt ?? c.created_at ?? c.created_utc ?? ""),
+    isTopLevel: Boolean(c.isTopLevel ?? c.is_top_level ?? !c.parent_id?.toString().startsWith("t1_")),
+  }));
+}
+
 // ─── Reddit post + comments (combined endpoint) ─────────────
 
 interface RedditPostCommentsResponse {
@@ -346,4 +368,25 @@ export async function getVideoDetails(videoUrl: string): Promise<YouTubeVideoDet
     console.error(`[scrape-creators] Failed to get video details:`, err);
     return null;
   }
+}
+
+// ─── YouTube live (no cache) ─────────────────────────────────
+
+export async function getYouTubeCommentsLive(videoUrl: string): Promise<YouTubeComment[]> {
+  console.log(`[scrape-creators] Fetching YouTube comments (live): ${videoUrl}`);
+
+  const data = await apiGet<YTCommentsResponse>("/youtube/video/comments", {
+    url: videoUrl,
+  });
+
+  const rawComments = data.comments ?? [];
+
+  return rawComments.map((c) => ({
+    id: String(c.id ?? c.commentId ?? ""),
+    author: String(c.author ?? c.authorDisplayName ?? ""),
+    text: String(c.text ?? c.textDisplay ?? c.body ?? ""),
+    likeCount: Number(c.likeCount ?? c.like_count ?? c.likes ?? 0),
+    publishedAt: String(c.publishedAt ?? c.published_at ?? ""),
+    isReply: Boolean(c.isReply ?? c.is_reply ?? false),
+  }));
 }

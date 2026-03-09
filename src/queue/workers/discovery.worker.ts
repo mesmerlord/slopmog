@@ -441,7 +441,7 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
       );
 
       const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - cfg.maxYoutubeAgeDays);
+      cutoffDate.setDate(cutoffDate.getDate() - 1);
 
       // Process keywords sequentially so items stream through the full pipeline ASAP
       for (const keyword of keywords) {

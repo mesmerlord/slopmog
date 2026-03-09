@@ -73,6 +73,15 @@ export const discoveryQueue = createQueue("discovery");
 export const generationQueue = createQueue("generation");
 export const postingQueue = createQueue("posting");
 
+export interface HealthCheckJobData {
+  scope: "all" | "site" | "opportunity";
+  siteId?: string;
+  opportunityId?: string;
+  pipeline?: "regular" | "hv" | "both";
+}
+
+export const cronQueue = createQueue("cron");
 export const hvDiscoveryQueue = createQueue("hv-discovery");
 export const hvGenerationQueue = createQueue("hv-generation");
 export const hvPostingQueue = createQueue("hv-posting");
+export const healthCheckQueue = createQueue("health-check");

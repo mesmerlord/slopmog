@@ -9,6 +9,7 @@ import {
   Search,
   Coins,
   Clock,
+  HeartPulse,
   Shield,
   ArrowRight,
 } from "lucide-react";
@@ -48,6 +49,13 @@ const navCards = [
     href: "/admin/queue",
     icon: ListOrdered,
     color: "bg-coral/10 text-coral",
+  },
+  {
+    label: "Health Check",
+    description: "Check if posted comments are still alive",
+    href: "/admin/health-check",
+    icon: HeartPulse,
+    color: "bg-teal/10 text-teal",
   },
   {
     label: "Analytics",

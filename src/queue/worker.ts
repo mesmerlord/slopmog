@@ -13,6 +13,34 @@ import "./workers/posting.worker";
 import "./workers/hv-discovery.worker";
 import "./workers/hv-generation.worker";
 import "./workers/hv-posting.worker";
+import "./workers/health-check.worker";
+import "./workers/cron.worker";
+
+import { cronQueue, healthCheckQueue } from "@/queue/queues";
+
+// Register repeatable job schedulers
+const setupSchedulers = async () => {
+  await cronQueue.upsertJobScheduler(
+    "daily-discovery",
+    { pattern: "0 6 * * *" },
+    { name: "daily-discovery" },
+  );
+  await cronQueue.upsertJobScheduler(
+    "weekly-hv-discovery",
+    { pattern: "0 7 * * 1" },
+    { name: "weekly-hv-discovery" },
+  );
+  await healthCheckQueue.upsertJobScheduler(
+    "daily-health-check",
+    { pattern: "0 8 * * *" },
+    { name: "daily-health-check", data: { scope: "all", pipeline: "both" } },
+  );
+  console.log("Cron schedulers registered (discovery 6AM, hv Mon 7AM, health-check 8AM UTC)");
+};
+
+setupSchedulers().catch((err) =>
+  console.error("Failed to setup cron schedulers:", err),
+);
 
 console.log("Queue worker started");
 console.log("Environment:", process.env.NODE_ENV);

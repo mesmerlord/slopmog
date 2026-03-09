@@ -29,6 +29,8 @@ import GeneratingMascotV1 from "@/components/illustrations/GeneratingMascotV1";
 import UpgradeUpsellMascot from "@/components/illustrations/UpgradeUpsellMascot";
 import { PERSONAS } from "@/constants/personas";
 import { trpc } from "@/utils/trpc";
+import DateRangeFilter from "@/components/shared/DateRangeFilter";
+import type { DateRangeValue } from "@/components/shared/DateRangeFilter";
 import { routes } from "@/lib/constants";
 import { getServerAuthSession } from "@/server/utils/auth";
 
@@ -357,6 +359,11 @@ export default function QueuePage() {
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("ALL");
   const [siteFilter, setSiteFilter] = useState<string>("ALL");
   const [sortBy, setSortBy] = useState<QueueSort>("best_match");
+  const [dateRange, setDateRange] = useState<DateRangeValue>({
+    from: undefined,
+    to: undefined,
+    dateField: "publishedAt" as const,
+  });
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const sitesQuery = trpc.site.list.useQuery();
@@ -406,6 +413,9 @@ export default function QueuePage() {
       search: debouncedSearchTerm || undefined,
       platform: platformFilter === "ALL" ? undefined : platformFilter,
       siteId: siteFilter === "ALL" ? undefined : siteFilter,
+      dateFrom: dateRange.from ?? undefined,
+      dateTo: dateRange.to ?? undefined,
+      dateField: dateRange.from || dateRange.to ? dateRange.dateField : undefined,
       sortBy,
     },
     {
@@ -475,7 +485,9 @@ export default function QueuePage() {
     searchTerm.trim().length > 0 ||
     platformFilter !== "ALL" ||
     siteFilter !== "ALL" ||
-    sortBy !== "best_match";
+    sortBy !== "best_match" ||
+    !!dateRange.from ||
+    !!dateRange.to;
   const hasAnyPending = totalPendingCount > 0;
 
   const resetControls = () => {
@@ -484,6 +496,7 @@ export default function QueuePage() {
     setPlatformFilter("ALL");
     setSiteFilter("ALL");
     setSortBy("best_match");
+    setDateRange({ from: undefined, to: undefined, dateField: "publishedAt" });
   };
 
   return (
@@ -529,7 +542,7 @@ export default function QueuePage() {
             We're scanning platforms for conversations about your brand. Items will start appearing here shortly.
           </p>
         </div>
-      ) : !hasAnyPending ? (
+      ) : !hasAnyPending && !hasActiveControls ? (
         <EmptyState
           icon={Inbox}
           title="Queue is clear"
@@ -583,6 +596,12 @@ export default function QueuePage() {
                   </select>
                 </div>
               )}
+
+              <DateRangeFilter
+                value={dateRange}
+                onChange={setDateRange}
+                onClear={() => setDateRange({ from: undefined, to: undefined, dateField: dateRange.dateField })}
+              />
 
               <div className="flex items-center gap-2">
                 <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-charcoal-light">

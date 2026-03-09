@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/server/trpc";
-import { discoveryQueue, hvDiscoveryQueue } from "@/queue/queues";
+import { discoveryQueue, hvDiscoveryQueue, healthCheckQueue } from "@/queue/queues";
+import type { HealthCheckMetadata } from "@/services/health-check/types";
 
 export const adminRouter = router({
   getOverviewStats: adminProcedure.query(async ({ ctx }) => {
@@ -782,6 +783,215 @@ export const adminRouter = router({
         total,
         page: input.page,
         totalPages: Math.ceil(total / input.limit),
+      };
+    }),
+
+  triggerHealthCheck: adminProcedure
+    .input(
+      z.object({
+        siteId: z.string().optional(),
+        pipeline: z.enum(["regular", "hv", "both"]).default("both"),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const jobData = input.siteId
+        ? { scope: "site" as const, siteId: input.siteId, pipeline: input.pipeline }
+        : { scope: "all" as const, pipeline: input.pipeline };
+
+      const job = await healthCheckQueue.add("health-check", jobData, {
+        jobId: `hc-${Date.now()}`,
+      });
+
+      return { jobId: job.id };
+    }),
+
+  testHealthCheck: adminProcedure
+    .input(
+      z.object({
+        opportunityId: z.string().optional(),
+        pipeline: z.enum(["regular", "hv"]).default("regular"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      let oppId = input.opportunityId;
+
+      if (!oppId) {
+        if (input.pipeline === "regular") {
+          const opp = await ctx.prisma.opportunity.findFirst({
+            where: {
+              status: "POSTED",
+              comments: { some: { status: "POSTED" } },
+            },
+            select: { id: true },
+            orderBy: { updatedAt: "desc" },
+          });
+          oppId = opp?.id;
+        } else {
+          const opp = await ctx.prisma.hVOpportunity.findFirst({
+            where: {
+              status: "POSTED",
+              hvComments: { some: { status: "POSTED" } },
+            },
+            select: { id: true },
+            orderBy: { updatedAt: "desc" },
+          });
+          oppId = opp?.id;
+        }
+      }
+
+      if (!oppId) return { jobId: null, error: "No posted opportunity found" };
+
+      const job = await healthCheckQueue.add("health-check-test", {
+        scope: "opportunity",
+        opportunityId: oppId,
+        pipeline: input.pipeline,
+      }, {
+        jobId: `hc-test-${Date.now()}`,
+      });
+
+      return { jobId: job.id, opportunityId: oppId, error: null };
+    }),
+
+  getHealthCheckResults: adminProcedure
+    .input(
+      z.object({
+        page: z.number().min(1).default(1),
+        limit: z.number().min(1).max(50).default(20),
+        filter: z.enum(["all", "healthy", "deleted", "unchecked"]).default("all"),
+        pipeline: z.enum(["regular", "hv", "both"]).default("both"),
+        siteId: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      type ResultItem = {
+        id: string;
+        pipeline: "regular" | "hv";
+        title: string;
+        contentUrl: string;
+        platform: string;
+        siteName: string;
+        healthCheck: HealthCheckMetadata | null;
+      };
+
+      const items: ResultItem[] = [];
+
+      // Regular pipeline
+      if (input.pipeline !== "hv") {
+        const where: Record<string, unknown> = { status: "POSTED" };
+        if (input.siteId) where.siteId = input.siteId;
+
+        const opps = await ctx.prisma.opportunity.findMany({
+          where,
+          select: {
+            id: true,
+            title: true,
+            contentUrl: true,
+            platform: true,
+            metadata: true,
+            site: { select: { name: true } },
+          },
+          orderBy: { updatedAt: "desc" },
+        });
+
+        for (const opp of opps) {
+          const meta = opp.metadata as Record<string, unknown> | null;
+          const hc = (meta?.healthCheck as HealthCheckMetadata) ?? null;
+          items.push({
+            id: opp.id,
+            pipeline: "regular",
+            title: opp.title,
+            contentUrl: opp.contentUrl,
+            platform: opp.platform,
+            siteName: opp.site.name,
+            healthCheck: hc,
+          });
+        }
+      }
+
+      // HV pipeline
+      if (input.pipeline !== "regular") {
+        const where: Record<string, unknown> = { status: "POSTED" };
+        if (input.siteId) where.siteId = input.siteId;
+
+        const opps = await ctx.prisma.hVOpportunity.findMany({
+          where,
+          select: {
+            id: true,
+            title: true,
+            contentUrl: true,
+            platform: true,
+            metadata: true,
+            site: { select: { name: true } },
+          },
+          orderBy: { updatedAt: "desc" },
+        });
+
+        for (const opp of opps) {
+          const meta = opp.metadata as Record<string, unknown> | null;
+          const hc = (meta?.healthCheck as HealthCheckMetadata) ?? null;
+          items.push({
+            id: opp.id,
+            pipeline: "hv",
+            title: opp.title,
+            contentUrl: opp.contentUrl,
+            platform: opp.platform,
+            siteName: opp.site.name,
+            healthCheck: hc,
+          });
+        }
+      }
+
+      // Apply filter
+      const filtered = items.filter((item) => {
+        if (input.filter === "all") return true;
+        if (input.filter === "unchecked") return !item.healthCheck;
+        if (input.filter === "healthy") {
+          return item.healthCheck && item.healthCheck.deletedCount === 0 && !item.healthCheck.error;
+        }
+        if (input.filter === "deleted") {
+          return item.healthCheck && item.healthCheck.deletedCount > 0;
+        }
+        return true;
+      });
+
+      // Summary stats
+      let totalChecked = 0;
+      let totalVisible = 0;
+      let totalDeleted = 0;
+      let totalUncertain = 0;
+      let lastRunAt: string | null = null;
+
+      for (const item of items) {
+        if (!item.healthCheck) continue;
+        totalChecked++;
+        totalVisible += item.healthCheck.visibleCount;
+        totalDeleted += item.healthCheck.deletedCount;
+        totalUncertain += item.healthCheck.uncertainCount;
+        if (!lastRunAt || item.healthCheck.lastCheckedAt > lastRunAt) {
+          lastRunAt = item.healthCheck.lastCheckedAt;
+        }
+      }
+
+      const total = filtered.length;
+      const paged = filtered.slice(
+        (input.page - 1) * input.limit,
+        input.page * input.limit,
+      );
+
+      return {
+        items: paged,
+        total,
+        page: input.page,
+        totalPages: Math.ceil(total / input.limit),
+        summary: {
+          totalOpportunities: items.length,
+          totalChecked,
+          totalUnchecked: items.length - totalChecked,
+          totalVisible,
+          totalDeleted,
+          totalUncertain,
+          lastRunAt,
+        },
       };
     }),
 });

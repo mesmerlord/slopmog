@@ -602,7 +602,7 @@ export default function HVQueuePage() {
             Checking what AI chatbots are actually citing. Hang tight, this takes a few minutes.
           </p>
         </div>
-      ) : !hasAnyPending ? (
+      ) : !hasAnyPending && !hasActiveControls ? (
         <EmptyState
           icon={Sparkles}
           title="No high-value opportunities yet"

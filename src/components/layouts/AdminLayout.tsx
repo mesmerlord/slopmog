@@ -9,6 +9,7 @@ import {
   MessageSquare,
   BarChart3,
   ListOrdered,
+  HeartPulse,
   Shield,
   ArrowLeft,
   LogOut,
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
   { label: "Sites", href: "/admin/sites", icon: Globe },
   { label: "Comments", href: "/admin/comments", icon: MessageSquare },
   { label: "Queue", href: "/admin/queue", icon: ListOrdered },
+  { label: "Health", href: "/admin/health-check", icon: HeartPulse },
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
 ];
 

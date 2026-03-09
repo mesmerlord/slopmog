@@ -656,17 +656,17 @@ export default function SiteDetailPage() {
                   <Tag size={10} /> {section.label}
                 </h4>
 
-                <div className="flex flex-wrap gap-1 min-h-6 flex-1">
+                <div className="flex flex-wrap gap-1.5 min-h-6">
                   {section.tags.length > 0 ? section.tags.map((kw) => (
                     <span
                       key={kw}
-                      className={`group/tag inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full border text-[11px] text-charcoal font-medium self-start ${section.tagClassName}`}
+                      className={`group/tag inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full border text-[11px] leading-tight text-charcoal font-medium ${section.tagClassName}`}
                     >
                       {kw}
                       <button
                         onClick={() => removeKeywordTerm.mutate({ siteId: site.id, category: section.category, term: kw })}
                         disabled={removeKeywordTerm.isPending}
-                        className="opacity-0 group-hover/tag:opacity-100 ml-0.5 p-0.5 rounded-full text-charcoal-light hover:text-coral hover:bg-coral/10 transition-all disabled:opacity-50"
+                        className="hidden group-hover/tag:inline-flex ml-0.5 p-0.5 rounded-full text-charcoal-light hover:text-coral hover:bg-coral/10 transition-colors disabled:opacity-50"
                         title={`Remove "${kw}"`}
                       >
                         <X size={10} />
@@ -677,7 +677,7 @@ export default function SiteDetailPage() {
                   )}
                 </div>
 
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-auto pt-2 flex items-center gap-2">
                   <input
                     type="text"
                     value={draft}

@@ -17,6 +17,9 @@ export const opportunityRouter = router({
         search: z.string().trim().max(120).optional(),
         platform: z.enum(["REDDIT", "YOUTUBE"]).optional(),
         siteId: z.string().optional(),
+        dateFrom: z.date().optional(),
+        dateTo: z.date().optional(),
+        dateField: z.enum(["publishedAt", "createdAt"]).optional(),
         sortBy: z.enum([
           "best_match",
           "posted_newest",
@@ -35,6 +38,14 @@ export const opportunityRouter = router({
 
       const where: Record<string, unknown> = { ...baseWhere };
       if (input.platform) where.platform = input.platform;
+
+      if (input.dateFrom || input.dateTo) {
+        const field = input.dateField ?? "publishedAt";
+        const dateFilter: Record<string, unknown> = {};
+        if (input.dateFrom) dateFilter.gte = input.dateFrom;
+        if (input.dateTo) dateFilter.lte = input.dateTo;
+        where[field] = dateFilter;
+      }
 
       const normalizedSearch = input.search?.trim();
       if (normalizedSearch) {

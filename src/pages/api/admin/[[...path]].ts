@@ -4,7 +4,7 @@ import { ExpressAdapter } from "@bull-board/express";
 import express from "express";
 import { type NextApiRequest, type NextApiResponse } from "next";
 import { getSession } from "next-auth/react";
-import { discoveryQueue, generationQueue, postingQueue } from "@/queue/queues";
+import { discoveryQueue, generationQueue, postingQueue, healthCheckQueue } from "@/queue/queues";
 
 const app = express();
 const basePath = "/api/admin";
@@ -20,6 +20,7 @@ createBullBoard({
     queueAdapter(discoveryQueue),
     queueAdapter(generationQueue),
     queueAdapter(postingQueue),
+    queueAdapter(healthCheckQueue),
   ],
   // @ts-ignore
   serverAdapter: serverAdapter,

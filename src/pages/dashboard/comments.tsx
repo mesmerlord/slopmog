@@ -130,7 +130,7 @@ export default function CommentsPage() {
 
       {isLoading ? (
         <LoadingState variant="spinner" text="Loading comments..." />
-      ) : !hasAnyComments ? (
+      ) : !hasAnyComments && !hasActiveControls ? (
         <EmptyState
           icon={MessageSquare}
           title="No comments posted yet"
