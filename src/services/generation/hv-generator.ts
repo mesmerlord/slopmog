@@ -77,7 +77,7 @@ export async function generateHVComment(
         .join("\n")
     : "No existing comments";
 
-  const variantCount = input.platform === "YOUTUBE" ? 1 : 3;
+  const variantCount = input.platform === "YOUTUBE" ? 5 : 3;
 
   const citationInfo = `This is a HIGH-VALUE thread. It is actively being cited by AI models (${input.citationContext.citingModels.join(", ")}) when users ask decision-making questions like:
 ${input.citationContext.citingQueries.slice(0, 3).map((q) => `- "${q}"`).join("\n")}

@@ -18,12 +18,14 @@ import {
   MessageSquare,
   Eye,
   ThumbsUp,
+  Bot,
 } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
 import EmptyState from "@/components/shared/EmptyState";
 import LoadingState from "@/components/shared/LoadingState";
+import DateRangeFilter, { type DateRangeValue } from "@/components/shared/DateRangeFilter";
 import { SubscriptionModal } from "@/components/SubscriptionModal";
 import GeneratingMascotV1 from "@/components/illustrations/GeneratingMascotV1";
 import { PERSONAS } from "@/constants/personas";
@@ -435,6 +437,12 @@ export default function HVQueuePage() {
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("ALL");
   const [siteFilter, setSiteFilter] = useState<string>("ALL");
   const [sortBy, setSortBy] = useState<HVSort>("citation_score");
+  const [dateRange, setDateRange] = useState<DateRangeValue>({
+    from: undefined,
+    to: undefined,
+    dateField: "publishedAt" as const,
+  });
+  const [modelFilter, setModelFilter] = useState<string>("ALL");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const sitesQuery = trpc.site.list.useQuery();
@@ -482,6 +490,10 @@ export default function HVQueuePage() {
       search: debouncedSearchTerm || undefined,
       platform: platformFilter === "ALL" ? undefined : platformFilter,
       siteId: siteFilter === "ALL" ? undefined : siteFilter,
+      dateFrom: dateRange.from ?? undefined,
+      dateTo: dateRange.to ?? undefined,
+      dateField: dateRange.from || dateRange.to ? dateRange.dateField : undefined,
+      citingModel: modelFilter === "ALL" ? undefined : modelFilter,
       sortBy,
     },
     {
@@ -548,7 +560,10 @@ export default function HVQueuePage() {
     searchTerm.trim().length > 0 ||
     platformFilter !== "ALL" ||
     siteFilter !== "ALL" ||
-    sortBy !== "citation_score";
+    sortBy !== "citation_score" ||
+    dateRange.from !== undefined ||
+    dateRange.to !== undefined ||
+    modelFilter !== "ALL";
   const hasAnyPending = totalPendingCount > 0;
 
   const resetControls = () => {
@@ -557,6 +572,8 @@ export default function HVQueuePage() {
     setPlatformFilter("ALL");
     setSiteFilter("ALL");
     setSortBy("citation_score");
+    setDateRange({ from: undefined, to: undefined, dateField: "publishedAt" });
+    setModelFilter("ALL");
   };
 
   return (
@@ -657,6 +674,27 @@ export default function HVQueuePage() {
                   </select>
                 </div>
               )}
+
+              <DateRangeFilter
+                value={dateRange}
+                onChange={setDateRange}
+                onClear={() => setDateRange({ from: undefined, to: undefined, dateField: dateRange.dateField })}
+              />
+
+              <div className="flex items-center gap-2">
+                <Bot size={12} className="text-charcoal-light shrink-0" />
+                <select
+                  value={modelFilter}
+                  onChange={(e) => setModelFilter(e.target.value)}
+                  className="h-8 rounded-full border border-charcoal/[0.12] bg-white px-3 text-xs font-semibold text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30"
+                >
+                  <option value="ALL">All Models</option>
+                  <option value="gemini">Gemini</option>
+                  <option value="claude">Claude</option>
+                  <option value="gpt">GPT</option>
+                  <option value="grok">Grok</option>
+                </select>
+              </div>
 
               <div className="flex items-center gap-2">
                 <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-charcoal-light">

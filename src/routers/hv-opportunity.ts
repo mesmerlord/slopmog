@@ -51,6 +51,10 @@ export const hvOpportunityRouter = router({
         search: z.string().trim().max(120).optional(),
         platform: z.enum(["REDDIT", "YOUTUBE"]).optional(),
         siteId: z.string().optional(),
+        dateFrom: z.date().optional(),
+        dateTo: z.date().optional(),
+        dateField: z.enum(["publishedAt", "createdAt"]).optional(),
+        citingModel: z.string().optional(),
         sortBy: z.enum([
           "citation_score",
           "posted_newest",
@@ -69,6 +73,18 @@ export const hvOpportunityRouter = router({
 
       const where: Record<string, unknown> = { ...baseWhere };
       if (input.platform) where.platform = input.platform;
+
+      if (input.citingModel) {
+        where.citingModels = { has: input.citingModel };
+      }
+
+      if (input.dateFrom || input.dateTo) {
+        const field = input.dateField ?? "publishedAt";
+        where[field] = {
+          ...(input.dateFrom ? { gte: input.dateFrom } : {}),
+          ...(input.dateTo ? { lte: input.dateTo } : {}),
+        };
+      }
 
       const normalizedSearch = input.search?.trim();
       if (normalizedSearch) {
