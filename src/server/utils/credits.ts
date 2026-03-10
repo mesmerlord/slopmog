@@ -110,25 +110,28 @@ export async function addPermanentCredits(options: {
     throw new Error("Credit amount must be positive");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { credits: true, permanentCredits: true },
-  });
+  return prisma.$transaction(async (tx) => {
+    const rows = await tx.$queryRawUnsafe<
+      Array<{ credits: number; permanentCredits: number }>
+    >(
+      `SELECT "credits", "permanentCredits" FROM "User" WHERE "id" = $1 FOR UPDATE`,
+      userId,
+    );
 
-  if (!user) {
-    throw new Error(`User ${userId} not found`);
-  }
+    if (!rows.length) {
+      throw new Error(`User ${userId} not found`);
+    }
 
-  const previousTotal = user.credits + user.permanentCredits;
-  const newPermanentCredits = user.permanentCredits + amount;
-  const newTotal = user.credits + newPermanentCredits;
+    const user = rows[0];
+    const previousTotal = user.credits + user.permanentCredits;
+    const newTotal = previousTotal + amount;
 
-  await prisma.$transaction([
-    prisma.user.update({
+    await tx.user.update({
       where: { id: userId },
       data: { permanentCredits: { increment: amount } },
-    }),
-    prisma.userCreditHistory.create({
+    });
+
+    await tx.userCreditHistory.create({
       data: {
         userId,
         credits: amount,
@@ -139,10 +142,13 @@ export async function addPermanentCredits(options: {
           ? `${reasonExtra} [Permanent credits]`
           : "[Permanent credits]",
       },
-    }),
-  ]);
+    });
 
-  return { newPermanentCredits, newTotalCredits: newTotal };
+    return {
+      newPermanentCredits: user.permanentCredits + amount,
+      newTotalCredits: user.credits + user.permanentCredits + amount,
+    };
+  });
 }
 
 export async function hasEnoughCredits(
@@ -182,22 +188,26 @@ export async function refundCredits(options: {
 
   if (amount <= 0) return;
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { credits: true, permanentCredits: true },
-  });
+  await prisma.$transaction(async (tx) => {
+    const rows = await tx.$queryRawUnsafe<
+      Array<{ credits: number; permanentCredits: number }>
+    >(
+      `SELECT "credits", "permanentCredits" FROM "User" WHERE "id" = $1 FOR UPDATE`,
+      userId,
+    );
 
-  if (!user) return;
+    if (!rows.length) return;
 
-  const previousTotal = user.credits + user.permanentCredits;
-  const newTotal = previousTotal + amount;
+    const user = rows[0];
+    const previousTotal = user.credits + user.permanentCredits;
+    const newTotal = previousTotal + amount;
 
-  await prisma.$transaction([
-    prisma.user.update({
+    await tx.user.update({
       where: { id: userId },
-      data: { credits: { increment: amount } },
-    }),
-    prisma.userCreditHistory.create({
+      data: { permanentCredits: { increment: amount } },
+    });
+
+    await tx.userCreditHistory.create({
       data: {
         userId,
         credits: amount,
@@ -208,8 +218,8 @@ export async function refundCredits(options: {
           ? `${reasonExtra} [Refund]`
           : "[Refund]",
       },
-    }),
-  ]);
+    });
+  });
 }
 
 export async function getTotalCredits(userId: string): Promise<number> {

@@ -10,6 +10,7 @@ import {
   getYouTubeComments,
 } from "@/services/discovery/scrape-creators";
 import { parseDiscoveryConfig } from "@/services/discovery/config";
+import { PERSONA_MAP } from "@/constants/personas";
 
 function toSingleLine(text: string): string {
   return text.replace(/\s*\n+\s*/g, " ").trim();
@@ -164,6 +165,7 @@ export const hvOpportunityRouter = router({
         where: {
           id: input.hvOpportunityId,
           site: { userId: ctx.session.user.id },
+          status: { in: ["DISCOVERED", "PENDING_REVIEW"] },
         },
         include: {
           site: true,
@@ -197,6 +199,11 @@ export const hvOpportunityRouter = router({
         console.warn(`[hvOpportunity.generate] Failed to fetch existing comments:`, err);
       }
 
+      const personaId = input.persona ?? "auto";
+      if (personaId !== "auto" && !PERSONA_MAP[personaId]) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid persona" });
+      }
+
       const site = opportunity.site;
       const generationInput: HVCommentGenerationInput = {
         postTitle: opportunity.title,
@@ -212,7 +219,7 @@ export const hvOpportunityRouter = router({
         matchedKeyword: opportunity.citingQueries[0] ?? site.name,
         commentPosition: "top_level",
         postType: "discussion",
-        persona: input.persona,
+        persona: personaId,
         citationContext: {
           citingModels: opportunity.citingModels,
           citingQueries: opportunity.citingQueries,
@@ -240,7 +247,7 @@ export const hvOpportunityRouter = router({
           siteId: site.id,
           status: "DRAFT",
           text: savedText,
-          persona: input.persona ?? "auto",
+          persona: personaId,
           qualityScore: best.qualityScore,
           scoreReasons: best.reasons,
         },

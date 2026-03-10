@@ -20,10 +20,13 @@ import { getServerAuthSession } from "@/server/utils/auth";
 function PlatformBadge({ platform }: { platform: string }) {
   const colors = platform === "REDDIT"
     ? "bg-orange-100 text-orange-700"
-    : "bg-red-100 text-red-700";
+    : platform === "TWITTER"
+      ? "bg-sky-100 text-sky-700"
+      : "bg-red-100 text-red-700";
+  const label = platform === "REDDIT" ? "Reddit" : platform === "TWITTER" ? "Twitter" : "YouTube";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${colors}`}>
-      {platform === "REDDIT" ? "Reddit" : "YouTube"}
+      {label}
     </span>
   );
 }

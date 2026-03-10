@@ -247,13 +247,14 @@ export default function SiteDetailPage() {
   );
 
   // Poll activity while discovery is running
+  const refetchActivity = activityQuery.refetch;
   useEffect(() => {
     if (!hasRunningDiscovery || !siteId) return;
     const interval = setInterval(() => {
-      activityQuery.refetch();
+      refetchActivity();
     }, 3000);
     return () => clearInterval(interval);
-  }, [hasRunningDiscovery, siteId, activityQuery]);
+  }, [hasRunningDiscovery, siteId, refetchActivity]);
 
   const autoStatsQuery = trpc.site.getDailyAutoStats.useQuery(
     { siteId },
@@ -351,6 +352,13 @@ export default function SiteDetailPage() {
   const [editPlatforms, setEditPlatforms] = useState<string[]>([]);
   const [editValueProps, setEditValueProps] = useState<string[]>([]);
   const [editValuePropDraft, setEditValuePropDraft] = useState("");
+
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (dailyLimitTimerRef.current) clearTimeout(dailyLimitTimerRef.current);
+    };
+  }, []);
 
   const debouncedUpdateLimit = useCallback((value: number) => {
     if (dailyLimitTimerRef.current) clearTimeout(dailyLimitTimerRef.current);
@@ -526,7 +534,7 @@ export default function SiteDetailPage() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-sm text-teal hover:text-teal-dark font-semibold transition-colors"
             >
-              {new URL(site.url).hostname}
+              {(() => { try { return new URL(site.url).hostname; } catch { return site.url; } })()}
               <ExternalLink size={12} />
             </a>
             <span className="w-px h-4 bg-charcoal/10" />

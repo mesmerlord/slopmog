@@ -1,7 +1,12 @@
 import { z } from "zod";
+import Stripe from "stripe";
 import { router, adminProcedure } from "@/server/trpc";
 import { discoveryQueue, hvDiscoveryQueue, healthCheckQueue } from "@/queue/queues";
 import type { HealthCheckMetadata } from "@/services/health-check/types";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2025-12-15.clover",
+});
 
 export const adminRouter = router({
   getOverviewStats: adminProcedure.query(async ({ ctx }) => {
@@ -205,10 +210,30 @@ export const adminRouter = router({
     .mutation(async ({ ctx, input }) => {
       const user = await ctx.prisma.user.findUnique({
         where: { id: input.userId },
-        select: { role: true },
+        select: {
+          role: true,
+          stripeCustomer: {
+            select: {
+              subscriptions: {
+                where: { status: { in: ["active", "trialing"] } },
+                select: { id: true },
+              },
+            },
+          },
+        },
       });
       if (!user) return { success: false };
       if (user.role === "ADMIN") return { success: false };
+
+      // Cancel active Stripe subscriptions so banned user isn't billed
+      const activeSubs = user.stripeCustomer?.subscriptions ?? [];
+      for (const sub of activeSubs) {
+        try {
+          await stripe.subscriptions.cancel(sub.id);
+        } catch (err) {
+          console.error(`[admin.banUser] Failed to cancel subscription ${sub.id}:`, err);
+        }
+      }
 
       await ctx.prisma.$transaction([
         ctx.prisma.site.updateMany({
@@ -217,7 +242,7 @@ export const adminRouter = router({
         }),
         ctx.prisma.user.update({
           where: { id: input.userId },
-          data: { credits: 0 },
+          data: { credits: 0, permanentCredits: 0 },
         }),
       ]);
 
@@ -231,7 +256,7 @@ export const adminRouter = router({
         limit: z.number().min(1).max(50).default(20),
         search: z.string().trim().max(120).optional(),
         activeFilter: z.enum(["all", "active", "inactive"]).default("all"),
-        platform: z.enum(["REDDIT", "YOUTUBE"]).optional(),
+        platform: z.enum(["REDDIT", "YOUTUBE", "TWITTER"]).optional(),
         sortBy: z
           .enum(["newest", "oldest", "opportunities", "comments"])
           .default("newest"),
@@ -309,7 +334,7 @@ export const adminRouter = router({
         status: z
           .enum(["DRAFT", "APPROVED", "POSTED", "FAILED", "SKIPPED"])
           .optional(),
-        platform: z.enum(["REDDIT", "YOUTUBE"]).optional(),
+        platform: z.enum(["REDDIT", "YOUTUBE", "TWITTER"]).optional(),
         siteId: z.string().optional(),
         userEmail: z.string().trim().max(120).optional(),
         sortBy: z
@@ -875,7 +900,7 @@ export const adminRouter = router({
 
       const items: ResultItem[] = [];
 
-      // Regular pipeline
+      // Regular pipeline — use DB-level limit to avoid loading all records into memory
       if (input.pipeline !== "hv") {
         const where: Record<string, unknown> = { status: "POSTED" };
         if (input.siteId) where.siteId = input.siteId;
@@ -891,6 +916,7 @@ export const adminRouter = router({
             site: { select: { name: true } },
           },
           orderBy: { updatedAt: "desc" },
+          take: 500,
         });
 
         for (const opp of opps) {
@@ -924,6 +950,7 @@ export const adminRouter = router({
             site: { select: { name: true } },
           },
           orderBy: { updatedAt: "desc" },
+          take: 500,
         });
 
         for (const opp of opps) {

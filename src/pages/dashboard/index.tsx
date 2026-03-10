@@ -57,13 +57,14 @@ export default function DashboardIndexPage() {
   const recentActivity = globalActivityQuery.data ?? [];
 
   // Poll discovery status while running
+  const refetchDiscoveryStatus = discoveryStatusQuery.refetch;
   useEffect(() => {
     if (!discoveryRunning) return;
     const interval = setInterval(() => {
-      discoveryStatusQuery.refetch();
+      refetchDiscoveryStatus();
     }, 3000);
     return () => clearInterval(interval);
-  }, [discoveryRunning, discoveryStatusQuery]);
+  }, [discoveryRunning, refetchDiscoveryStatus]);
 
   const isLoading = creditsQuery.isLoading;
 

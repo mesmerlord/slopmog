@@ -238,12 +238,22 @@ export const hvCommentRouter = router({
       if (input.siteId) baseWhere.siteId = input.siteId;
 
       const where: Record<string, unknown> = { ...baseWhere };
-      if (input.platform) {
-        where.hvOpportunity = { platform: input.platform };
-      }
 
       const normalizedSearch = input.search?.trim();
-      if (normalizedSearch) {
+      if (input.platform && normalizedSearch) {
+        where.AND = [
+          { hvOpportunity: { platform: input.platform } },
+          {
+            OR: [
+              { hvOpportunity: { title: { contains: normalizedSearch, mode: "insensitive" } } },
+              { hvOpportunity: { sourceContext: { contains: normalizedSearch, mode: "insensitive" } } },
+              { site: { name: { contains: normalizedSearch, mode: "insensitive" } } },
+            ],
+          },
+        ];
+      } else if (input.platform) {
+        where.hvOpportunity = { platform: input.platform };
+      } else if (normalizedSearch) {
         where.OR = [
           { hvOpportunity: { title: { contains: normalizedSearch, mode: "insensitive" } } },
           { hvOpportunity: { sourceContext: { contains: normalizedSearch, mode: "insensitive" } } },

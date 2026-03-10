@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Check, ArrowRight, Loader2, Sparkles } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -180,6 +180,11 @@ export const SubscriptionModal = ({
   description = "Pick a plan to unlock more keywords and start posting.",
 }: SubscriptionModalProps) => {
   const [period, setPeriod] = useState<"monthly" | "yearly">("monthly");
+
+  // Reset period when modal opens
+  useEffect(() => {
+    if (open) setPeriod("monthly");
+  }, [open]);
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>

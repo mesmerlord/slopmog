@@ -3,7 +3,7 @@ import { redisConnection } from "@/server/utils/redis";
 import { prisma } from "@/server/utils/db";
 import { type HVPostingJobData, jobLog, jobWarn, jobError } from "@/queue/queues";
 import { postingRegistry } from "@/services/posting/provider";
-import { hasEnoughCredits, deductCredits } from "@/server/utils/credits";
+import { deductCredits, refundCredits } from "@/server/utils/credits";
 import { CREDIT_COSTS } from "@/constants/credits";
 
 // Register providers (side-effect imports)
@@ -87,12 +87,20 @@ async function processHVPosting(job: Job<HVPostingJobData>) {
 
   await jobLog(job, "hv-posting", `Provider selected: ${provider.name}`);
 
-  // Credit pre-check with HV costs
+  // Deduct credits BEFORE posting — atomic, prevents free posts via race condition
   const platformKey = opportunity.platform.toLowerCase() as "reddit" | "youtube";
   const creditCost = CREDIT_COSTS.highValue[platformKey];
-  const creditCheck = await hasEnoughCredits(comment.site.userId, creditCost);
-  if (!creditCheck.hasEnough) {
-    const msg = `Insufficient credits for HV posting (need ${creditCost}). Available: ${creditCheck.totalCredits}`;
+
+  const creditResult = await deductCredits({
+    userId: comment.site.userId,
+    amount: creditCost,
+    reason: "CAMPAIGN_USAGE",
+    reasonExtra: `HV Comment ${hvCommentId} on ${opportunity.platform} (${creditCost} credits)`,
+    throwOnInsufficient: false,
+  });
+
+  if (!creditResult.success) {
+    const msg = `Insufficient credits for HV posting (need ${creditCost}). Available: ${creditResult.remainingCredits + creditResult.remainingPermanentCredits}`;
     await jobWarn(job, "hv-posting", `Comment ${hvCommentId}: ${msg}`);
     await prisma.$transaction([
       prisma.hVComment.update({
@@ -137,24 +145,23 @@ async function processHVPosting(job: Job<HVPostingJobData>) {
       }),
     ]);
 
-    // Deduct HV credits
-    try {
-      await deductCredits({
-        userId: comment.site.userId,
-        amount: creditCost,
-        reason: "CAMPAIGN_USAGE",
-        reasonExtra: `HV Comment ${hvCommentId} on ${opportunity.platform} (${creditCost} credits)`,
-        throwOnInsufficient: false,
-      });
-    } catch (creditErr) {
-      await jobError(job, "hv-posting", `CRITICAL: Failed to deduct credit for HV comment ${hvCommentId}: ${creditErr}`);
-    }
-
     await jobLog(job, "hv-posting", `HV Comment ${hvCommentId} posted via ${provider.name} (order: ${result.orderId})`);
   } else if (result.retryable) {
+    await refundCredits({
+      userId: comment.site.userId,
+      amount: creditCost,
+      reason: "OTHER",
+      reasonExtra: `Refund for retryable HV posting failure: comment ${hvCommentId}`,
+    });
     await jobWarn(job, "hv-posting", `Retryable failure: ${result.error}`);
     throw new Error(`HV Posting failed (retryable): ${result.error}`);
   } else {
+    await refundCredits({
+      userId: comment.site.userId,
+      amount: creditCost,
+      reason: "OTHER",
+      reasonExtra: `Refund for failed HV posting: comment ${hvCommentId}`,
+    });
     await prisma.$transaction([
       prisma.hVComment.update({
         where: { id: hvCommentId },

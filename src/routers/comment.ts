@@ -265,12 +265,24 @@ export const commentRouter = router({
       if (input.siteId) baseWhere.siteId = input.siteId;
 
       const where: Record<string, unknown> = { ...baseWhere };
-      if (input.platform) {
-        where.opportunity = { platform: input.platform };
-      }
 
       const normalizedSearch = input.search?.trim();
-      if (normalizedSearch) {
+      if (input.platform && normalizedSearch) {
+        // Combine platform and search with AND to avoid filter conflict
+        where.AND = [
+          { opportunity: { platform: input.platform } },
+          {
+            OR: [
+              { opportunity: { title: { contains: normalizedSearch, mode: "insensitive" } } },
+              { opportunity: { sourceContext: { contains: normalizedSearch, mode: "insensitive" } } },
+              { opportunity: { matchedKeyword: { contains: normalizedSearch, mode: "insensitive" } } },
+              { site: { name: { contains: normalizedSearch, mode: "insensitive" } } },
+            ],
+          },
+        ];
+      } else if (input.platform) {
+        where.opportunity = { platform: input.platform };
+      } else if (normalizedSearch) {
         where.OR = [
           { opportunity: { title: { contains: normalizedSearch, mode: "insensitive" } } },
           { opportunity: { sourceContext: { contains: normalizedSearch, mode: "insensitive" } } },

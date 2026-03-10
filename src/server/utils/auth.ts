@@ -11,6 +11,18 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/server/utils/db";
 import { FREE_CREDITS } from "@/constants/pricing";
 
+if (!process.env.NEXTAUTH_SECRET) {
+  throw new Error("NEXTAUTH_SECRET is not set");
+}
+
+if (!process.env.GOOGLE_CLIENT_ID) {
+  throw new Error("GOOGLE_CLIENT_ID is not set");
+}
+
+if (!process.env.GOOGLE_CLIENT_SECRET) {
+  throw new Error("GOOGLE_CLIENT_SECRET is not set");
+}
+
 declare module "next-auth" {
   interface Session extends DefaultSession {
     user: {
@@ -59,8 +71,8 @@ export const authOptions: NextAuthOptions = {
       },
     }),
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     }),
   ],
   events: {

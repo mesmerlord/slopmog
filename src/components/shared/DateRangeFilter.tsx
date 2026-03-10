@@ -78,7 +78,7 @@ export default function DateRangeFilter({ value, onChange, onClear }: DateRangeF
       setActivePreset(detectPreset(value.from, value.to));
       setSelectingFrom(true);
     }
-  }, [open]);
+  }, [open, value.from, value.to]);
 
   const hasValue = value.from || value.to;
 

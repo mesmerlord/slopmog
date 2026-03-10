@@ -325,6 +325,13 @@ export default function AdminAnalyticsPage() {
             )}
           </div>
         </>
+      ) : analytics.isError ? (
+        <div className="bg-coral/[0.06] border border-coral/20 rounded-brand p-6 text-center">
+          <p className="text-sm font-bold text-coral">Failed to load analytics</p>
+          <button onClick={() => analytics.refetch()} className="mt-3 inline-flex h-8 items-center rounded-full border border-coral/30 px-4 text-xs font-bold text-coral hover:bg-coral/5 transition-all">
+            Retry
+          </button>
+        </div>
       ) : null}
     </AdminLayout>
   );

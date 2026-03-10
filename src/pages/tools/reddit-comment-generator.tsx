@@ -233,9 +233,13 @@ export default function RedditCommentGenerator() {
   const handleCopy = async () => {
     if (!result) return;
     const text = result.variants[activeVariant]?.text || result.text;
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Couldn't copy — try selecting the text manually.");
+    }
   };
 
   const handleReset = () => {

@@ -45,7 +45,7 @@ export default function SitesListPage() {
     onError: (err) => toast.error(err.message),
   });
 
-  const [runningId, setRunningId] = useState<string | null>(null);
+  const [runningIds, setRunningIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -61,9 +61,13 @@ export default function SitesListPage() {
   };
 
   const handleRunDiscovery = (siteId: string) => {
-    setRunningId(siteId);
+    setRunningIds((prev) => new Set(prev).add(siteId));
     triggerDiscovery.mutate({ siteId }, {
-      onSettled: () => setRunningId(null),
+      onSettled: () => setRunningIds((prev) => {
+        const next = new Set(prev);
+        next.delete(siteId);
+        return next;
+      }),
     });
   };
 
@@ -74,7 +78,7 @@ export default function SitesListPage() {
       <PageHeader
         title="Sites"
         description="Your brands, auto-discovered across the internet"
-        action={{ label: "Add Site", href: routes.dashboard.sites.new }}
+        action={{ label: "Add Site", onClick: handleAddSite }}
       />
 
       {sitesQuery.isLoading ? (
@@ -90,7 +94,8 @@ export default function SitesListPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {sitesQuery.data.map((site) => {
-            const hostname = new URL(site.url).hostname;
+            let hostname: string;
+            try { hostname = new URL(site.url).hostname; } catch { hostname = site.url; }
             const initial = site.name.charAt(0).toUpperCase();
             const isAuto = site.mode === "AUTO";
 
@@ -125,6 +130,7 @@ export default function SitesListPage() {
                         }}
                         onBlur={() => setTimeout(() => setMenuOpenId(null), 150)}
                         className="p-1.5 rounded-full text-charcoal-light/40 hover:text-charcoal hover:bg-charcoal/[0.04] transition-colors"
+                        aria-label="Site options"
                       >
                         <MoreVertical size={16} />
                       </button>
@@ -181,11 +187,11 @@ export default function SitesListPage() {
                         e.stopPropagation();
                         handleRunDiscovery(site.id);
                       }}
-                      disabled={runningId === site.id || !site.active}
+                      disabled={runningIds.has(site.id) || !site.active}
                       className="inline-flex items-center gap-1 bg-coral text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-coral-dark transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <Play size={11} fill="currentColor" />
-                      {runningId === site.id ? "Starting..." : "Discover"}
+                      {runningIds.has(site.id) ? "Starting..." : "Discover"}
                     </button>
                   </div>
                 </div>

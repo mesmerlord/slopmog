@@ -174,7 +174,7 @@ export default function PricingPage() {
                   </button>
                   <div
                     className="faq-answer overflow-hidden transition-all duration-300"
-                    style={{ maxHeight: openFaqIndex === i ? "200px" : "0" }}
+                    style={{ maxHeight: openFaqIndex === i ? "500px" : "0" }}
                   >
                     <div className="pb-5 text-[0.95rem] max-md:text-[0.88rem] text-charcoal-light leading-[1.7]">
                       {item.a}

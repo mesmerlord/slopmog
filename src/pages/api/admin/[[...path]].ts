@@ -3,7 +3,8 @@ import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { ExpressAdapter } from "@bull-board/express";
 import express from "express";
 import { type NextApiRequest, type NextApiResponse } from "next";
-import { getSession } from "next-auth/react";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/server/utils/auth";
 import { discoveryQueue, generationQueue, postingQueue, healthCheckQueue } from "@/queue/queues";
 
 const app = express();
@@ -33,10 +34,15 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const session = await getSession({ req });
+  const session = await getServerSession(req, res, authOptions);
 
   if (!session) {
     res.status(401).end();
+    return;
+  }
+
+  if (session.user.role !== "ADMIN") {
+    res.status(403).end();
     return;
   }
 

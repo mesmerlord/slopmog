@@ -12,6 +12,7 @@ import { postingQueue, type PostingJobData } from "@/queue/queues";
 import { getUserPlan } from "@/server/utils/plan";
 import { hasEnoughCredits } from "@/server/utils/credits";
 import { CREDIT_COSTS } from "@/constants/credits";
+import { PERSONA_MAP } from "@/constants/personas";
 
 export const opportunityRouter = router({
   listPending: protectedProcedure
@@ -189,6 +190,11 @@ export const opportunityRouter = router({
         console.warn(`[opportunity.generate] Failed to fetch existing comments:`, err);
       }
 
+      const personaId = input.persona ?? "auto";
+      if (personaId !== "auto" && !PERSONA_MAP[personaId]) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid persona" });
+      }
+
       const site = opportunity.site;
       const result = await generateComment({
         postTitle: opportunity.title,
@@ -204,7 +210,7 @@ export const opportunityRouter = router({
         matchedKeyword: opportunity.matchedKeyword,
         commentPosition: "top_level",
         postType: (opportunity.postType as "question" | "discussion" | "showcase") ?? "discussion",
-        persona: input.persona,
+        persona: personaId,
       });
 
       if (result.noRelevantComment || result.variants.length === 0) {
@@ -226,7 +232,7 @@ export const opportunityRouter = router({
           siteId: site.id,
           status: "DRAFT",
           text: savedText,
-          persona: input.persona ?? "auto",
+          persona: personaId,
           qualityScore: best.qualityScore,
           scoreReasons: best.reasons,
         },

@@ -37,10 +37,13 @@ import { getServerAuthSession } from "@/server/utils/auth";
 function PlatformBadge({ platform }: { platform: string }) {
   const colors = platform === "REDDIT"
     ? "bg-orange-100 text-orange-700"
-    : "bg-red-100 text-red-700";
+    : platform === "TWITTER"
+      ? "bg-sky-100 text-sky-700"
+      : "bg-red-100 text-red-700";
+  const label = platform === "REDDIT" ? "Reddit" : platform === "TWITTER" ? "Twitter" : "YouTube";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${colors}`}>
-      {platform === "REDDIT" ? "Reddit" : "YouTube"}
+      {label}
     </span>
   );
 }
@@ -451,13 +454,14 @@ export default function HVQueuePage() {
   const discoveryRuns = discoveryStatusQuery.data?.runs ?? [];
 
   // Poll discovery status while running
+  const refetchDiscoveryStatus = discoveryStatusQuery.refetch;
   useEffect(() => {
     if (!discoveryRunning) return;
     const interval = setInterval(() => {
-      discoveryStatusQuery.refetch();
+      refetchDiscoveryStatus();
     }, 5000);
     return () => clearInterval(interval);
-  }, [discoveryRunning, discoveryStatusQuery]);
+  }, [discoveryRunning, refetchDiscoveryStatus]);
 
   // Poll pending list while discovery is running
   useEffect(() => {

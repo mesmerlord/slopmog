@@ -93,23 +93,31 @@ export async function chatCompletion(
     body.plugins = [plugin];
   }
 
-  const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60_000);
 
-  if (!response.ok) {
-    const errorBody = await response.text().catch(() => "");
-    throw new Error(
-      `OpenRouter ${response.status}: ${response.statusText} - ${errorBody}`,
-    );
+  try {
+    const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "");
+      throw new Error(
+        `OpenRouter ${response.status}: ${response.statusText} - ${errorBody}`,
+      );
+    }
+
+    const data = (await response.json()) as ChatCompletionResponse;
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) throw new Error("OpenRouter returned empty response");
+    return content;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const data = (await response.json()) as ChatCompletionResponse;
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) throw new Error("OpenRouter returned empty response");
-  return content;
 }
 
 /**
@@ -130,13 +138,19 @@ export async function chatCompletionJSON<T>(
       const parsed = JSON.parse(cleaned);
       return schema.parse(parsed);
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      // Don't retry on 4xx client errors (except 429 rate limit)
+      const is4xx = /OpenRouter 4\d\d/.test(errMsg) && !/OpenRouter 429/.test(errMsg);
+      if (is4xx) {
+        throw new Error(`OpenRouter client error (not retryable): ${errMsg}`);
+      }
       if (attempt < maxRetries - 1) {
         const delay = 1000 * Math.pow(2, attempt);
         await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }
       throw new Error(
-        `Failed to get valid JSON after ${maxRetries} attempts: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to get valid JSON after ${maxRetries} attempts: ${errMsg}`,
       );
     }
   }
@@ -215,11 +229,20 @@ export async function chatCompletionWithCitations(
     `[openrouter-request] model=${body.model} | has_web_search_options=${!!body.web_search_options} | has_plugins=${!!body.plugins} | body_keys=${Object.keys(body).join(",")}`,
   );
 
-  const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 90_000);
+
+  let response: Response;
+  try {
+    response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => "");

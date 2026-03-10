@@ -9,7 +9,8 @@ import "@/styles/globals.css";
 
 const AnalyticsInit = () => {
   useEffect(() => {
-    ReactGA.initialize("G-K5PRLKY2W9");
+    const gaId = process.env.NEXT_PUBLIC_GA_ID || "G-K5PRLKY2W9";
+    ReactGA.initialize(gaId);
   }, []);
 
   useAnalyticsIdentify();

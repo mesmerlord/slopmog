@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import LogoBlob from "@/components/LogoBlob";
@@ -36,6 +36,16 @@ export default function Nav({ variant = "app", onScrollTo }: NavProps) {
   }, [handleScroll]);
 
   const isLanding = variant === "landing";
+
+  // Close user menu on Escape
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setUserMenuOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [userMenuOpen]);
 
   // Stabilize handleNavClick — only depends on onScrollTo
   const handleNavClick = useCallback(
@@ -113,6 +123,9 @@ export default function Nav({ variant = "app", onScrollTo }: NavProps) {
               <button
                 className="flex items-center gap-2 text-[0.95rem] font-semibold text-charcoal-light hover:text-teal transition-colors"
                 onClick={() => setUserMenuOpen((v) => !v)}
+                aria-expanded={userMenuOpen}
+                aria-haspopup="true"
+                aria-label="User menu"
               >
                 <div className="w-8 h-8 rounded-full bg-teal text-white flex items-center justify-center text-sm font-bold">
                   {session.user.name?.[0]?.toUpperCase() || session.user.email?.[0]?.toUpperCase() || "?"}

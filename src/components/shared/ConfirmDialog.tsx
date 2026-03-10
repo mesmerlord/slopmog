@@ -10,6 +10,7 @@ interface ConfirmDialogProps {
   cancelLabel?: string;
   onConfirm: () => void;
   variant?: "danger" | "default";
+  isPending?: boolean;
 }
 
 export default function ConfirmDialog({
@@ -21,6 +22,7 @@ export default function ConfirmDialog({
   cancelLabel = "Cancel",
   onConfirm,
   variant = "default",
+  isPending = false,
 }: ConfirmDialogProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -45,9 +47,10 @@ export default function ConfirmDialog({
             <button
               onClick={() => {
                 onConfirm();
-                onOpenChange(false);
+                if (!isPending) onOpenChange(false);
               }}
-              className={`px-5 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:shadow-lg ${
+              disabled={isPending}
+              className={`px-5 py-2 rounded-full text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:hover:translate-y-0 ${
                 variant === "danger"
                   ? "bg-coral hover:bg-coral-dark"
                   : "bg-teal hover:bg-teal-dark"

@@ -3,7 +3,7 @@ import { redisConnection } from "@/server/utils/redis";
 import { prisma } from "@/server/utils/db";
 import type { PostingJobData } from "@/queue/queues";
 import { postingRegistry } from "@/services/posting/provider";
-import { hasEnoughCredits, deductCredits } from "@/server/utils/credits";
+import { deductCredits, refundCredits } from "@/server/utils/credits";
 import { CREDIT_COSTS } from "@/constants/credits";
 
 // Register providers (side-effect imports)
@@ -94,12 +94,20 @@ async function processPosting(job: Job<PostingJobData>) {
 
   await job.log(`Provider selected: ${provider.name}`);
 
-  // Credit pre-check — insufficient credits is not retryable
+  // Deduct credits BEFORE posting — atomic, prevents free posts via race condition
   const platformKey = opportunity.platform.toLowerCase() as "reddit" | "youtube" | "twitter";
   const creditCost = CREDIT_COSTS.daily[platformKey];
-  const creditCheck = await hasEnoughCredits(comment.site.userId, creditCost);
-  if (!creditCheck.hasEnough) {
-    const msg = `Insufficient credits — purchase more at billing. Available: ${creditCheck.totalCredits}`;
+
+  const creditResult = await deductCredits({
+    userId: comment.site.userId,
+    amount: creditCost,
+    reason: "CAMPAIGN_USAGE",
+    reasonExtra: `Comment ${commentId} on ${opportunity.platform}`,
+    throwOnInsufficient: false,
+  });
+
+  if (!creditResult.success) {
+    const msg = `Insufficient credits — purchase more at billing. Available: ${creditResult.remainingCredits + creditResult.remainingPermanentCredits}`;
     console.warn(`[posting] Comment ${commentId}: ${msg}`);
     await job.log(`SKIPPED: ${msg}`);
     await prisma.$transaction([
@@ -151,28 +159,29 @@ async function processPosting(job: Job<PostingJobData>) {
       data: { postedCount: { increment: 1 } },
     });
 
-    // Deduct credits for the posted comment
-    try {
-      await deductCredits({
-        userId: comment.site.userId,
-        amount: creditCost,
-        reason: "CAMPAIGN_USAGE",
-        reasonExtra: `Comment ${commentId} on ${opportunity.platform}`,
-        throwOnInsufficient: false,
-      });
-    } catch (creditErr) {
-      console.error(`[posting] CRITICAL: Failed to deduct credit for comment ${commentId}:`, creditErr);
-    }
-
     console.log(
       `[posting] Comment ${commentId} posted via ${provider.name} (order: ${result.orderId})`,
     );
     await job.log(`Posted successfully — order: ${result.orderId}`);
   } else if (result.retryable) {
+    // Refund credits since posting failed and will be retried
+    await refundCredits({
+      userId: comment.site.userId,
+      amount: creditCost,
+      reason: "OTHER",
+      reasonExtra: `Refund for retryable posting failure: comment ${commentId}`,
+    });
     // Throw to let BullMQ retry with exponential backoff
     await job.log(`Retryable failure: ${result.error}`);
     throw new Error(`Posting failed (retryable): ${result.error}`);
   } else {
+    // Refund credits since posting permanently failed
+    await refundCredits({
+      userId: comment.site.userId,
+      amount: creditCost,
+      reason: "OTHER",
+      reasonExtra: `Refund for failed posting: comment ${commentId}`,
+    });
     await prisma.$transaction([
       prisma.comment.update({
         where: { id: commentId },

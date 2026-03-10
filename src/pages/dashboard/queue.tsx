@@ -428,13 +428,14 @@ export default function QueuePage() {
   const discoveryRuns = discoveryStatusQuery.data?.runs ?? [];
 
   // Poll discovery status while running
+  const refetchDiscoveryStatus = discoveryStatusQuery.refetch;
   useEffect(() => {
     if (!discoveryRunning) return;
     const interval = setInterval(() => {
-      discoveryStatusQuery.refetch();
+      refetchDiscoveryStatus();
     }, 3000);
     return () => clearInterval(interval);
-  }, [discoveryRunning, discoveryStatusQuery]);
+  }, [discoveryRunning, refetchDiscoveryStatus]);
 
   // Poll pending list while discovery is running so items appear incrementally
   useEffect(() => {

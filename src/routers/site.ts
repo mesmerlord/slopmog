@@ -113,20 +113,7 @@ export const siteRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Check site limit
       const plan = await getUserPlan(ctx.session.user.id);
-      if (Number.isFinite(plan.maxSites)) {
-        const siteCount = await ctx.prisma.site.count({
-          where: { userId: ctx.session.user.id },
-        });
-        if (siteCount >= plan.maxSites) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: `Site limit reached (${plan.maxSites}). Upgrade your plan to add more sites.`,
-          });
-        }
-      }
-
       const analysis = await analyzeSite(input.url);
 
       // Build flat keywords array from all categories for display (deduplicated)
@@ -137,21 +124,36 @@ export const siteRouter = router({
         ...kc.brand,
       ]);
 
-      const site = await ctx.prisma.site.create({
-        data: {
-          userId: ctx.session.user.id,
-          url: input.url,
-          name: analysis.name,
-          description: analysis.description,
-          valueProps: analysis.valueProps,
-          keywords: allKeywords,
-          keywordConfig: kc,
-          brandTone: analysis.brandTone,
-          platforms: input.platforms,
-          mode: input.mode,
-          ...(input.discoveryConfig ? { discoveryConfig: input.discoveryConfig } : {}),
-          ...(input.dailyBudget ? { dailyBudget: input.dailyBudget } : {}),
-        },
+      // Atomic limit check + create to prevent race condition bypassing site limit
+      const site = await ctx.prisma.$transaction(async (tx) => {
+        if (Number.isFinite(plan.maxSites)) {
+          const siteCount = await tx.site.count({
+            where: { userId: ctx.session.user.id },
+          });
+          if (siteCount >= plan.maxSites) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: `Site limit reached (${plan.maxSites}). Upgrade your plan to add more sites.`,
+            });
+          }
+        }
+
+        return tx.site.create({
+          data: {
+            userId: ctx.session.user.id,
+            url: input.url,
+            name: analysis.name,
+            description: analysis.description,
+            valueProps: analysis.valueProps,
+            keywords: allKeywords,
+            keywordConfig: kc,
+            brandTone: analysis.brandTone,
+            platforms: input.platforms,
+            mode: input.mode,
+            ...(input.discoveryConfig ? { discoveryConfig: input.discoveryConfig } : {}),
+            ...(input.dailyBudget ? { dailyBudget: input.dailyBudget } : {}),
+          },
+        });
       });
 
       // Auto-trigger discovery on site creation
@@ -439,84 +441,91 @@ export const siteRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const site = await ctx.prisma.site.findFirst({
-        where: { id: input.siteId, userId: ctx.session.user.id },
-        select: {
-          id: true,
-          active: true,
-          keywords: true,
-          keywordConfig: true,
-        },
-      });
-
-      if (!site) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
-      }
-
       const normalizedTerm = normalizeKeyword(input.term);
       if (!normalizedTerm) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Keyword cannot be empty" });
       }
 
-      const keywordConfig = parseSiteKeywordConfig(site.keywordConfig, site.keywords);
-      const categoryKeywords = keywordConfig[input.category];
-      const keywordExistsInCategory = categoryKeywords.some(
-        (keyword) => keyword.toLowerCase() === normalizedTerm.toLowerCase(),
-      );
+      const plan = await getUserPlan(ctx.session.user.id);
 
-      const allCurrentKeywords = dedupeKeywords([
-        ...keywordConfig.features,
-        ...keywordConfig.competitors,
-        ...keywordConfig.brand,
-      ]);
+      // Atomic keyword limit check + update to prevent race condition
+      const result = await ctx.prisma.$transaction(async (tx) => {
+        const site = await tx.site.findFirst({
+          where: { id: input.siteId, userId: ctx.session.user.id },
+          select: {
+            id: true,
+            active: true,
+            keywords: true,
+            keywordConfig: true,
+          },
+        });
 
-      if (!keywordExistsInCategory) {
-        const keywordExistsGlobally = allCurrentKeywords.some(
+        if (!site) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
+        }
+
+        const keywordConfig = parseSiteKeywordConfig(site.keywordConfig, site.keywords);
+        const categoryKeywords = keywordConfig[input.category];
+        const keywordExistsInCategory = categoryKeywords.some(
           (keyword) => keyword.toLowerCase() === normalizedTerm.toLowerCase(),
         );
 
-        if (!keywordExistsGlobally) {
-          const plan = await getUserPlan(ctx.session.user.id);
-          if (Number.isFinite(plan.maxKeywords) && allCurrentKeywords.length >= plan.maxKeywords) {
-            throw new TRPCError({
-              code: "FORBIDDEN",
-              message: `Keyword limit reached (${plan.maxKeywords}). Upgrade your plan to add more keywords.`,
-            });
+        const allCurrentKeywords = dedupeKeywords([
+          ...keywordConfig.features,
+          ...keywordConfig.competitors,
+          ...keywordConfig.brand,
+        ]);
+
+        if (!keywordExistsInCategory) {
+          const keywordExistsGlobally = allCurrentKeywords.some(
+            (keyword) => keyword.toLowerCase() === normalizedTerm.toLowerCase(),
+          );
+
+          if (!keywordExistsGlobally) {
+            if (Number.isFinite(plan.maxKeywords) && allCurrentKeywords.length >= plan.maxKeywords) {
+              throw new TRPCError({
+                code: "FORBIDDEN",
+                message: `Keyword limit reached (${plan.maxKeywords}). Upgrade your plan to add more keywords.`,
+              });
+            }
           }
+
+          keywordConfig[input.category] = dedupeKeywords([
+            ...categoryKeywords,
+            normalizedTerm,
+          ]);
+          keywordConfig.reddit = dedupeKeywords([
+            ...keywordConfig.reddit,
+            normalizedTerm,
+          ]);
+          keywordConfig.youtube = dedupeKeywords([
+            ...keywordConfig.youtube,
+            normalizedTerm,
+          ]);
+          keywordConfig.twitter = dedupeKeywords([
+            ...keywordConfig.twitter,
+            normalizedTerm,
+          ]);
         }
 
-        keywordConfig[input.category] = dedupeKeywords([
-          ...categoryKeywords,
-          normalizedTerm,
+        const allKeywords = dedupeKeywords([
+          ...keywordConfig.features,
+          ...keywordConfig.competitors,
+          ...keywordConfig.brand,
         ]);
-        keywordConfig.reddit = dedupeKeywords([
-          ...keywordConfig.reddit,
-          normalizedTerm,
-        ]);
-        keywordConfig.youtube = dedupeKeywords([
-          ...keywordConfig.youtube,
-          normalizedTerm,
-        ]);
-        keywordConfig.twitter = dedupeKeywords([
-          ...keywordConfig.twitter,
-          normalizedTerm,
-        ]);
-      }
 
-      const allKeywords = dedupeKeywords([
-        ...keywordConfig.features,
-        ...keywordConfig.competitors,
-        ...keywordConfig.brand,
-      ]);
+        await tx.site.update({
+          where: { id: site.id },
+          data: {
+            keywords: allKeywords,
+            keywordConfig,
+          },
+        });
 
-      await ctx.prisma.site.update({
-        where: { id: site.id },
-        data: {
-          keywords: allKeywords,
-          keywordConfig,
-        },
+        return { keywordExistsInCategory, allKeywords, site };
       });
 
+      const { keywordExistsInCategory, allKeywords, site } = result;
       const queued = !keywordExistsInCategory && site.active;
       if (queued) {
         await discoveryQueue.add("discover", {

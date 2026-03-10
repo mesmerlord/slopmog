@@ -104,8 +104,6 @@ export default function AdminHealthCheckPage() {
     { placeholderData: (previousData) => previousData },
   );
 
-  const sites = trpc.admin.getSitesList.useQuery();
-
   const triggerMutation = trpc.admin.triggerHealthCheck.useMutation({
     onSuccess: (data) => {
       toast.success(`Health check queued (job: ${data.jobId})`);

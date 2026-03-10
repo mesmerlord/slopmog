@@ -1,5 +1,6 @@
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, protectedProcedure } from "@/server/trpc";
 import Stripe from "stripe";
 import { CREDIT_PRICES, FREE_CREDITS } from "@/constants/pricing";
@@ -78,9 +79,9 @@ export const userRouter = router({
   register: publicProcedure
     .input(
       z.object({
-        name: z.string().min(1),
-        email: z.string().email(),
-        password: z.string().min(8),
+        name: z.string().min(1).max(100),
+        email: z.string().email().transform((e) => e.toLowerCase()),
+        password: z.string().min(8).max(128),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -90,33 +91,35 @@ export const userRouter = router({
       });
 
       if (existing) {
-        throw new Error("An account with this email already exists");
+        throw new TRPCError({ code: "CONFLICT", message: "An account with this email already exists" });
       }
 
       const hashedPassword = await bcrypt.hash(input.password, 12);
 
-      const user = await ctx.prisma.user.create({
-        data: {
-          name: input.name,
-          email: input.email,
-          password: hashedPassword,
-          credits: FREE_CREDITS,
-          emailVerified: new Date(),
-        },
+      await ctx.prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            name: input.name,
+            email: input.email,
+            password: hashedPassword,
+            credits: FREE_CREDITS,
+            emailVerified: new Date(),
+          },
+        });
+
+        await tx.userCreditHistory.create({
+          data: {
+            userId: user.id,
+            credits: FREE_CREDITS,
+            previousCredits: 0,
+            newCredits: FREE_CREDITS,
+            reason: "REGISTRATION_BONUS",
+            reasonExtra: "Free credits on sign up",
+          },
+        });
       });
 
-      await ctx.prisma.userCreditHistory.create({
-        data: {
-          userId: user.id,
-          credits: FREE_CREDITS,
-          previousCredits: 0,
-          newCredits: FREE_CREDITS,
-          reason: "REGISTRATION_BONUS",
-          reasonExtra: "Free credits on sign up",
-        },
-      });
-
-      return { success: true, userId: user.id };
+      return { success: true };
     }),
 
   getCredits: protectedProcedure.query(async ({ ctx }) => {
@@ -126,7 +129,7 @@ export const userRouter = router({
     });
 
     if (!user) {
-      throw new Error("User not found");
+      throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
     }
 
     return { amount: user.credits + user.permanentCredits };
@@ -156,7 +159,7 @@ export const userRouter = router({
     });
 
     if (!user) {
-      throw new Error("User not found");
+      throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
     }
 
     const subscription = user.stripeCustomer?.subscriptions[0];
@@ -204,9 +207,7 @@ export const userRouter = router({
         });
 
       if (existingSubscription) {
-        throw new Error(
-          "You already have an active subscription. Use the billing portal to change plans.",
-        );
+        throw new TRPCError({ code: "CONFLICT", message: "You already have an active subscription. Use the billing portal to change plans." });
       }
 
       const product = await ctx.prisma.stripeProduct.findFirst({
@@ -222,15 +223,20 @@ export const userRouter = router({
       });
 
       if (!product || !product.prices.length) {
-        throw new Error("Product or price not found");
+        throw new TRPCError({ code: "NOT_FOUND", message: "Product or price not found" });
       }
 
       const price = product.prices[0];
 
+      const userEmail = ctx.session.user.email;
+      if (!userEmail) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Email is required for checkout" });
+      }
+
       const customer = await resolveStripeCustomer(
         ctx.prisma,
         ctx.session.user.id,
-        ctx.session.user.email!,
+        userEmail,
         ctx.session.user.stripeCustomerId,
       );
 
@@ -245,7 +251,7 @@ export const userRouter = router({
       });
 
       if (!checkoutSession.url) {
-        throw new Error("Failed to create checkout session");
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create checkout session" });
       }
 
       return { url: checkoutSession.url };
@@ -262,13 +268,18 @@ export const userRouter = router({
       const priceInfo = CREDIT_PRICES[credits as keyof typeof CREDIT_PRICES];
 
       if (!priceInfo) {
-        throw new Error("Invalid credit amount");
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid credit amount" });
+      }
+
+      const userEmail = ctx.session.user.email;
+      if (!userEmail) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Email is required for checkout" });
       }
 
       const customer = await resolveStripeCustomer(
         ctx.prisma,
         ctx.session.user.id,
-        ctx.session.user.email!,
+        userEmail,
         ctx.session.user.stripeCustomerId,
       );
 
@@ -298,7 +309,7 @@ export const userRouter = router({
       });
 
       if (!checkoutSession.url) {
-        throw new Error("Failed to create checkout session");
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create checkout session" });
       }
 
       return { url: checkoutSession.url };
@@ -310,7 +321,7 @@ export const userRouter = router({
     });
 
     if (!user?.stripeCustomerId) {
-      throw new Error("No billing information found");
+      throw new TRPCError({ code: "NOT_FOUND", message: "No billing information found" });
     }
 
     const portalSession = await stripe.billingPortal.sessions.create({
@@ -323,8 +334,13 @@ export const userRouter = router({
 
   getCheckoutSession: protectedProcedure
     .input(z.object({ sessionId: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const session = await stripe.checkout.sessions.retrieve(input.sessionId);
+
+      if (session.metadata?.userId && session.metadata.userId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized to view this session" });
+      }
+
       return {
         amountPaid: session.amount_total,
         currency: session.currency ?? "usd",

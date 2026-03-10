@@ -70,7 +70,7 @@ export default function DiscoveryProgressCard({ progress }: DiscoveryProgressCar
         <div className="mt-0.5">
           <StageIcon
             size={20}
-            className={`${iconColor} ${isActive ? "animate-spin" : ""}`}
+            className={`${iconColor} ${isActive && StageIcon === Loader2 ? "animate-spin" : ""}`}
           />
         </div>
 

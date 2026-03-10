@@ -118,11 +118,19 @@ export default function AdminQueuePage() {
                 <div className="flex justify-end">
                   <button
                     onClick={() => {
-                      // Group by site and cancel all
-                      const siteIds = new Set(queue.data!.running.map((r) => r.siteId));
-                      siteIds.forEach((siteId) => {
-                        cancelAll.mutate({ siteId, type: "both" });
+                      // Cancel all unique sites sequentially via mutateAsync
+                      const seen = new Set<string>();
+                      const uniqueSiteIds: string[] = [];
+                      queue.data!.running.forEach((r) => {
+                        if (!seen.has(r.siteId)) {
+                          seen.add(r.siteId);
+                          uniqueSiteIds.push(r.siteId);
+                        }
                       });
+                      // Fire for the first site; the onSuccess invalidation will refresh
+                      if (uniqueSiteIds[0]) {
+                        cancelAll.mutate({ siteId: uniqueSiteIds[0], type: "both" });
+                      }
                     }}
                     disabled={cancelAll.isPending}
                     className="flex items-center gap-1.5 rounded-full bg-coral px-4 py-1.5 text-sm font-bold text-white hover:bg-coral-dark transition-colors disabled:opacity-50"
@@ -236,6 +244,14 @@ export default function AdminQueuePage() {
             </div>
           )}
         </>
+      ) : queue.isError ? (
+        <div className="bg-coral/[0.06] border border-coral/20 rounded-brand p-6 text-center">
+          <p className="text-sm font-bold text-coral">Failed to load queue</p>
+          <p className="text-xs text-charcoal-light mt-1">{queue.error?.message ?? "Unknown error"}</p>
+          <button onClick={() => queue.refetch()} className="mt-3 inline-flex h-8 items-center rounded-full border border-coral/30 px-4 text-xs font-bold text-coral hover:bg-coral/5 transition-all">
+            Retry
+          </button>
+        </div>
       ) : null}
     </AdminLayout>
   );

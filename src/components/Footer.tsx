@@ -90,7 +90,7 @@ export default function Footer({ onScrollTo }: FooterProps) {
           </div>
         )}
 
-        <p className="text-[0.82rem] text-charcoal-light opacity-70 w-full text-center mt-6 max-md:mt-4">&copy; 2025 SlopMog. The name is ridiculous. The results aren&apos;t.</p>
+        <p className="text-[0.82rem] text-charcoal-light opacity-70 w-full text-center mt-6 max-md:mt-4">&copy; {new Date().getFullYear()} SlopMog. The name is ridiculous. The results aren&apos;t.</p>
       </div>
     </footer>
   );

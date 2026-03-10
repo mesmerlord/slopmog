@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const { data: session, status } = useSession();
   const [mode, setMode] = useState<"idle" | "login" | "signup">("idle");
   const [isLoading, setIsLoading] = useState(false);
+  const prevModeRef = useRef(mode);
 
   const callbackUrl = (router.query.callbackUrl as string) || "/dashboard";
 
@@ -26,8 +28,17 @@ export default function LoginPage() {
     register,
     handleSubmit,
     watch,
+    clearErrors,
     formState: { errors },
   } = useForm<AuthForm>({ defaultValues: { email: "", name: "", password: "" } });
+
+  // Clear stale validation errors when mode changes
+  useEffect(() => {
+    if (prevModeRef.current !== mode) {
+      prevModeRef.current = mode;
+      clearErrors(["password", "name"]);
+    }
+  }, [mode, clearErrors]);
 
   const emailValue = watch("email");
 
@@ -77,6 +88,11 @@ export default function LoginPage() {
   };
 
   const onSubmit = async (data: AuthForm) => {
+    if (mode === "idle") {
+      // Force email check if user submitted before blurring
+      await handleEmailBlur();
+      return;
+    }
     setIsLoading(true);
     try {
       if (mode === "login") {
@@ -128,10 +144,10 @@ export default function LoginPage() {
         <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
           <div className="w-full max-w-[400px]">
             {/* Logo */}
-            <a href="/" className="flex items-center gap-2 mb-10">
+            <Link href="/" className="flex items-center gap-2 mb-10">
               <LogoBlob className="w-10 h-10 shrink-0" />
               <span className="font-heading font-bold text-2xl text-charcoal">SlopMog</span>
-            </a>
+            </Link>
 
             {/* Header copy */}
             <h1 className="font-heading font-bold text-2xl md:text-3xl text-charcoal mb-2">
@@ -208,7 +224,10 @@ export default function LoginPage() {
                   className="w-full px-4 py-3 bg-white border-2 border-charcoal/[0.08] rounded-brand-sm text-[0.95rem] text-charcoal placeholder:text-charcoal-light/50 focus:outline-none focus:border-teal transition-colors"
                   {...register("password", {
                     required: "Password is required",
-                    minLength: mode === "signup" ? { value: 8, message: "At least 8 characters" } : undefined,
+                    validate: (value) => {
+                      if (mode === "signup" && value.length < 8) return "At least 8 characters";
+                      return true;
+                    },
                   })}
                 />
                 {errors.password && (
@@ -249,7 +268,10 @@ export default function LoginPage() {
             </form>
 
             <p className="text-[0.78rem] text-charcoal-light/60 text-center mt-8">
-              By continuing, you agree to our Terms of Service and Privacy Policy.
+              By continuing, you agree to our{" "}
+              <Link href="/terms" className="underline hover:text-charcoal-light transition-colors">Terms of Service</Link>
+              {" "}and{" "}
+              <Link href="/privacy" className="underline hover:text-charcoal-light transition-colors">Privacy Policy</Link>.
             </p>
           </div>
         </div>

@@ -28,9 +28,9 @@ function CrossIcon() {
 function renderFeature(feature: string, available: boolean, values?: Record<string, number>, key?: number) {
   let text = feature;
   if (values) {
-    for (const [k, val] of Object.entries(values)) {
+    Object.entries(values).forEach(([k, val]) => {
       text = text.replace(`{{${k}}}`, val.toString());
-    }
+    });
   }
   return (
     <li key={key} className="flex items-start gap-2.5 py-2 text-[0.88rem] text-charcoal">
@@ -50,6 +50,7 @@ export default function PricingCards() {
   const router = useRouter();
   const { data: session } = useSession();
   const [interval, setInterval] = useState<"month" | "year">("month");
+  const [subscribingPlan, setSubscribingPlan] = useState<string | null>(null);
 
   const createSubscription = trpc.user.createSubscriptionSession.useMutation({
     onSuccess: (data) => {
@@ -57,6 +58,7 @@ export default function PricingCards() {
     },
     onError: (err) => {
       toast.error(err.message);
+      setSubscribingPlan(null);
     },
   });
 
@@ -65,6 +67,7 @@ export default function PricingCards() {
       router.push(`${routes.auth.login}?callbackUrl=${encodeURIComponent(routes.pricing)}`);
       return;
     }
+    setSubscribingPlan(planName);
     createSubscription.mutate({ planName, interval });
   };
 
@@ -141,7 +144,7 @@ export default function PricingCards() {
                 onClick={() => handleSubscribe(plan.plan_name)}
                 disabled={createSubscription.isPending}
               >
-                {createSubscription.isPending ? "Redirecting..." : "Get Started"}
+                {subscribingPlan === plan.plan_name && createSubscription.isPending ? "Redirecting..." : "Get Started"}
               </button>
 
               {isPopular && (

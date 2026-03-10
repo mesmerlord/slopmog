@@ -10,7 +10,7 @@ export const toolRouter = router({
     .input(z.object({ url: z.string().url() }))
     .mutation(async ({ input }) => {
       const parsed = new URL(input.url);
-      if (!parsed.hostname.includes("reddit.com")) {
+      if (parsed.hostname !== "reddit.com" && parsed.hostname !== "www.reddit.com" && !parsed.hostname.endsWith(".reddit.com")) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Please provide a valid Reddit URL",
@@ -31,21 +31,21 @@ export const toolRouter = router({
   generateFreeComment: publicProcedure
     .input(
       z.object({
-        postTitle: z.string(),
-        postBody: z.string(),
-        subreddit: z.string(),
+        postTitle: z.string().max(500),
+        postBody: z.string().max(10000),
+        subreddit: z.string().max(100),
         existingComments: z.array(
           z.object({
-            author: z.string(),
-            body: z.string(),
+            author: z.string().max(200),
+            body: z.string().max(5000),
             score: z.number(),
             isOp: z.boolean(),
           }),
-        ),
-        websiteUrl: z.string(),
-        brandNameOverride: z.string().optional(),
-        brandDescriptionOverride: z.string().optional(),
-        persona: z.string(),
+        ).max(20),
+        websiteUrl: z.string().min(1).max(500),
+        brandNameOverride: z.string().max(100).optional(),
+        brandDescriptionOverride: z.string().max(500).optional(),
+        persona: z.string().max(50),
         noLink: z.boolean(),
       }),
     )

@@ -1,6 +1,6 @@
 export const CREDIT_COSTS = {
   daily: { reddit: 6, youtube: 6, twitter: 100 },
-  highValue: { reddit: 60, youtube: 60 },
+  highValue: { reddit: 60, youtube: 60, twitter: 100 },
 } as const;
 
 export type CreditCostType = keyof typeof CREDIT_COSTS;
