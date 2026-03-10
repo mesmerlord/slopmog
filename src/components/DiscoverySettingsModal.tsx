@@ -25,6 +25,8 @@ const SETTINGS_FIELDS: SettingsField[] = [
   { key: "hvQueryCount", label: "HV Query Count", description: "Queries to generate per HV discovery run", min: 5, max: 100, step: 5 },
   { key: "autoGenerateTopN", label: "Auto-Generate Top N", description: "Auto-generate comments for top N opportunities", min: 0, max: 50, step: 1 },
   { key: "autoGenerateMinScore", label: "Auto-Generate Min Score", description: "Min relevance score to auto-generate (0-1)", min: 0, max: 1, step: 0.05 },
+  { key: "maxTrackedProfiles", label: "Twitter Accounts to Track", description: "How many X/Twitter profiles to discover and follow", min: 5, max: 50, step: 1 },
+  { key: "twitterTweetsPerProfile", label: "Tweets per Profile", description: "How many recent tweets to scrape per tracked profile", min: 5, max: 50, step: 1 },
 ];
 
 function formatFieldValue(key: keyof DiscoveryConfig, value: number): string {
@@ -112,7 +114,7 @@ export default function DiscoverySettingsModal(props: DiscoverySettingsModalProp
                 Discovery Settings
               </Dialog.Title>
               <Dialog.Description className="text-sm text-charcoal-light mt-1">
-                Tune how aggressively we filter Reddit and YouTube results.
+                Tune how aggressively we filter Reddit, YouTube, and Twitter results.
               </Dialog.Description>
             </div>
             <Dialog.Close className="text-charcoal-light hover:text-charcoal transition-colors rounded-brand-sm p-1 -m-1">

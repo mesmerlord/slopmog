@@ -39,6 +39,20 @@ function selectPersona(postType: string, specifiedPersona?: string): string {
 }
 
 function getPlatformRules(platform?: string): string {
+  if (platform === "TWITTER") {
+    return `Platform: Twitter/X
+- STRICT: under 280 characters. Hard limit. Count carefully.
+- 1-2 sentences max. Twitter replies are SHORT.
+- No hashtags unless genuinely part of the conversation.
+- Do NOT @mention the brand. No URLs.
+- Conversational, opinionated, sometimes spicy. "Reply guy who knows stuff."
+- Hot takes fine. Slightly contrarian fine. Don't be a jerk.
+- Emojis: 0-1 per reply.
+- Don't say "great tweet" or "love this." Just add to the conversation.
+- No Reddit-specific language (no "OP", no "upvoted")
+- No YouTube-specific language (no "video", no "channel")`;
+  }
+
   if (platform === "YOUTUBE") {
     return `Platform: YouTube
 - STRICT LENGTH LIMIT: Each comment MUST be under 300 characters. This is a hard limit. Count carefully.

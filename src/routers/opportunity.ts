@@ -6,6 +6,7 @@ import {
   getRedditComments,
   getYouTubeComments,
 } from "@/services/discovery/scrape-creators";
+import { fetchTweetReplies } from "@/services/discovery/twitter-discovery";
 import type { CommentGenerationInput } from "@/services/generation/types";
 
 export const opportunityRouter = router({
@@ -15,7 +16,7 @@ export const opportunityRouter = router({
         cursor: z.string().optional(),
         limit: z.number().min(1).max(50).default(20),
         search: z.string().trim().max(120).optional(),
-        platform: z.enum(["REDDIT", "YOUTUBE"]).optional(),
+        platform: z.enum(["REDDIT", "YOUTUBE", "TWITTER"]).optional(),
         siteId: z.string().optional(),
         dateFrom: z.date().optional(),
         dateTo: z.date().optional(),
@@ -103,7 +104,7 @@ export const opportunityRouter = router({
           "DISCOVERED", "GENERATING", "PENDING_REVIEW",
           "APPROVED", "POSTING", "POSTED", "SKIPPED", "FAILED",
         ]).optional(),
-        platform: z.enum(["REDDIT", "YOUTUBE"]).optional(),
+        platform: z.enum(["REDDIT", "YOUTUBE", "TWITTER"]).optional(),
         cursor: z.string().optional(),
         limit: z.number().min(1).max(50).default(20),
       }),
@@ -173,6 +174,11 @@ export const opportunityRouter = router({
           const comments = await getYouTubeComments(opportunity.contentUrl);
           existingComments = comments.slice(0, 15).map((c) => ({
             author: c.author, body: c.text, score: c.likeCount, isOp: false,
+          }));
+        } else if (opportunity.platform === "TWITTER") {
+          const replies = await fetchTweetReplies(opportunity.contentUrl);
+          existingComments = replies.slice(0, 15).map((r) => ({
+            author: r.author, body: r.text, score: r.likes, isOp: false,
           }));
         }
       } catch (err) {

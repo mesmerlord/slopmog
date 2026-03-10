@@ -8,6 +8,7 @@ import {
   getRedditComments,
   getYouTubeComments,
 } from "@/services/discovery/scrape-creators";
+import { fetchTweetReplies } from "@/services/discovery/twitter-discovery";
 import type { CommentGenerationInput } from "@/services/generation/types";
 
 async function processGeneration(job: Job<GenerationJobData>) {
@@ -48,6 +49,14 @@ async function processGeneration(job: Job<GenerationJobData>) {
         author: c.author,
         body: c.text,
         score: c.likeCount,
+        isOp: false,
+      }));
+    } else if (opportunity.platform === "TWITTER") {
+      const replies = await fetchTweetReplies(opportunity.contentUrl);
+      existingComments = replies.slice(0, 15).map((r) => ({
+        author: r.author,
+        body: r.text,
+        score: r.likes,
         isOp: false,
       }));
     }

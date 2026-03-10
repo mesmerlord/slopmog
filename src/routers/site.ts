@@ -16,6 +16,7 @@ type SiteKeywordConfig = {
   brand: string[];
   reddit: string[];
   youtube: string[];
+  twitter: string[];
 };
 
 function normalizeKeyword(value: string): string {
@@ -56,14 +57,16 @@ function parseSiteKeywordConfig(
   const brand = dedupeKeywords(readStringArray(raw.brand));
   const reddit = dedupeKeywords(readStringArray(raw.reddit));
   const youtube = dedupeKeywords(readStringArray(raw.youtube));
+  const twitter = dedupeKeywords(readStringArray(raw.twitter));
 
-  if (features.length || competitors.length || brand.length || reddit.length || youtube.length) {
+  if (features.length || competitors.length || brand.length || reddit.length || youtube.length || twitter.length) {
     return {
       features,
       competitors,
       brand,
       reddit,
       youtube,
+      twitter,
     };
   }
 
@@ -73,6 +76,7 @@ function parseSiteKeywordConfig(
     brand: [],
     reddit: [],
     youtube: [],
+    twitter: [],
   };
 }
 
@@ -81,7 +85,7 @@ export const siteRouter = router({
     .input(
       z.object({
         url: z.string().url(),
-        platforms: z.array(z.enum(["REDDIT", "YOUTUBE"])).min(1),
+        platforms: z.array(z.enum(["REDDIT", "YOUTUBE", "TWITTER"])).min(1),
         mode: z.enum(["MANUAL", "AUTO"]).default("MANUAL"),
         discoveryConfig: z.object({
           minRedditUpvotes: z.number().int().min(0).max(100),
@@ -94,6 +98,10 @@ export const siteRouter = router({
           autoGenerateMinScore: z.number().min(0).max(1),
           dailyKeywordLimit: z.number().int().min(1).max(30),
           hvQueryCount: z.number().int().min(5).max(100),
+          minTwitterFollowers: z.number().int().min(0).max(1_000_000),
+          minTweetLikes: z.number().int().min(0).max(1000),
+          maxTrackedProfiles: z.number().int().min(5).max(50),
+          twitterTweetsPerProfile: z.number().int().min(5).max(50),
         }).optional(),
       }),
     )
@@ -218,8 +226,12 @@ export const siteRouter = router({
     .input(
       z.object({
         id: z.string(),
+        name: z.string().min(1).max(100).optional(),
+        description: z.string().min(1).max(500).optional(),
+        valueProps: z.array(z.string().min(1).max(200)).min(1).max(8).optional(),
+        brandTone: z.enum(["professional", "casual", "technical", "fun"]).optional(),
         mode: z.enum(["MANUAL", "AUTO"]).optional(),
-        platforms: z.array(z.enum(["REDDIT", "YOUTUBE"])).optional(),
+        platforms: z.array(z.enum(["REDDIT", "YOUTUBE", "TWITTER"])).min(1).optional(),
         active: z.boolean().optional(),
         dailyAutoLimit: z.number().int().min(1).max(100).optional(),
       }),
@@ -386,6 +398,10 @@ export const siteRouter = router({
           ...keywordConfig.youtube,
           normalizedTerm,
         ]);
+        keywordConfig.twitter = dedupeKeywords([
+          ...keywordConfig.twitter,
+          normalizedTerm,
+        ]);
       }
 
       const allKeywords = dedupeKeywords([
@@ -461,6 +477,9 @@ export const siteRouter = router({
       keywordConfig.youtube = keywordConfig.youtube.filter(
         (kw) => kw.toLowerCase() !== termLower,
       );
+      keywordConfig.twitter = keywordConfig.twitter.filter(
+        (kw) => kw.toLowerCase() !== termLower,
+      );
 
       const allKeywords = dedupeKeywords([
         ...keywordConfig.features,
@@ -516,6 +535,10 @@ export const siteRouter = router({
           autoGenerateMinScore: z.number().min(0).max(1).optional(),
           dailyKeywordLimit: z.number().int().min(1).max(30).optional(),
           hvQueryCount: z.number().int().min(5).max(100).optional(),
+          minTwitterFollowers: z.number().int().min(0).max(1_000_000).optional(),
+          minTweetLikes: z.number().int().min(0).max(1000).optional(),
+          maxTrackedProfiles: z.number().int().min(5).max(50).optional(),
+          twitterTweetsPerProfile: z.number().int().min(5).max(50).optional(),
         }),
       }),
     )

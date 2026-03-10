@@ -21,6 +21,8 @@ import {
   AlertCircle,
   SlidersHorizontal,
   Sparkles,
+  Pencil,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
 import Seo from "@/components/Seo";
@@ -43,6 +45,7 @@ type SiteKeywordConfig = {
   brand: string[];
   reddit: string[];
   youtube: string[];
+  twitter: string[];
 };
 
 function normalizeKeyword(value: string): string {
@@ -83,14 +86,16 @@ function parseSiteKeywordConfig(
   const brand = dedupeKeywords(readStringArray(raw.brand));
   const reddit = dedupeKeywords(readStringArray(raw.reddit));
   const youtube = dedupeKeywords(readStringArray(raw.youtube));
+  const twitter = dedupeKeywords(readStringArray(raw.twitter));
 
-  if (features.length || competitors.length || brand.length || reddit.length || youtube.length) {
+  if (features.length || competitors.length || brand.length || reddit.length || youtube.length || twitter.length) {
     return {
       features,
       competitors,
       brand,
       reddit,
       youtube,
+      twitter,
     };
   }
 
@@ -100,6 +105,7 @@ function parseSiteKeywordConfig(
     brand: [],
     reddit: [],
     youtube: [],
+    twitter: [],
   };
 }
 
@@ -332,12 +338,67 @@ export default function SiteDetailPage() {
   const [localDailyLimit, setLocalDailyLimit] = useState<number | null>(null);
   const dailyLimitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Edit mode state ──
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editBrandTone, setEditBrandTone] = useState<"professional" | "casual" | "technical" | "fun">("casual");
+  const [editPlatforms, setEditPlatforms] = useState<string[]>([]);
+  const [editValueProps, setEditValueProps] = useState<string[]>([]);
+  const [editValuePropDraft, setEditValuePropDraft] = useState("");
+
   const debouncedUpdateLimit = useCallback((value: number) => {
     if (dailyLimitTimerRef.current) clearTimeout(dailyLimitTimerRef.current);
     dailyLimitTimerRef.current = setTimeout(() => {
       updateSite.mutate({ id: siteId, dailyAutoLimit: value });
     }, 800);
   }, [siteId, updateSite]);
+
+  const startEditing = useCallback(() => {
+    if (!siteQuery.data) return;
+    const s = siteQuery.data;
+    setEditName(s.name);
+    setEditDescription(s.description);
+    setEditBrandTone(s.brandTone as "professional" | "casual" | "technical" | "fun");
+    setEditPlatforms([...s.platforms]);
+    setEditValueProps([...s.valueProps]);
+    setEditValuePropDraft("");
+    setIsEditing(true);
+  }, [siteQuery.data]);
+
+  const cancelEditing = useCallback(() => {
+    setIsEditing(false);
+  }, []);
+
+  const saveEdits = useCallback(() => {
+    if (!siteQuery.data) return;
+    const s = siteQuery.data;
+    const changes: Record<string, unknown> = { id: s.id };
+    if (editName.trim() !== s.name) changes.name = editName.trim();
+    if (editDescription.trim() !== s.description) changes.description = editDescription.trim();
+    if (editBrandTone !== s.brandTone) changes.brandTone = editBrandTone;
+    if (JSON.stringify(editPlatforms.sort()) !== JSON.stringify([...s.platforms].sort())) {
+      changes.platforms = editPlatforms;
+    }
+    if (JSON.stringify(editValueProps) !== JSON.stringify(s.valueProps)) {
+      changes.valueProps = editValueProps;
+    }
+    // Only mutate if something changed
+    if (Object.keys(changes).length > 1) {
+      updateSite.mutate(changes as Parameters<typeof updateSite.mutate>[0]);
+    }
+    setIsEditing(false);
+  }, [siteQuery.data, editName, editDescription, editBrandTone, editPlatforms, editValueProps, updateSite]);
+
+  const togglePlatform = useCallback((platform: string) => {
+    setEditPlatforms((prev) => {
+      if (prev.includes(platform)) {
+        if (prev.length <= 1) return prev; // must have at least 1
+        return prev.filter((p) => p !== platform);
+      }
+      return [...prev, platform];
+    });
+  }, []);
 
   const site = siteQuery.data;
 
@@ -470,7 +531,7 @@ export default function SiteDetailPage() {
             </span>
             {site.platforms.map((p) => (
               <span key={p} className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-charcoal/[0.04] text-charcoal-light">
-                {p === "REDDIT" ? "Reddit" : "YouTube"}
+                {p === "REDDIT" ? "Reddit" : p === "YOUTUBE" ? "YouTube" : "Twitter"}
               </span>
             ))}
             <span className="w-px h-4 bg-charcoal/10" />
@@ -540,6 +601,18 @@ export default function SiteDetailPage() {
               Switch to {isAuto ? "Manual" : "Auto"}
             </button>
             <button
+              onClick={isEditing ? saveEdits : startEditing}
+              disabled={updateSite.isPending}
+              className={`inline-flex items-center gap-1.5 p-2 rounded-full border transition-all ${
+                isEditing
+                  ? "border-teal/30 text-teal hover:bg-teal/5"
+                  : "border-charcoal/[0.08] text-charcoal-light/40 hover:text-teal hover:border-teal/30"
+              }`}
+              title={isEditing ? "Save changes" : "Edit site info"}
+            >
+              {isEditing ? <Check size={14} /> : <Pencil size={14} />}
+            </button>
+            <button
               onClick={() => setShowDiscoverySettings(true)}
               className="p-2 rounded-full border border-charcoal/[0.08] text-charcoal-light/40 hover:text-teal hover:border-teal/30 transition-all"
               title="Discovery settings"
@@ -556,6 +629,168 @@ export default function SiteDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Edit Panel */}
+      {isEditing && (
+        <div className="bg-white rounded-brand shadow-brand-sm border border-teal/20 p-5 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-bold text-charcoal-light uppercase tracking-wider flex items-center gap-1.5">
+              <Pencil size={12} /> Edit Site Info
+            </h3>
+            <button
+              onClick={cancelEditing}
+              className="text-xs text-charcoal-light hover:text-charcoal transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {/* Name */}
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-1">Name</label>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="w-full h-9 rounded-brand-sm border border-charcoal/[0.12] bg-white px-3 text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30"
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-1">Description</label>
+              <textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                rows={2}
+                className="w-full rounded-brand-sm border border-charcoal/[0.12] bg-white px-3 py-2 text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30 resize-none"
+              />
+            </div>
+
+            {/* Platforms */}
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-2">Platforms</label>
+              <div className="flex flex-wrap gap-2">
+                {(["REDDIT", "YOUTUBE", "TWITTER"] as const).map((p) => {
+                  const checked = editPlatforms.includes(p);
+                  const label = p === "REDDIT" ? "Reddit" : p === "YOUTUBE" ? "YouTube" : "Twitter";
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => togglePlatform(p)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                        checked
+                          ? "bg-teal/10 border-teal/30 text-teal-dark"
+                          : "bg-charcoal/[0.02] border-charcoal/[0.1] text-charcoal-light"
+                      }`}
+                    >
+                      <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${
+                        checked ? "bg-teal border-teal" : "border-charcoal/20"
+                      }`}>
+                        {checked && <Check size={10} className="text-white" />}
+                      </span>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Brand Tone */}
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-2">Brand Tone</label>
+              <div className="flex flex-wrap gap-2">
+                {(["professional", "casual", "technical", "fun"] as const).map((tone) => (
+                  <button
+                    key={tone}
+                    type="button"
+                    onClick={() => setEditBrandTone(tone)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all capitalize ${
+                      editBrandTone === tone
+                        ? "bg-lavender/15 border-lavender/30 text-lavender-dark"
+                        : "bg-charcoal/[0.02] border-charcoal/[0.1] text-charcoal-light"
+                    }`}
+                  >
+                    {tone}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Value Props */}
+            <div>
+              <label className="block text-sm font-semibold text-charcoal mb-2">Value Props</label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {editValueProps.map((vp, i) => (
+                  <span
+                    key={i}
+                    className="group/vp inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full border border-teal/10 bg-teal/5 text-[11px] leading-tight text-charcoal font-medium"
+                  >
+                    {vp}
+                    <button
+                      onClick={() => setEditValueProps((prev) => prev.filter((_, j) => j !== i))}
+                      className="hidden group-hover/vp:inline-flex ml-0.5 p-0.5 rounded-full text-charcoal-light hover:text-coral hover:bg-coral/10 transition-colors"
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+                {editValueProps.length === 0 && (
+                  <span className="text-[11px] text-charcoal-light/60">None yet</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={editValuePropDraft}
+                  onChange={(e) => setEditValuePropDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && editValuePropDraft.trim()) {
+                      e.preventDefault();
+                      setEditValueProps((prev) => [...prev, editValuePropDraft.trim()]);
+                      setEditValuePropDraft("");
+                    }
+                  }}
+                  placeholder="Add value prop"
+                  className="flex-1 h-8 rounded-full border border-charcoal/[0.12] bg-white px-3 text-xs text-charcoal focus:outline-none focus:ring-2 focus:ring-teal/30"
+                />
+                <button
+                  onClick={() => {
+                    if (editValuePropDraft.trim()) {
+                      setEditValueProps((prev) => [...prev, editValuePropDraft.trim()]);
+                      setEditValuePropDraft("");
+                    }
+                  }}
+                  disabled={!editValuePropDraft.trim()}
+                  className="inline-flex items-center gap-1.5 h-8 rounded-full bg-teal text-white px-3 text-xs font-bold hover:bg-teal-dark transition-all disabled:opacity-50"
+                >
+                  <Plus size={12} /> Add
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Save / Cancel footer */}
+          <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-charcoal/[0.06]">
+            <button
+              onClick={cancelEditing}
+              className="px-4 py-2 rounded-full text-xs font-bold border border-charcoal/[0.15] text-charcoal hover:bg-charcoal/[0.04] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={saveEdits}
+              disabled={updateSite.isPending || !editName.trim() || editPlatforms.length === 0}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white bg-teal hover:bg-teal-dark transition-all disabled:opacity-40"
+            >
+              {updateSite.isPending && <Loader2 size={12} className="animate-spin" />}
+              Save Changes
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Auto Settings */}
       {isAuto && (

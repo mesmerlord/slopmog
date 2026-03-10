@@ -214,6 +214,12 @@ model ProviderCredential {
 enum Platform {
   REDDIT
   YOUTUBE
+  TWITTER
+}
+
+enum ProfileDiscoverySource {
+  GROK_SEARCH
+  MANUAL
 }
 
 enum OpportunityStatus {
@@ -273,6 +279,9 @@ model Site {
   hvQueries        HVQuery[]
   hvOpportunities  HVOpportunity[]
   hvComments       HVComment[]
+
+  // Tracked Profiles (Twitter, TikTok, etc.)
+  trackedProfiles TrackedProfile[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -531,4 +540,32 @@ model HVComment {
 
   @@index([hvOpportunityId])
   @@index([siteId, status])
+}
+
+// ─── Tracked Profiles (Twitter, TikTok, etc.) ──────────────
+
+model TrackedProfile {
+  id              String                 @id @default(cuid())
+  site            Site                   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId          String
+  platform        Platform
+  handle          String
+  handleLower     String
+  displayName     String?
+  bio             String?                @db.Text
+  followerCount   Int                    @default(0)
+  profileImageUrl String?
+  profileUrl      String?
+  discoveredBy    ProfileDiscoverySource @default(GROK_SEARCH)
+  relevanceScore  Float                  @default(0)
+  relevanceReason String?                @db.Text
+  active          Boolean                @default(true)
+  lastScannedAt   DateTime?
+  metadata        Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([siteId, platform, handleLower])
+  @@index([siteId, platform, active])
 }

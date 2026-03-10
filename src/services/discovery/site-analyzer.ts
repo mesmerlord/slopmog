@@ -10,6 +10,7 @@ const KeywordConfigSchema = z.object({
   brand: z.array(z.string()).min(1).max(3),
   reddit: z.array(z.string()).min(3).max(10),
   youtube: z.array(z.string()).min(3).max(10),
+  twitter: z.array(z.string()).min(3).max(10),
 });
 
 const SiteAnalysisSchema = z.object({
@@ -79,7 +80,7 @@ Return JSON with:
 - description: 2-3 sentence summary
 - valueProps: 3-5 key value propositions
 - brandTone: one of "professional", "casual", "technical", "fun"
-- keywordConfig: an object with these 5 categories:
+- keywordConfig: an object with these 6 categories:
 
   1. "features" (5-10 keywords): SHORT feature-based keywords that describe what this product does. These are generic category terms, NOT long-tail questions. Examples for an AI photo editor: "ai image generator", "ai photo editor", "background remover", "image upscaler", "photo restoration", "ai headshot generator". Keep them 2-4 words max.
 
@@ -90,6 +91,8 @@ Return JSON with:
   4. "reddit" (5-10 keywords): Reddit-optimized search terms. Reddit users search differently — they use short phrases, category terms, and comparison queries. Examples: "ai photo editor", "best ai image generator", "midjourney alternative", "ai headshot", "remove background ai", "upscale image quality". NO long questions. NO "how to" phrases. Keep it 2-5 words.
 
   5. "youtube" (5-10 keywords): YouTube-optimized search terms. YouTube searches tend to be slightly more descriptive and action-oriented. Examples: "ai photo editor tutorial", "best ai image generator 2024", "midjourney vs dall-e", "ai headshot generator review", "remove background from photo ai". Can be slightly longer than Reddit keywords but still concise.
+
+  6. "twitter" (5-10 keywords): Twitter/X-optimized search terms for finding relevant profiles and conversations. Twitter searches are short, hashtag-aware, and niche-focused. Examples: "ai photo editing", "midjourney tips", "ai art tools", "photo editing workflow", "ai headshots". Think about what people in this niche tweet about. Include niche terms, tool names, and community hashtags (without the #). Keep 2-4 words.
 
 IMPORTANT: Do NOT generate long-tail questions like "how to make X without Y" or "best tool for creating Z for beginners". Those are blog SEO keywords, not social media search keywords. Keep everything SHORT and feature-focused.`,
       },

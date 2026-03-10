@@ -18,6 +18,10 @@ import { pMap } from "@/services/shared/parallel";
 import type { Prisma } from "@prisma/client";
 import type { KeywordConfig } from "@/services/discovery/site-analyzer";
 import { parseDiscoveryConfig, type DiscoveryConfig } from "@/services/discovery/config";
+import {
+  discoverTwitterProfiles,
+  fetchTweetsForProfile,
+} from "@/services/discovery/twitter-discovery";
 
 /**
  * Returns true if the text is primarily Latin-script (English-like).
@@ -91,7 +95,7 @@ function parsePublishedAt(raw: string | undefined): Date | null {
 function getKeywordsForPlatform(
   keywordConfig: KeywordConfig | null | undefined,
   fallbackKeywords: string[],
-  platform: "REDDIT" | "YOUTUBE",
+  platform: "REDDIT" | "YOUTUBE" | "TWITTER",
   overrides?: string[],
 ): string[] {
   const normalizedOverrides = dedupeKeywords(overrides ?? []);
@@ -100,7 +104,11 @@ function getKeywordsForPlatform(
   if (!keywordConfig) return dedupeKeywords(fallbackKeywords);
 
   // Prioritize platform-specific terms, but include all enabled categories.
-  const platformKw = platform === "REDDIT" ? keywordConfig.reddit : keywordConfig.youtube;
+  const platformKw = platform === "REDDIT"
+    ? keywordConfig.reddit
+    : platform === "TWITTER"
+      ? (keywordConfig.twitter ?? keywordConfig.features)
+      : keywordConfig.youtube;
   const all = dedupeKeywords([
     ...platformKw,
     ...keywordConfig.features,
@@ -269,7 +277,7 @@ async function processKeywordResults(
   siteContext: SiteContext,
   site: { id: string; name: string },
   run: { id: string },
-  platform: "REDDIT" | "YOUTUBE",
+  platform: "REDDIT" | "YOUTUBE" | "TWITTER",
   runState: RunState,
   cfg: DiscoveryConfig,
 ): Promise<void> {
@@ -361,6 +369,136 @@ async function processKeywordResults(
   });
 }
 
+// ─── Twitter Search ──────────────────────────────────────────
+
+async function searchTwitterForSite(
+  site: { id: string; name: string; description: string; valueProps: string[] },
+  keywordConfig: KeywordConfig | null | undefined,
+  fallbackKeywords: string[],
+  run: { id: string },
+  siteContext: SiteContext,
+  runState: RunState,
+  cfg: DiscoveryConfig,
+  job: Job<DiscoveryJobData>,
+): Promise<void> {
+  // For profile discovery, use niche/feature keywords — NOT brand terms.
+  const nicheKeywords = keywordConfig
+    ? dedupeKeywords([
+        ...(keywordConfig.twitter ?? []),
+        ...keywordConfig.features,
+        ...keywordConfig.competitors,
+      ])
+    : dedupeKeywords(fallbackKeywords);
+
+  // Step 1: Discover profiles if below the configured limit
+  const existingCount = await prisma.trackedProfile.count({
+    where: { siteId: site.id, platform: "TWITTER", active: true },
+  });
+
+  if (existingCount < cfg.maxTrackedProfiles) {
+    await job.log(`[TWITTER] ${existingCount}/${cfg.maxTrackedProfiles} profiles tracked — discovering more`);
+    await discoverTwitterProfiles(site.id, {
+      nicheKeywords,
+      siteName: site.name,
+      siteDescription: site.description,
+    }, cfg);
+  }
+
+  // Step 2: Load active profiles
+  const profiles = await prisma.trackedProfile.findMany({
+    where: { siteId: site.id, platform: "TWITTER", active: true },
+  });
+
+  if (profiles.length === 0) {
+    await job.log(`[TWITTER] No profiles found after discovery — skipping`);
+    return;
+  }
+
+  await job.log(`[TWITTER] Fetching tweets from ${profiles.length} profiles in parallel...`);
+
+  // Step 3: Load existing tweet IDs for dedup
+  const existingIds = new Set(
+    (await prisma.opportunity.findMany({
+      where: { siteId: site.id, platform: "TWITTER" },
+      select: { externalId: true },
+    })).map((o) => o.externalId),
+  );
+
+  // Step 4: Fetch tweets from ALL profiles in parallel (no rate limit on OpenRouter)
+  const TWEET_FETCH_CONCURRENCY = 10;
+  const allItems: DiscoveryItem[] = [];
+  const profileIds: string[] = [];
+
+  await pMap(
+    profiles,
+    async (profile) => {
+      try {
+        const tweets = await fetchTweetsForProfile(profile.handle, cfg.twitterTweetsPerProfile);
+
+        let newCount = 0;
+        for (const tweet of tweets) {
+          if (existingIds.has(tweet.tweetId)) continue;
+          if (tweet.likes < cfg.minTweetLikes) continue;
+
+          existingIds.add(tweet.tweetId);
+          newCount++;
+
+          allItems.push({
+            externalId: tweet.tweetId,
+            title: tweet.text,
+            body: undefined,
+            sourceContext: `@${profile.handle}`,
+            platform: "TWITTER",
+            contentUrl: tweet.url,
+            matchedKeyword: `@${profile.handle}`,
+            author: profile.handle,
+            metadata: {
+              likes: tweet.likes,
+              replies: tweet.replies,
+              reposts: tweet.reposts,
+              profileHandle: profile.handle,
+            },
+          });
+        }
+
+        profileIds.push(profile.id);
+        if (newCount > 0) {
+          await job.log(`[TWITTER] @${profile.handle} — ${newCount} new tweets`);
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`[discovery] TWITTER @${profile.handle} failed:`, err);
+        await job.log(`WARN [TWITTER] @${profile.handle} failed: ${message}`);
+      }
+    },
+    TWEET_FETCH_CONCURRENCY,
+  );
+
+  await job.log(`[TWITTER] Fetched ${allItems.length} new tweets from ${profileIds.length} profiles`);
+
+  // Step 5: Batch score all tweets at once
+  if (allItems.length > 0) {
+    await job.log(`[TWITTER] Scoring ${allItems.length} tweets...`);
+    await processKeywordResults(
+      allItems,
+      { ...siteContext, keywords: nicheKeywords },
+      site,
+      run,
+      "TWITTER",
+      runState,
+      cfg,
+    );
+  }
+
+  // Step 6: Batch update lastScannedAt for all scanned profiles
+  if (profileIds.length > 0) {
+    await prisma.trackedProfile.updateMany({
+      where: { id: { in: profileIds } },
+      data: { lastScannedAt: new Date() },
+    });
+  }
+}
+
 // ─── Main Discovery Flow ────────────────────────────────────
 
 async function processDiscovery(job: Job<DiscoveryJobData>) {
@@ -430,6 +568,60 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
     };
 
     try {
+      // Twitter uses profile-based discovery instead of keyword search
+      if (platform === "TWITTER") {
+        await job.log(`[TWITTER] Starting profile-based discovery`);
+        await searchTwitterForSite(
+          site,
+          keywordConfig,
+          site.keywords,
+          run,
+          { ...siteContext, keywords },
+          runState,
+          cfg,
+          job,
+        );
+
+        // Backfill top N without comments
+        const topWithoutComments = await prisma.opportunity.findMany({
+          where: {
+            discoveryRunId: run.id,
+            status: "PENDING_REVIEW",
+            comments: { none: {} },
+          },
+          orderBy: { relevanceScore: "desc" },
+          take: cfg.autoGenerateTopN,
+          select: { id: true },
+        });
+
+        for (const opp of topWithoutComments) {
+          await generationQueue.add("generate", {
+            opportunityId: opp.id,
+          } satisfies GenerationJobData);
+          runState.generatedCount++;
+        }
+
+        if (topWithoutComments.length > 0) {
+          await job.log(`[TWITTER] Backfilled ${topWithoutComments.length} comments for top opportunities`);
+        }
+
+        await prisma.discoveryRun.update({
+          where: { id: run.id },
+          data: {
+            status: "COMPLETED",
+            foundCount: runState.totalFound,
+            scoredCount: runState.totalScored,
+            generatedCount: runState.generatedCount,
+            completedAt: new Date(),
+          },
+        });
+
+        const summary = `[TWITTER] Done — ${runState.totalFound} found, ${runState.savedCount} saved, ${runState.generatedCount} auto-generating`;
+        console.log(`[discovery] TWITTER complete for ${site.name}: ${summary}`);
+        await job.log(summary);
+        continue;
+      }
+
       await job.log(`[${platform}] Searching with ${keywords.length} keywords: ${keywords.slice(0, 5).join(", ")}${keywords.length > 5 ? ` (+${keywords.length - 5} more)` : ""}`);
 
       // Load existing IDs once at start (shared across all keywords)
@@ -457,6 +649,9 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
             items = await searchRedditKeyword(keyword, existingIds, cfg);
           } else if (platform === "YOUTUBE") {
             items = await searchYouTubeKeyword(keyword, existingIds, site.name, cutoffDate, cfg);
+          } else if (platform === "TWITTER") {
+            // Twitter uses profile-based discovery, handled separately
+            continue;
           }
 
           if (items.length === 0) {

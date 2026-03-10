@@ -18,6 +18,8 @@ import {
   MessageSquare,
   Eye,
   ThumbsUp,
+  Heart,
+  Repeat,
 } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -34,13 +36,21 @@ import type { DateRangeValue } from "@/components/shared/DateRangeFilter";
 import { routes } from "@/lib/constants";
 import { getServerAuthSession } from "@/server/utils/auth";
 
+function platformLabel(platform: string): string {
+  if (platform === "REDDIT") return "Reddit";
+  if (platform === "TWITTER") return "Twitter";
+  return "YouTube";
+}
+
 function PlatformBadge({ platform }: { platform: string }) {
   const colors = platform === "REDDIT"
     ? "bg-orange-100 text-orange-700"
-    : "bg-red-100 text-red-700";
+    : platform === "TWITTER"
+      ? "bg-sky-100 text-sky-700"
+      : "bg-red-100 text-red-700";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${colors}`}>
-      {platform === "REDDIT" ? "Reddit" : "YouTube"}
+      {platformLabel(platform)}
     </span>
   );
 }
@@ -65,6 +75,10 @@ type OpportunityMetadata = {
   likeCount?: number;
   channelId?: string;
   thumbnail?: string;
+  likes?: number;
+  replies?: number;
+  reposts?: number;
+  profileHandle?: string;
 };
 
 function parseMetadata(value: unknown): OpportunityMetadata {
@@ -80,7 +94,7 @@ function formatCompact(n: number): string {
   return String(n);
 }
 
-type PlatformFilter = "ALL" | "REDDIT" | "YOUTUBE";
+type PlatformFilter = "ALL" | "REDDIT" | "YOUTUBE" | "TWITTER";
 type QueueSort = "best_match" | "posted_newest" | "posted_oldest" | "queue_newest" | "queue_oldest";
 
 interface QueueItemProps {
@@ -193,6 +207,34 @@ function QueueItem({
                           <span className="text-xs text-charcoal-light/50">|</span>
                           <span className="text-xs text-charcoal-light flex items-center gap-0.5">
                             <ThumbsUp size={11} /> {formatCompact(meta.likeCount)}
+                          </span>
+                        </>
+                      )}
+                    </>
+                  )}
+                  {opportunity.platform === "TWITTER" && (
+                    <>
+                      {meta.likes != null && meta.likes > 0 && (
+                        <>
+                          <span className="text-xs text-charcoal-light/50">|</span>
+                          <span className="text-xs text-charcoal-light flex items-center gap-0.5">
+                            <Heart size={11} /> {formatCompact(meta.likes)}
+                          </span>
+                        </>
+                      )}
+                      {meta.replies != null && meta.replies > 0 && (
+                        <>
+                          <span className="text-xs text-charcoal-light/50">|</span>
+                          <span className="text-xs text-charcoal-light flex items-center gap-0.5">
+                            <MessageSquare size={11} /> {formatCompact(meta.replies)}
+                          </span>
+                        </>
+                      )}
+                      {meta.reposts != null && meta.reposts > 0 && (
+                        <>
+                          <span className="text-xs text-charcoal-light/50">|</span>
+                          <span className="text-xs text-charcoal-light flex items-center gap-0.5">
+                            <Repeat size={11} /> {formatCompact(meta.reposts)}
                           </span>
                         </>
                       )}
@@ -520,7 +562,7 @@ export default function QueuePage() {
             <p className="text-sm font-bold text-charcoal">Discovery in progress</p>
             {discoveryRuns.map((run) => (
               <p key={run.id} className="text-xs text-charcoal-light mt-0.5">
-                Scanning {run.platform === "REDDIT" ? "Reddit" : "YouTube"} for {run.site.name}
+                Scanning {platformLabel(run.platform)} for {run.site.name}
               </p>
             ))}
             <p className="text-xs text-charcoal-light/60 mt-1">
@@ -566,17 +608,17 @@ export default function QueuePage() {
               </div>
 
               <div className="flex items-center gap-2">
-                {(["ALL", "REDDIT", "YOUTUBE"] as const).map((platform) => (
+                {(["ALL", "REDDIT", "YOUTUBE", "TWITTER"] as const).map((p) => (
                   <button
-                    key={platform}
-                    onClick={() => setPlatformFilter(platform)}
+                    key={p}
+                    onClick={() => setPlatformFilter(p)}
                     className={`h-8 rounded-full px-3 text-xs font-bold transition-all ${
-                      platformFilter === platform
+                      platformFilter === p
                         ? "bg-teal text-white"
                         : "border border-charcoal/[0.12] text-charcoal-light hover:border-charcoal/[0.2] hover:text-charcoal"
                     }`}
                   >
-                    {platform === "ALL" ? "All" : platform === "REDDIT" ? "Reddit" : "YouTube"}
+                    {p === "ALL" ? "All" : platformLabel(p)}
                   </button>
                 ))}
               </div>

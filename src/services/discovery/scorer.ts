@@ -7,7 +7,7 @@ export interface ScoreInput {
   title: string;
   body?: string;
   sourceContext: string;
-  platform: "REDDIT" | "YOUTUBE";
+  platform: "REDDIT" | "YOUTUBE" | "TWITTER";
 }
 
 export interface SiteContext {
