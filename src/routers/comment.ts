@@ -11,6 +11,7 @@ import {
   getRedditComments,
   getYouTubeComments,
 } from "@/services/discovery/scrape-creators";
+import { fetchTweetReplies } from "@/services/discovery/twitter-discovery";
 import type { CommentGenerationInput } from "@/services/generation/types";
 
 function toSingleLine(text: string): string {
@@ -43,7 +44,7 @@ export const commentRouter = router({
         });
       }
 
-      const platformKey = comment.opportunity.platform.toLowerCase() as "reddit" | "youtube";
+      const platformKey = comment.opportunity.platform.toLowerCase() as "reddit" | "youtube" | "twitter";
       const creditCost = CREDIT_COSTS.daily[platformKey];
       const creditCheck = await hasEnoughCredits(ctx.session.user.id, creditCost);
       if (!creditCheck.hasEnough) {
@@ -174,6 +175,14 @@ export const commentRouter = router({
             score: c.likeCount,
             isOp: false,
           }));
+        } else if (comment.opportunity.platform === "TWITTER") {
+          const replies = await fetchTweetReplies(comment.opportunity.contentUrl);
+          existingComments = replies.slice(0, 15).map((r) => ({
+            author: r.author,
+            body: r.text,
+            score: r.likes,
+            isOp: false,
+          }));
         }
       } catch (err) {
         console.warn(`[comment.regenerate] Failed to fetch existing comments for ${comment.id}:`, err);
@@ -206,14 +215,21 @@ export const commentRouter = router({
       }
 
       const best = result.best;
-      const youtubeCombinedText = result.variants
-        .slice(0, 5)
-        .map((variant) => toSingleLine(variant.text))
-        .filter(Boolean)
-        .join("\n");
-      const nextText = comment.opportunity.platform === "YOUTUBE"
-        ? youtubeCombinedText
-        : best.text;
+      const platform = comment.opportunity.platform;
+      let nextText = best.text;
+
+      if (platform === "YOUTUBE") {
+        nextText = result.variants
+          .slice(0, 5)
+          .map((variant) => toSingleLine(variant.text))
+          .filter(Boolean)
+          .join("\n");
+      } else if (platform === "TWITTER" && result.variants.length > 1) {
+        nextText = result.variants
+          .map((variant) => toSingleLine(variant.text))
+          .filter(Boolean)
+          .join("\n");
+      }
 
       return ctx.prisma.comment.update({
         where: { id: comment.id },
@@ -232,7 +248,7 @@ export const commentRouter = router({
         cursor: z.string().optional(),
         limit: z.number().min(1).max(50).default(20),
         search: z.string().trim().max(120).optional(),
-        platform: z.enum(["REDDIT", "YOUTUBE"]).optional(),
+        platform: z.enum(["REDDIT", "YOUTUBE", "TWITTER"]).optional(),
         siteId: z.string().optional(),
         sortBy: z.enum([
           "newest",

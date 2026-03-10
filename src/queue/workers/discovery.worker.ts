@@ -439,6 +439,8 @@ async function searchTwitterForSite(
         for (const tweet of tweets) {
           if (existingIds.has(tweet.tweetId)) continue;
           if (tweet.likes < cfg.minTweetLikes) continue;
+          if (tweet.replies < cfg.minTweetReplies) continue;
+          if (!isLatinScript(tweet.text)) continue;
 
           existingIds.add(tweet.tweetId);
           newCount++;

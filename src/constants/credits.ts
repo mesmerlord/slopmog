@@ -1,5 +1,5 @@
 export const CREDIT_COSTS = {
-  daily: { reddit: 6, youtube: 6 },
+  daily: { reddit: 6, youtube: 6, twitter: 100 },
   highValue: { reddit: 60, youtube: 60 },
 } as const;
 

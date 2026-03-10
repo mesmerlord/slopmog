@@ -15,6 +15,7 @@ export interface DiscoveryConfig {
   hvQueryCount: number;
   minTwitterFollowers: number;
   minTweetLikes: number;
+  minTweetReplies: number;
   maxTrackedProfiles: number;
   twitterTweetsPerProfile: number;
 }
@@ -31,7 +32,8 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   dailyKeywordLimit: 25,
   hvQueryCount: 40,
   minTwitterFollowers: 1000,
-  minTweetLikes: 5,
+  minTweetLikes: 500,
+  minTweetReplies: 20,
   maxTrackedProfiles: 25,
   twitterTweetsPerProfile: 15,
 };
@@ -61,7 +63,8 @@ export function parseDiscoveryConfig(raw: unknown): DiscoveryConfig {
     dailyKeywordLimit: num("dailyKeywordLimit", 1, 30),
     hvQueryCount: num("hvQueryCount", 5, 100),
     minTwitterFollowers: num("minTwitterFollowers", 0, 1_000_000),
-    minTweetLikes: num("minTweetLikes", 0, 1000),
+    minTweetLikes: num("minTweetLikes", 0, 100_000),
+    minTweetReplies: num("minTweetReplies", 0, 10_000),
     maxTrackedProfiles: num("maxTrackedProfiles", 5, 50),
     twitterTweetsPerProfile: num("twitterTweetsPerProfile", 5, 50),
   };

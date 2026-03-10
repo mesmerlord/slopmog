@@ -7,13 +7,12 @@ import type {
 } from "./types";
 import { prisma } from "@/server/utils/db";
 
-// ─── SocialPlug Panel Config ────────────────────────────────
+// ─── SocialPlug Twitter Config ─────────────────────────────
 
 const PANEL_BASE = "https://panel.socialplug.io";
-const YOUTUBE_SERVICE_COMMENT_COUNT = 5;
-const MAX_SOCIALPLUG_COMMENT_LENGTH = 500;
-const ORDER_PAGE_PATH = "/order/youtube-services/portal";
-const ORDER_PAGE_PATH_WITH_REF = "/order/youtube-services/portal?ref=youtubecomments";
+const TWITTER_SERVICE_COMMENT_COUNT = 10;
+const MAX_SOCIALPLUG_COMMENT_LENGTH = 280;
+const ORDER_PAGE_PATH = "/order/twitter-usa-services/portal";
 const SOCIALPLUG_PROVIDER = "socialplug";
 const COOKIE_KEY = "cookies";
 
@@ -47,7 +46,7 @@ async function getCookies(): Promise<string> {
   } catch (error) {
     if (!missingCookieStorageWarned) {
       const msg = error instanceof Error ? error.message : String(error);
-      console.warn(`[socialplug] ProviderCredential lookup failed (${msg}). Falling back to env for now.`);
+      console.warn(`[socialplug-twitter] ProviderCredential lookup failed (${msg}). Falling back to env for now.`);
       missingCookieStorageWarned = true;
     }
   }
@@ -73,7 +72,7 @@ function isLatinScript(text: string): boolean {
   return latinChars / stripped.length >= 0.5;
 }
 
-function normalizeCommentsForService(commentText: string): string[] {
+export function normalizeTwitterCommentsForService(commentText: string): string[] {
   const lines = commentText
     .split("\n")
     .map((line) => line.trim())
@@ -92,17 +91,16 @@ function normalizeCommentsForService(commentText: string): string[] {
         .trim(),
     )
     .filter(Boolean)
-    // Keep user-provided copy intact; only apply a generous hard cap for panel safety.
     .map((line) => line.slice(0, MAX_SOCIALPLUG_COMMENT_LENGTH).trim());
 
   if (sanitized.length === 0) return [];
 
   const normalized = [...sanitized];
-  if (normalized.length > YOUTUBE_SERVICE_COMMENT_COUNT) {
-    return normalized.slice(0, YOUTUBE_SERVICE_COMMENT_COUNT);
+  if (normalized.length > TWITTER_SERVICE_COMMENT_COUNT) {
+    return normalized.slice(0, TWITTER_SERVICE_COMMENT_COUNT);
   }
 
-  while (normalized.length < YOUTUBE_SERVICE_COMMENT_COUNT) {
+  while (normalized.length < TWITTER_SERVICE_COMMENT_COUNT) {
     normalized.push(sanitized[normalized.length % sanitized.length]);
   }
 
@@ -111,9 +109,9 @@ function normalizeCommentsForService(commentText: string): string[] {
 
 // ─── CSRF Token ─────────────────────────────────────────────
 
-async function fetchCsrfToken(orderPagePath: string): Promise<string> {
-  const url = `${PANEL_BASE}${orderPagePath}`;
-  console.log(`[socialplug] Fetching CSRF token from ${url}`);
+async function fetchCsrfToken(): Promise<string> {
+  const url = `${PANEL_BASE}${ORDER_PAGE_PATH}`;
+  console.log(`[socialplug-twitter] Fetching CSRF token from ${url}`);
   const cookies = await getCookies();
 
   const res = await fetch(url, {
@@ -125,79 +123,81 @@ async function fetchCsrfToken(orderPagePath: string): Promise<string> {
 
   if (!res.ok) {
     throw new Error(
-      `[socialplug] Failed to fetch order page: ${res.status} ${res.statusText}`,
+      `[socialplug-twitter] Failed to fetch order page: ${res.status} ${res.statusText}`,
     );
   }
 
   const html = await res.text();
 
-  // Laravel embeds CSRF token in a meta tag
   const metaMatch = html.match(
     /<meta\s+name="csrf-token"\s+content="([^"]+)"/,
   );
   if (metaMatch) return metaMatch[1];
 
-  // Or in a hidden input
   const inputMatch = html.match(
     /<input[^>]+name="_token"[^>]+value="([^"]+)"/,
   );
   if (inputMatch) return inputMatch[1];
 
-  // Or in JavaScript
   const jsMatch = html.match(/csrf[_-]?token['":\s]+['"]([^'"]+)['"]/i);
   if (jsMatch) return jsMatch[1];
 
-  throw new Error("[socialplug] Could not find CSRF token in page HTML");
+  throw new Error("[socialplug-twitter] Could not find CSRF token in page HTML");
 }
 
 // ─── Provider ───────────────────────────────────────────────
 
-const socialPlugProvider: PostingProvider = {
-  name: "socialplug",
-  platform: "YOUTUBE" as const,
+const socialPlugTwitterProvider: PostingProvider = {
+  name: "socialplug-twitter",
+  platform: "TWITTER" as const,
 
   async createCommentOrder(
     params: PostCommentParams,
   ): Promise<CreateOrderResult> {
     console.log(
-      `[socialplug] Creating YouTube comment order: context=${params.sourceContext}, url=${params.contentUrl}`,
+      `[socialplug-twitter] Creating Twitter comment order: context=${params.sourceContext}, url=${params.contentUrl}`,
     );
 
     try {
-      // Get fresh CSRF token from the YouTube order page
-      const csrfToken = await fetchCsrfToken(ORDER_PAGE_PATH);
+      const csrfToken = await fetchCsrfToken();
 
-      // Service 144 is a fixed "5 Comments / Custom Comments" tier.
-      const comments = normalizeCommentsForService(params.commentText);
+      // Service 196 = Twitter Comments, "10 Comments" tier with "Custom Comments"
+      const comments = normalizeTwitterCommentsForService(params.commentText);
       if (comments.length === 0) {
         return {
           success: false,
-          error: "No valid comment text provided for SocialPlug order",
+          error: "No valid comment text provided for SocialPlug Twitter order",
           retryable: false,
         };
       }
-      const commentCountLabel = `${YOUTUBE_SERVICE_COMMENT_COUNT} Comments`;
+      const commentCountLabel = `${TWITTER_SERVICE_COMMENT_COUNT} Comments`;
       const commentsText = comments.join("\n");
 
       const trySubmit = async (mode: "captured" | "legacy") => {
         const formData = new URLSearchParams();
         formData.set("_token", csrfToken);
-        formData.set("orderform", "youtube-services");
+        formData.set("orderform", "twitter-usa-services");
         if (mode === "legacy") {
           const email = getOrderEmail();
           if (email) formData.set("email", email);
           formData.set("dynamic-radio", commentCountLabel);
         }
-        formData.set("field_1[3]", "144");
+        // Service index 3 = Twitter Comments, service ID 196
+        formData.set("field_1[3]", "196");
         formData.set("options_1[3][0]", commentCountLabel);
         formData.set("options_1[3][1]", "Custom Comments");
-        formData.set("field_4", "");
-        formData.set("field_5", params.contentUrl);
+        // field_2 = Profile Link (empty for comments-only)
+        formData.set("field_2", "");
+        // field_3 = Post Link (tweet URL)
+        formData.set("field_3", params.contentUrl);
+        // field_6 = Comments (one per line)
+        formData.set("field_6", commentsText);
+        // field_7 = Twitter Space Link (empty)
         formData.set("field_7", "");
-        formData.set("field_10", commentsText);
-        formData.set("field_15", "");
-        formData.set("field_18", "");
-        formData.set("field_19", "");
+        // field_9 = Twitter Poll Link (empty)
+        formData.set("field_9", "");
+        // field_13 = hidden (empty)
+        formData.set("field_13", "");
         formData.set("processor", "balance");
         formData.set("payment-method", "balance");
         formData.set("coupon", "");
@@ -207,7 +207,7 @@ const socialPlugProvider: PostingProvider = {
           headers: {
             ...BROWSER_HEADERS,
             "cookie": await getCookies(),
-            "referer": `${PANEL_BASE}${mode === "captured" ? ORDER_PAGE_PATH : ORDER_PAGE_PATH_WITH_REF}`,
+            "referer": `${PANEL_BASE}${ORDER_PAGE_PATH}`,
           },
           body: formData.toString(),
         });
@@ -215,18 +215,17 @@ const socialPlugProvider: PostingProvider = {
         return { res, responseText };
       };
 
-      // First try to mirror your latest captured request.
       let { res, responseText } = await trySubmit("captured");
 
-      // Fallback to legacy payload if account/session expects older fields.
+      // Fallback to legacy payload if session expects older fields
       if (!res.ok && res.status === 422 && responseText.toLowerCase().includes("email")) {
-        console.warn("[socialplug] Captured payload asked for email; retrying with legacy email/dynamic-radio fields");
+        console.warn("[socialplug-twitter] Captured payload asked for email; retrying with legacy fields");
         ({ res, responseText } = await trySubmit("legacy"));
       }
 
       if (!res.ok) {
         console.error(
-          `[socialplug] Submit failed: ${res.status}`,
+          `[socialplug-twitter] Submit failed: ${res.status}`,
           responseText.slice(0, 500),
         );
         return {
@@ -236,10 +235,9 @@ const socialPlugProvider: PostingProvider = {
         };
       }
 
-      // Try to parse JSON response
       try {
         const json = JSON.parse(responseText) as Record<string, unknown>;
-        console.log(`[socialplug] Response:`, JSON.stringify(json));
+        console.log(`[socialplug-twitter] Response:`, JSON.stringify(json));
 
         const status = String(json.status ?? "").toLowerCase();
         if (
@@ -253,7 +251,7 @@ const socialPlugProvider: PostingProvider = {
           return {
             success: true,
             orderId: String(
-              json.order_id ?? json.orderId ?? "socialplug-instant",
+              json.order_id ?? json.orderId ?? "socialplug-twitter-instant",
             ),
             retryable: false,
           };
@@ -266,14 +264,13 @@ const socialPlugProvider: PostingProvider = {
           retryable: false,
         };
       } catch {
-        // Response might be HTML or plain text
         const isSuccess =
           responseText.toLowerCase().includes("success") ||
           responseText.toLowerCase().includes("order placed");
         if (isSuccess) {
           return {
             success: true,
-            orderId: "socialplug-instant",
+            orderId: "socialplug-twitter-instant",
             retryable: false,
           };
         }
@@ -285,7 +282,7 @@ const socialPlugProvider: PostingProvider = {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`[socialplug] createCommentOrder error: ${message}`);
+      console.error(`[socialplug-twitter] createCommentOrder error: ${message}`);
 
       const notRetryable =
         message.includes("CSRF") ||
@@ -300,22 +297,17 @@ const socialPlugProvider: PostingProvider = {
   },
 
   async checkOrderStatus(_orderId: string): Promise<OrderStatusResult> {
-    // SocialPlug orders complete instantly once submitted
     return { status: "completed" };
   },
 
   async isAvailable(): Promise<boolean> {
     try {
       await getCookies();
-
-      // Try to fetch the CSRF token to verify the session is still valid
-      await fetchCsrfToken(
-        "/order/youtube-services/portal?ref=youtubecomments",
-      );
+      await fetchCsrfToken();
       return true;
     } catch (error) {
       console.warn(
-        `[socialplug] isAvailable check failed:`,
+        `[socialplug-twitter] isAvailable check failed:`,
         error instanceof Error ? error.message : String(error),
       );
       return false;
@@ -349,6 +341,6 @@ const socialPlugProvider: PostingProvider = {
 };
 
 // Register on import
-postingRegistry.register(socialPlugProvider);
+postingRegistry.register(socialPlugTwitterProvider);
 
-export { socialPlugProvider };
+export { socialPlugTwitterProvider };

@@ -9,6 +9,7 @@ import { CREDIT_COSTS } from "@/constants/credits";
 // Register providers (side-effect imports)
 import "@/services/posting/upvotemax";
 import "@/services/posting/socialplug";
+import "@/services/posting/socialplug-twitter";
 
 const SOCIALPLUG_YOUTUBE_COMMENT_TARGET = 5;
 
@@ -83,7 +84,7 @@ async function processPosting(job: Job<PostingJobData>) {
   await job.log(`Provider selected: ${provider.name}`);
 
   // Credit pre-check — insufficient credits is not retryable
-  const platformKey = opportunity.platform.toLowerCase() as "reddit" | "youtube";
+  const platformKey = opportunity.platform.toLowerCase() as "reddit" | "youtube" | "twitter";
   const creditCost = CREDIT_COSTS.daily[platformKey];
   const creditCheck = await hasEnoughCredits(comment.site.userId, creditCost);
   if (!creditCheck.hasEnough) {

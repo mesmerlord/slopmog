@@ -89,7 +89,7 @@ export async function generateComment(
     ? `\nYou are REPLYING to this comment by ${input.replyTarget.commentAuthor}: "${input.replyTarget.commentBody}"`
     : "";
 
-  const variantCount = 1;
+  const variantCount = input.platform === "TWITTER" ? 10 : 1;
 
   const result = await chatCompletionJSON({
     model: MODELS.CLAUDE_SONNET,

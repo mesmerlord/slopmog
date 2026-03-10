@@ -99,7 +99,10 @@ async function processGeneration(job: Job<GenerationJobData>) {
 
   await job.log(`Comment generated: qualityScore=${best.qualityScore}, variants=${result.variants.length}`);
 
-  const savedText = best.text;
+  // For Twitter, combine all 10 variants as newline-separated text (one per SocialPlug comment)
+  const savedText = opportunity.platform === "TWITTER" && result.variants.length > 1
+    ? result.variants.map((v) => v.text.replace(/\s*\n+\s*/g, " ").trim()).filter(Boolean).join("\n")
+    : best.text;
   const commentStatus = site.mode === "AUTO" ? "APPROVED" : "DRAFT";
   const opportunityStatus = site.mode === "AUTO" ? "APPROVED" : "PENDING_REVIEW";
 
