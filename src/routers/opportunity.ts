@@ -8,6 +8,10 @@ import {
 } from "@/services/discovery/scrape-creators";
 import { fetchTweetReplies } from "@/services/discovery/twitter-discovery";
 import type { CommentGenerationInput } from "@/services/generation/types";
+import { postingQueue, type PostingJobData } from "@/queue/queues";
+import { getUserPlan } from "@/server/utils/plan";
+import { hasEnoughCredits } from "@/server/utils/credits";
+import { CREDIT_COSTS } from "@/constants/credits";
 
 export const opportunityRouter = router({
   listPending: protectedProcedure
@@ -227,6 +231,136 @@ export const opportunityRouter = router({
           scoreReasons: best.reasons,
         },
       });
+    }),
+
+  generateAndApprove: protectedProcedure
+    .input(z.object({
+      opportunityId: z.string(),
+      persona: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const opportunity = await ctx.prisma.opportunity.findFirst({
+        where: {
+          id: input.opportunityId,
+          site: { userId: ctx.session.user.id },
+          status: "PENDING_REVIEW",
+        },
+        include: {
+          site: true,
+          comments: { where: { status: "DRAFT" }, take: 1 },
+        },
+      });
+
+      if (!opportunity) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Opportunity not found or not pending" });
+      }
+
+      const plan = await getUserPlan(ctx.session.user.id);
+      if (!plan.canPost) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Posting is available on paid plans only. Upgrade to publish comments.",
+        });
+      }
+
+      const platformKey = opportunity.platform.toLowerCase() as "reddit" | "youtube" | "twitter";
+      const creditCost = CREDIT_COSTS.daily[platformKey];
+      const creditCheck = await hasEnoughCredits(ctx.session.user.id, creditCost);
+      if (!creditCheck.hasEnough) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `You need at least ${creditCost} credit${creditCost > 1 ? "s" : ""} to post. Buy more credits on the billing page.`,
+        });
+      }
+
+      let comment = opportunity.comments[0];
+
+      // Generate comment if none exists
+      if (!comment) {
+        let existingComments: CommentGenerationInput["existingComments"] = [];
+        try {
+          if (opportunity.platform === "REDDIT") {
+            const comments = await getRedditComments(opportunity.contentUrl);
+            existingComments = comments.slice(0, 15).map((c) => ({
+              author: c.author, body: c.body, score: c.score, isOp: false,
+            }));
+          } else if (opportunity.platform === "YOUTUBE") {
+            const comments = await getYouTubeComments(opportunity.contentUrl);
+            existingComments = comments.slice(0, 15).map((c) => ({
+              author: c.author, body: c.text, score: c.likeCount, isOp: false,
+            }));
+          } else if (opportunity.platform === "TWITTER") {
+            const replies = await fetchTweetReplies(opportunity.contentUrl);
+            existingComments = replies.slice(0, 15).map((r) => ({
+              author: r.author, body: r.text, score: r.likes, isOp: false,
+            }));
+          }
+        } catch (err) {
+          console.warn(`[opportunity.generateAndApprove] Failed to fetch existing comments:`, err);
+        }
+
+        const site = opportunity.site;
+        const result = await generateComment({
+          postTitle: opportunity.title,
+          postBody: opportunity.body ?? "",
+          sourceContext: opportunity.sourceContext,
+          platform: opportunity.platform,
+          existingComments,
+          businessName: site.name,
+          businessDescription: site.description,
+          valueProps: site.valueProps,
+          websiteUrl: site.url,
+          brandTone: site.brandTone,
+          matchedKeyword: opportunity.matchedKeyword,
+          commentPosition: "top_level",
+          postType: (opportunity.postType as "question" | "discussion" | "showcase") ?? "discussion",
+          persona: input.persona,
+        });
+
+        if (result.noRelevantComment || result.variants.length === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Could not generate a natural comment for this opportunity",
+          });
+        }
+
+        const best = result.best;
+        const toSingleLine = (text: string) => text.replace(/\s*\n+\s*/g, " ").trim();
+        const savedText = opportunity.platform === "YOUTUBE"
+          ? result.variants.slice(0, 5).map((v) => toSingleLine(v.text)).filter(Boolean).join("\n")
+          : opportunity.platform === "TWITTER" && result.variants.length > 1
+            ? result.variants.map((v) => toSingleLine(v.text)).filter(Boolean).join("\n")
+            : best.text;
+
+        comment = await ctx.prisma.comment.create({
+          data: {
+            opportunityId: opportunity.id,
+            siteId: site.id,
+            status: "APPROVED",
+            text: savedText,
+            persona: input.persona ?? "auto",
+            qualityScore: best.qualityScore,
+            scoreReasons: best.reasons,
+          },
+        });
+      } else {
+        // Existing draft — just approve it
+        await ctx.prisma.comment.update({
+          where: { id: comment.id },
+          data: { status: "APPROVED" },
+        });
+      }
+
+      await ctx.prisma.opportunity.update({
+        where: { id: opportunity.id },
+        data: { status: "APPROVED" },
+      });
+
+      await postingQueue.add("post", {
+        commentId: comment.id,
+      } satisfies PostingJobData, { jobId: `post-${comment.id}` });
+
+      return { success: true };
     }),
 
   getStats: protectedProcedure.query(async ({ ctx }) => {

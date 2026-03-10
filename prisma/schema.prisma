@@ -267,6 +267,7 @@ model Site {
   brandTone        String
   mode           SiteMode   @default(MANUAL)
   dailyAutoLimit Int        @default(20)
+  dailyBudget    Json?      // Per-platform daily budget: { reddit, youtube, twitter }
   platforms      Platform[]
   active      Boolean    @default(true)
 

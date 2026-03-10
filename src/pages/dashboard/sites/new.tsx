@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 import type { GetServerSideProps } from "next";
 import { toast } from "sonner";
-import { Globe, Loader2, ArrowRight, Lock, SlidersHorizontal } from "lucide-react";
+import { Globe, Loader2, ArrowRight, Lock, SlidersHorizontal, Settings } from "lucide-react";
 import Seo from "@/components/Seo";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
@@ -11,6 +11,8 @@ import DiscoverySettingsModal from "@/components/DiscoverySettingsModal";
 import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
 import { DISCOVERY_DEFAULTS, type DiscoveryConfig } from "@/services/discovery/config";
+import { DAILY_BUDGET_DEFAULTS, type DailyBudget } from "@/services/budget/config";
+import DailyBudgetModal from "@/components/DailyBudgetModal";
 import { getServerAuthSession } from "@/server/utils/auth";
 import AddSiteIllustrationV2 from "@/components/illustrations/AddSiteIllustrationV2";
 
@@ -23,7 +25,9 @@ export default function NewSitePage() {
   ]);
   const [mode, setMode] = useState<"MANUAL" | "AUTO">("MANUAL");
   const [discoveryConfig, setDiscoveryConfig] = useState<DiscoveryConfig>({ ...DISCOVERY_DEFAULTS });
+  const [dailyBudget, setDailyBudget] = useState<DailyBudget>({ ...DAILY_BUDGET_DEFAULTS });
   const [showDiscoverySettings, setShowDiscoverySettings] = useState(false);
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const isDefaultConfig = Object.keys(DISCOVERY_DEFAULTS).every(
@@ -68,6 +72,7 @@ export default function NewSitePage() {
       platforms,
       mode,
       ...(!isDefaultConfig ? { discoveryConfig } : {}),
+      ...(mode === "AUTO" ? { dailyBudget } : {}),
     });
   };
 
@@ -262,6 +267,39 @@ export default function NewSitePage() {
               </div>
             </div>
 
+            {/* Section 4: Daily Budget button (visible when AUTO) */}
+            {mode === "AUTO" && (
+              <>
+                <div className="h-px bg-charcoal/[0.06] mx-6" />
+                <div className="p-6 pb-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-teal text-white text-xs font-bold">
+                      4
+                    </span>
+                    <span className="text-sm font-bold text-charcoal">
+                      Daily budget per platform
+                    </span>
+                  </div>
+                  <p className="text-xs text-charcoal-light mb-3">
+                    Reddit: {dailyBudget.reddit}/day · YouTube: {dailyBudget.youtube}/day · Twitter: {dailyBudget.twitter}/day
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowBudgetModal(true)}
+                    className="inline-flex items-center gap-1.5 border border-teal/30 text-teal px-4 py-2 rounded-full text-xs font-bold hover:bg-teal/5 transition-all"
+                  >
+                    <Settings size={12} />
+                    Configure Budget
+                    {(dailyBudget.reddit !== DAILY_BUDGET_DEFAULTS.reddit ||
+                      dailyBudget.youtube !== DAILY_BUDGET_DEFAULTS.youtube ||
+                      dailyBudget.twitter !== DAILY_BUDGET_DEFAULTS.twitter) && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal" />
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+
             {/* Submit */}
             <div className="p-6 pt-4 bg-charcoal/[0.015] rounded-b-brand-lg border-t border-charcoal/[0.06]">
               <button
@@ -323,6 +361,18 @@ export default function NewSitePage() {
         onOpenChange={setShowDiscoverySettings}
         initialConfig={discoveryConfig}
         onSave={setDiscoveryConfig}
+      />
+
+      <DailyBudgetModal
+        mode="local"
+        open={showBudgetModal}
+        onOpenChange={setShowBudgetModal}
+        initialBudget={dailyBudget}
+        onSave={setDailyBudget}
+        onInsufficientCredits={() => {
+          setShowBudgetModal(false);
+          setShowUpgradeModal(true);
+        }}
       />
     </DashboardLayout>
   );

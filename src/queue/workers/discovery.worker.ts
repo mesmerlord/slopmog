@@ -16,6 +16,7 @@ import {
 } from "@/services/discovery/scorer";
 import { pMap } from "@/services/shared/parallel";
 import type { Prisma } from "@prisma/client";
+import { parseDailyBudget, type DailyBudget } from "@/services/budget/config";
 import type { KeywordConfig } from "@/services/discovery/site-analyzer";
 import { parseDiscoveryConfig, type DiscoveryConfig } from "@/services/discovery/config";
 import {
@@ -340,22 +341,6 @@ async function processKeywordResults(
       },
     });
     runState.savedCount++;
-
-    // Auto-generate for items above the auto-generate threshold
-    if (
-      item.relevanceScore >= cfg.autoGenerateMinScore &&
-      opportunity.status === "PENDING_REVIEW"
-    ) {
-      const hasComment = await prisma.comment.count({
-        where: { opportunityId: opportunity.id },
-      });
-      if (hasComment === 0) {
-        await generationQueue.add("generate", {
-          opportunityId: opportunity.id,
-        } satisfies GenerationJobData);
-        runState.generatedCount++;
-      }
-    }
   }
 
   // Update DiscoveryRun counts progressively
@@ -367,6 +352,63 @@ async function processKeywordResults(
       generatedCount: runState.generatedCount,
     },
   });
+}
+
+// ─── Budget-Aware Auto Generation ────────────────────────────
+
+async function enqueueAutoGeneration(
+  site: { id: string; mode: string; dailyBudget: unknown },
+  run: { id: string },
+  platform: "REDDIT" | "YOUTUBE" | "TWITTER",
+  runState: RunState,
+  job: Job<DiscoveryJobData>,
+): Promise<void> {
+  if (site.mode !== "AUTO") return;
+
+  const budget = parseDailyBudget(site.dailyBudget);
+  const platformKey = platform.toLowerCase() as keyof DailyBudget;
+  const platformLimit = budget[platformKey];
+
+  // Count from DB — source of truth
+  const startOfDay = new Date();
+  startOfDay.setUTCHours(0, 0, 0, 0);
+  const postedToday = await prisma.comment.count({
+    where: {
+      siteId: site.id,
+      status: "POSTED",
+      opportunity: { platform },
+      postedAt: { gte: startOfDay },
+    },
+  });
+  const remaining = Math.max(0, platformLimit - postedToday);
+
+  if (remaining === 0) {
+    await job.log(`[${platform}] Budget exhausted (${postedToday}/${platformLimit}) — skipping auto-generation`);
+    return;
+  }
+
+  // Pick top N from THIS run without comments
+  const topOpps = await prisma.opportunity.findMany({
+    where: {
+      discoveryRunId: run.id,
+      status: "PENDING_REVIEW",
+      comments: { none: {} },
+    },
+    orderBy: { relevanceScore: "desc" },
+    take: remaining,
+    select: { id: true },
+  });
+
+  for (const opp of topOpps) {
+    await generationQueue.add("generate", {
+      opportunityId: opp.id,
+    } satisfies GenerationJobData, { jobId: `gen-${opp.id}` });
+    runState.generatedCount++;
+  }
+
+  if (topOpps.length > 0) {
+    await job.log(`[${platform}] Enqueued ${topOpps.length} for auto-generation (budget: ${postedToday}/${platformLimit})`);
+  }
 }
 
 // ─── Twitter Search ──────────────────────────────────────────
@@ -584,28 +626,8 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
           job,
         );
 
-        // Backfill top N without comments
-        const topWithoutComments = await prisma.opportunity.findMany({
-          where: {
-            discoveryRunId: run.id,
-            status: "PENDING_REVIEW",
-            comments: { none: {} },
-          },
-          orderBy: { relevanceScore: "desc" },
-          take: cfg.autoGenerateTopN,
-          select: { id: true },
-        });
-
-        for (const opp of topWithoutComments) {
-          await generationQueue.add("generate", {
-            opportunityId: opp.id,
-          } satisfies GenerationJobData);
-          runState.generatedCount++;
-        }
-
-        if (topWithoutComments.length > 0) {
-          await job.log(`[TWITTER] Backfilled ${topWithoutComments.length} comments for top opportunities`);
-        }
+        // Budget-aware auto-generation after all discovery is done
+        await enqueueAutoGeneration(site, run, "TWITTER", runState, job);
 
         await prisma.discoveryRun.update({
           where: { id: run.id },
@@ -683,35 +705,13 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
         }
       }
 
-      // Final pass: ensure the global top N all have comments queued.
-      // The per-keyword loop already generated for ≥0.90 items, but due to keyword
-      // ordering some top items may have been missed. This backfills the gaps.
+      // Budget-aware auto-generation after all keywords are processed
       if (await isRunCancelled(run.id)) {
-        await job.log(`[${platform}] Run cancelled — skipping backfill and completion`);
+        await job.log(`[${platform}] Run cancelled — skipping auto-generation and completion`);
         continue;
       }
 
-      const topWithoutComments = await prisma.opportunity.findMany({
-        where: {
-          discoveryRunId: run.id,
-          status: "PENDING_REVIEW",
-          comments: { none: {} },
-        },
-        orderBy: { relevanceScore: "desc" },
-        take: cfg.autoGenerateTopN,
-        select: { id: true },
-      });
-
-      for (const opp of topWithoutComments) {
-        await generationQueue.add("generate", {
-          opportunityId: opp.id,
-        } satisfies GenerationJobData);
-        runState.generatedCount++;
-      }
-
-      if (topWithoutComments.length > 0) {
-        await job.log(`[${platform}] Final pass: backfilled ${topWithoutComments.length} comments for top opportunities`);
-      }
+      await enqueueAutoGeneration(site, run, platform, runState, job);
 
       if (!(await isRunCancelled(run.id))) {
         await prisma.discoveryRun.update({

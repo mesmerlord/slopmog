@@ -7,6 +7,8 @@ import { getUserPlan } from "@/server/utils/plan";
 import { getTotalCredits } from "@/server/utils/credits";
 import { redis } from "@/server/utils/redis";
 import { DISCOVERY_DEFAULTS, parseDiscoveryConfig } from "@/services/discovery/config";
+import { parseDailyBudget, DAILY_BUDGET_DEFAULTS, type DailyBudget } from "@/services/budget/config";
+import { generationQueue, type GenerationJobData } from "@/queue/queues";
 
 const KeywordCategorySchema = z.enum(["features", "competitors", "brand"]);
 
@@ -103,6 +105,11 @@ export const siteRouter = router({
           maxTrackedProfiles: z.number().int().min(5).max(50),
           twitterTweetsPerProfile: z.number().int().min(5).max(50),
         }).optional(),
+        dailyBudget: z.object({
+          reddit: z.number().int().min(0).max(50),
+          youtube: z.number().int().min(0).max(50),
+          twitter: z.number().int().min(0).max(50),
+        }).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -143,6 +150,7 @@ export const siteRouter = router({
           platforms: input.platforms,
           mode: input.mode,
           ...(input.discoveryConfig ? { discoveryConfig: input.discoveryConfig } : {}),
+          ...(input.dailyBudget ? { dailyBudget: input.dailyBudget } : {}),
         },
       });
 
@@ -205,21 +213,45 @@ export const siteRouter = router({
     .query(async ({ ctx, input }) => {
       const site = await ctx.prisma.site.findFirst({
         where: { id: input.siteId, userId: ctx.session.user.id },
-        select: { id: true, dailyAutoLimit: true },
+        select: { id: true, dailyAutoLimit: true, dailyBudget: true },
       });
 
       if (!site) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Site not found" });
       }
 
-      const todayUTC = new Date().toISOString().slice(0, 10);
-      const dailyCountKey = `auto:dailyCount:${input.siteId}:${todayUTC}`;
-      const countStr = await redis.get(dailyCountKey);
-      const postedToday = countStr ? parseInt(countStr, 10) : 0;
+      const budget = parseDailyBudget(site.dailyBudget);
+
+      const startOfDay = new Date();
+      startOfDay.setUTCHours(0, 0, 0, 0);
+
+      const platforms = ["REDDIT", "YOUTUBE", "TWITTER"] as const;
+      const perPlatform: Record<string, { posted: number; limit: number }> = {};
+
+      let totalPosted = 0;
+      for (const p of platforms) {
+        const posted = await ctx.prisma.comment.count({
+          where: {
+            siteId: input.siteId,
+            status: "POSTED",
+            opportunity: { platform: p },
+            postedAt: { gte: startOfDay },
+          },
+        });
+        const platformKey = p.toLowerCase() as keyof DailyBudget;
+        perPlatform[p] = { posted, limit: budget[platformKey] };
+        totalPosted += posted;
+      }
 
       const totalCredits = await getTotalCredits(ctx.session.user.id);
 
-      return { postedToday, dailyAutoLimit: site.dailyAutoLimit, totalCredits };
+      return {
+        postedToday: totalPosted,
+        dailyAutoLimit: site.dailyAutoLimit,
+        budget,
+        perPlatform,
+        totalCredits,
+      };
     }),
 
   update: protectedProcedure
@@ -234,6 +266,11 @@ export const siteRouter = router({
         platforms: z.array(z.enum(["REDDIT", "YOUTUBE", "TWITTER"])).min(1).optional(),
         active: z.boolean().optional(),
         dailyAutoLimit: z.number().int().min(1).max(100).optional(),
+        dailyBudget: z.object({
+          reddit: z.number().int().min(0).max(50),
+          youtube: z.number().int().min(0).max(50),
+          twitter: z.number().int().min(0).max(50),
+        }).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -256,22 +293,48 @@ export const siteRouter = router({
 
       // Smart scheduling when toggling MANUAL -> AUTO
       if (data.mode === "AUTO" && previousMode === "MANUAL") {
-        const todayUTC = new Date().toISOString().slice(0, 10);
-        const dailyCountKey = `auto:dailyCount:${id}:${todayUTC}`;
-        const currentCountStr = await redis.get(dailyCountKey);
-        const alreadyPostedToday = currentCountStr ? parseInt(currentCountStr, 10) : 0;
-        const remaining = Math.max(0, updated.dailyAutoLimit - alreadyPostedToday);
+        const budget = parseDailyBudget(updated.dailyBudget);
 
-        if (remaining > 0) {
+        const startOfDay = new Date();
+        startOfDay.setUTCHours(0, 0, 0, 0);
+
+        // Get per-platform remaining budgets from DB
+        const platformBudgets: Record<string, number> = {};
+        for (const p of ["REDDIT", "YOUTUBE", "TWITTER"] as const) {
+          const posted = await ctx.prisma.comment.count({
+            where: {
+              siteId: id,
+              status: "POSTED",
+              opportunity: { platform: p },
+              postedAt: { gte: startOfDay },
+            },
+          });
+          const platformKey = p.toLowerCase() as keyof DailyBudget;
+          platformBudgets[p] = Math.max(0, budget[platformKey] - posted);
+        }
+
+        const totalRemaining = platformBudgets.REDDIT + platformBudgets.YOUTUBE + platformBudgets.TWITTER;
+
+        if (totalRemaining > 0) {
           // Find DRAFT comments ranked by relevance
           const readyComments = await ctx.prisma.comment.findMany({
             where: { siteId: id, status: "DRAFT" },
             include: { opportunity: { select: { relevanceScore: true, platform: true } } },
             orderBy: { opportunity: { relevanceScore: "desc" } },
-            take: remaining,
           });
 
-          if (readyComments.length > 0) {
+          // Filter to fit per-platform budgets
+          const platformCounts: Record<string, number> = { REDDIT: 0, YOUTUBE: 0, TWITTER: 0 };
+          const schedulable = readyComments.filter((c) => {
+            const p = c.opportunity.platform;
+            if (platformCounts[p] < platformBudgets[p]) {
+              platformCounts[p]++;
+              return true;
+            }
+            return false;
+          });
+
+          if (schedulable.length > 0) {
             // Check last posted comment to determine if recent
             const lastPosted = await ctx.prisma.comment.findFirst({
               where: { siteId: id, status: "POSTED" },
@@ -284,7 +347,7 @@ export const siteRouter = router({
 
             // Update statuses to APPROVED
             await ctx.prisma.$transaction(
-              readyComments.flatMap((c) => [
+              schedulable.flatMap((c) => [
                 ctx.prisma.comment.update({
                   where: { id: c.id },
                   data: { status: "APPROVED" },
@@ -297,17 +360,16 @@ export const siteRouter = router({
             );
 
             // Schedule posting with staggered delays
-            let cumulativeDelay = isRecent ? 300_000 : 0; // 5 min if recent, immediate if not
+            let cumulativeDelay = isRecent ? 300_000 : 0;
 
-            for (let i = 0; i < readyComments.length; i++) {
-              const c = readyComments[i];
+            for (let i = 0; i < schedulable.length; i++) {
+              const c = schedulable[i];
               const platform = c.opportunity.platform;
 
               if (i > 0) {
-                cumulativeDelay += Math.floor(Math.random() * 300_000) + 300_000; // 5-10 min gap
+                cumulativeDelay += Math.floor(Math.random() * 300_000) + 300_000;
               }
 
-              // Update lastScheduled redis key
               const redisKey = `auto:lastScheduled:${id}:${platform}`;
               const postAt = now + cumulativeDelay;
               await redis.set(redisKey, postAt.toString(), "EX", 3600);
@@ -315,15 +377,52 @@ export const siteRouter = router({
               await postingQueue.add("post", {
                 commentId: c.id,
               } satisfies PostingJobData, {
+                jobId: `post-${c.id}`,
                 delay: cumulativeDelay,
               });
             }
 
-            // Update daily counter
-            await redis.incrby(dailyCountKey, readyComments.length);
-            await redis.expire(dailyCountKey, 90000); // 25 hours
+            console.log(`[site] Smart toggle: scheduled ${schedulable.length} comments for site ${id} (recent: ${!!isRecent})`);
+          }
 
-            console.log(`[site] Smart toggle: scheduled ${readyComments.length} comments for site ${id} (recent: ${!!isRecent})`);
+          // Also enqueue PENDING_REVIEW opportunities with no comments for generation
+          // Recalculate remaining budgets after scheduling drafts
+          const remainingAfterDrafts: Record<string, number> = {};
+          for (const p of ["REDDIT", "YOUTUBE", "TWITTER"] as const) {
+            remainingAfterDrafts[p] = Math.max(0, platformBudgets[p] - platformCounts[p]);
+          }
+
+          const totalRemainingAfterDrafts = remainingAfterDrafts.REDDIT + remainingAfterDrafts.YOUTUBE + remainingAfterDrafts.TWITTER;
+          if (totalRemainingAfterDrafts > 0) {
+            const uncommentedOpps = await ctx.prisma.opportunity.findMany({
+              where: {
+                siteId: id,
+                status: "PENDING_REVIEW",
+                comments: { none: {} },
+              },
+              select: { id: true, platform: true, relevanceScore: true },
+              orderBy: { relevanceScore: "desc" },
+            });
+
+            const genCounts: Record<string, number> = { REDDIT: 0, YOUTUBE: 0, TWITTER: 0 };
+            const toGenerate = uncommentedOpps.filter((opp) => {
+              const p = opp.platform;
+              if (genCounts[p] < remainingAfterDrafts[p]) {
+                genCounts[p]++;
+                return true;
+              }
+              return false;
+            });
+
+            for (const opp of toGenerate) {
+              await generationQueue.add("generate", {
+                opportunityId: opp.id,
+              } satisfies GenerationJobData, { jobId: `gen-${opp.id}` });
+            }
+
+            if (toGenerate.length > 0) {
+              console.log(`[site] Smart toggle: enqueued ${toGenerate.length} un-generated opportunities for generation (site ${id})`);
+            }
           }
         }
       }

@@ -47,6 +47,17 @@ async function processPosting(job: Job<PostingJobData>) {
 
   const { opportunity } = comment;
 
+  // Guard: skip if opportunity already has a POSTED comment (prevents duplicates)
+  const alreadyPosted = await prisma.comment.count({
+    where: { opportunityId: comment.opportunityId, status: "POSTED", id: { not: commentId } },
+  });
+  if (alreadyPosted > 0) {
+    await prisma.comment.update({ where: { id: commentId }, data: { status: "DRAFT" } });
+    console.log(`[posting] Comment ${commentId} skipped — opportunity already has a posted comment`);
+    await job.log(`Skipped: opportunity already has a posted comment`);
+    return;
+  }
+
   await job.log(
     `Platform: ${opportunity.platform} | URL: ${opportunity.contentUrl}`,
   );

@@ -14,6 +14,7 @@ import {
   Loader2,
   Lock,
   Sparkles,
+  Zap,
   ArrowUp,
   MessageSquare,
   Eye,
@@ -118,6 +119,7 @@ interface QueueItemProps {
   onEdit: (commentId: string, text: string) => void;
   onRegenerate: (commentId: string, persona: string) => void;
   onGenerate: (opportunityId: string) => void;
+  onGenerateAndApprove: (opportunityId: string) => void;
   isActing: boolean;
   isRegenerating: boolean;
   isGenerating: boolean;
@@ -130,6 +132,7 @@ function QueueItem({
   onEdit,
   onRegenerate,
   onGenerate,
+  onGenerateAndApprove,
   isActing,
   isRegenerating,
   isGenerating,
@@ -377,13 +380,22 @@ function QueueItem({
           ) : (
             <>
               <p className="text-sm text-charcoal-light">No comment yet for this opportunity.</p>
-              <button
-                onClick={() => onGenerate(opportunity.id)}
-                className="inline-flex items-center gap-1.5 bg-teal text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-teal-dark transition-all"
-              >
-                <RefreshCw size={14} />
-                Generate Comment
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onGenerate(opportunity.id)}
+                  className="inline-flex items-center gap-1.5 bg-teal text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-teal-dark transition-all"
+                >
+                  <RefreshCw size={14} />
+                  Generate Comment
+                </button>
+                <button
+                  onClick={() => onGenerateAndApprove(opportunity.id)}
+                  className="inline-flex items-center gap-1.5 bg-coral text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-coral-dark transition-all"
+                >
+                  <Zap size={14} />
+                  Generate & Approve
+                </button>
+              </div>
             </>
           )}
         </div>
@@ -512,6 +524,20 @@ export default function QueuePage() {
       utils.opportunity.listPending.invalidate();
     },
     onError: (err) => toast.error(err.message),
+    onSettled: () => setGeneratingOn(null),
+  });
+
+  const generateAndApproveMutation = trpc.opportunity.generateAndApprove.useMutation({
+    onSuccess: () => {
+      toast.success("Comment generated and approved!");
+      utils.opportunity.listPending.invalidate();
+    },
+    onError: (err) => {
+      if (err.data?.code === "FORBIDDEN") {
+        setShowUpgradeModal(true);
+      }
+      toast.error(err.message);
+    },
     onSettled: () => setGeneratingOn(null),
   });
 
@@ -722,6 +748,10 @@ export default function QueuePage() {
                   onGenerate={(opportunityId) => {
                     setGeneratingOn(opportunityId);
                     generateMutation.mutate({ opportunityId });
+                  }}
+                  onGenerateAndApprove={(opportunityId) => {
+                    setGeneratingOn(opportunityId);
+                    generateAndApproveMutation.mutate({ opportunityId });
                   }}
                   isActing={actingOn !== null}
                   isRegenerating={regeneratingOn === opp.comments[0]?.id}

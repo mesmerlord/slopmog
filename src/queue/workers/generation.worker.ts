@@ -10,6 +10,7 @@ import {
 } from "@/services/discovery/scrape-creators";
 import { fetchTweetReplies } from "@/services/discovery/twitter-discovery";
 import type { CommentGenerationInput } from "@/services/generation/types";
+import { parseDailyBudget } from "@/services/budget/config";
 
 async function processGeneration(job: Job<GenerationJobData>) {
   const { opportunityId } = job.data;
@@ -123,15 +124,24 @@ async function processGeneration(job: Job<GenerationJobData>) {
     data: { status: opportunityStatus },
   });
 
-  // In AUTO mode, check daily limit then enqueue for posting
+  // In AUTO mode, check per-platform daily budget (DB-based) then enqueue for posting
   if (site.mode === "AUTO") {
-    // Check daily auto limit
-    const todayUTC = new Date().toISOString().slice(0, 10);
-    const dailyCountKey = `auto:dailyCount:${site.id}:${todayUTC}`;
-    const currentCountStr = await redis.get(dailyCountKey);
-    const currentCount = currentCountStr ? parseInt(currentCountStr, 10) : 0;
+    const startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const postedToday = await prisma.comment.count({
+      where: {
+        siteId: site.id,
+        status: "POSTED",
+        opportunity: { platform: opportunity.platform },
+        postedAt: { gte: startOfDay },
+      },
+    });
 
-    if (currentCount >= site.dailyAutoLimit) {
+    const budget = parseDailyBudget(site.dailyBudget);
+    const platformKey = opportunity.platform.toLowerCase() as "reddit" | "youtube" | "twitter";
+    const platformLimit = budget[platformKey];
+
+    if (postedToday >= platformLimit) {
       // Revert to DRAFT for manual review
       await prisma.$transaction([
         prisma.comment.update({
@@ -143,15 +153,12 @@ async function processGeneration(job: Job<GenerationJobData>) {
           data: { status: "PENDING_REVIEW" },
         }),
       ]);
-      console.log(`[generation] AUTO mode: daily limit reached (${currentCount}/${site.dailyAutoLimit}) for site ${site.id}, comment ${comment.id} reverted to DRAFT`);
-      await job.log(`AUTO mode: daily limit reached (${currentCount}/${site.dailyAutoLimit}), comment reverted to DRAFT for manual review`);
+      console.log(`[generation] AUTO mode: ${opportunity.platform} daily limit reached (${postedToday}/${platformLimit}) for site ${site.id}, comment ${comment.id} reverted to DRAFT`);
+      await job.log(`AUTO mode: ${opportunity.platform} daily limit reached (${postedToday}/${platformLimit}), comment reverted to DRAFT for manual review`);
       return;
     }
 
-    // Increment daily counter with 25-hour expiry
-    await redis.incr(dailyCountKey);
-    await redis.expire(dailyCountKey, 90000); // 25 hours
-
+    // Stagger posting with pacing via Redis
     const redisKey = `auto:lastScheduled:${site.id}:${opportunity.platform}`;
     const now = Date.now();
     const gapMs = Math.floor(Math.random() * 300_000) + 300_000; // 5–10 min
@@ -169,10 +176,11 @@ async function processGeneration(job: Job<GenerationJobData>) {
     await postingQueue.add("post", {
       commentId: comment.id,
     } satisfies PostingJobData, {
+      jobId: `post-${comment.id}`,
       delay: delayMs,
     });
-    console.log(`[generation] AUTO mode: enqueued comment ${comment.id} for posting (delay: ${delayMin}m, daily: ${currentCount + 1}/${site.dailyAutoLimit})`);
-    await job.log(`AUTO mode: comment ${comment.id} enqueued for posting (delay: ~${delayMin}m, daily: ${currentCount + 1}/${site.dailyAutoLimit})`);
+    console.log(`[generation] AUTO mode: enqueued comment ${comment.id} for posting (delay: ${delayMin}m, ${opportunity.platform}: ${postedToday + 1}/${platformLimit})`);
+    await job.log(`AUTO mode: comment ${comment.id} enqueued for posting (delay: ~${delayMin}m, ${opportunity.platform}: ${postedToday + 1}/${platformLimit})`);
   }
 
   console.log(`[generation] Generated comment for opportunity ${opportunityId} (${commentStatus})`);

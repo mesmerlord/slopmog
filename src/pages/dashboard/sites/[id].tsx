@@ -32,6 +32,9 @@ import LoadingState from "@/components/shared/LoadingState";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { SubscriptionModal } from "@/components/SubscriptionModal";
 import DiscoverySettingsModal from "@/components/DiscoverySettingsModal";
+import DailyBudgetModal from "@/components/DailyBudgetModal";
+import { parseDailyBudget, DAILY_BUDGET_DEFAULTS, type DailyBudget } from "@/services/budget/config";
+import { CREDIT_COSTS } from "@/constants/credits";
 import { trpc } from "@/utils/trpc";
 import { routes } from "@/lib/constants";
 import { timeAgo } from "@/utils/format-time";
@@ -330,6 +333,8 @@ export default function SiteDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showDiscoverySettings, setShowDiscoverySettings] = useState(false);
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [pendingAutoToggle, setPendingAutoToggle] = useState(false);
   const [keywordDrafts, setKeywordDrafts] = useState<Record<KeywordCategory, string>>({
     features: "",
     competitors: "",
@@ -353,6 +358,7 @@ export default function SiteDetailPage() {
       updateSite.mutate({ id: siteId, dailyAutoLimit: value });
     }, 800);
   }, [siteId, updateSite]);
+
 
   const startEditing = useCallback(() => {
     if (!siteQuery.data) return;
@@ -590,10 +596,14 @@ export default function SiteDetailPage() {
                   setShowUpgradeModal(true);
                   return;
                 }
-                updateSite.mutate({
-                  id: site.id,
-                  mode: isAuto ? "MANUAL" : "AUTO",
-                });
+                if (isAuto) {
+                  // AUTO→MANUAL is immediate
+                  updateSite.mutate({ id: site.id, mode: "MANUAL" });
+                } else {
+                  // MANUAL→AUTO: show budget modal first
+                  setPendingAutoToggle(true);
+                  setShowBudgetModal(true);
+                }
               }}
               className="inline-flex items-center gap-1.5 border border-charcoal/[0.12] text-charcoal-light px-3 py-2 rounded-full text-xs font-bold hover:text-charcoal hover:border-charcoal/[0.2] transition-all"
             >
@@ -792,81 +802,81 @@ export default function SiteDetailPage() {
         </div>
       )}
 
-      {/* Auto Settings */}
-      {isAuto && (
-        <div className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-5 mb-6">
-          <h3 className="text-xs font-bold text-charcoal-light uppercase tracking-wider mb-4 flex items-center gap-1.5">
-            <Settings size={12} /> Auto Settings
-          </h3>
-
-          <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-            {/* Daily limit input */}
-            <div className="flex-shrink-0">
-              <label className="block text-sm font-semibold text-charcoal mb-1">
-                Posts per day
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={100}
-                value={localDailyLimit ?? site.dailyAutoLimit}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  if (!isNaN(val) && val >= 1 && val <= 100) {
-                    setLocalDailyLimit(val);
-                    debouncedUpdateLimit(val);
-                  }
-                }}
-                className="w-24 h-9 rounded-full border border-charcoal/[0.12] bg-white px-3 text-sm text-charcoal text-center focus:outline-none focus:ring-2 focus:ring-teal/30"
-              />
+      {/* Auto Settings — Summary + open modal */}
+      {isAuto && (() => {
+        const b = parseDailyBudget(site.dailyBudget);
+        const stats = autoStatsQuery.data;
+        const dailyCost = b.reddit * CREDIT_COSTS.daily.reddit + b.youtube * CREDIT_COSTS.daily.youtube + b.twitter * CREDIT_COSTS.daily.twitter;
+        return (
+          <div className="bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-5 mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-charcoal-light uppercase tracking-wider flex items-center gap-1.5">
+                <Settings size={12} /> Daily Budget
+              </h3>
+              <button
+                onClick={() => setShowBudgetModal(true)}
+                className="inline-flex items-center gap-1 text-xs font-bold text-teal hover:text-teal-dark transition-colors"
+              >
+                <Settings size={12} />
+                Edit
+              </button>
             </div>
 
-            {/* Usage indicator */}
-            {autoStatsQuery.data && (
-              <div className="flex-1">
+            {/* Per-platform summary bars */}
+            <div className="space-y-2.5">
+              {(["REDDIT", "YOUTUBE", "TWITTER"] as const).map((p) => {
+                const platformKey = p.toLowerCase() as keyof DailyBudget;
+                const limit = b[platformKey];
+                if (limit === 0) return null;
+                const posted = stats?.perPlatform?.[p]?.posted ?? 0;
+                const label = p === "REDDIT" ? "Reddit" : p === "YOUTUBE" ? "YouTube" : "Twitter";
+                return (
+                  <div key={p}>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs font-semibold text-charcoal">{label}</span>
+                      <span className="text-xs text-charcoal-light tabular-nums">{posted} / {limit}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-charcoal/[0.06] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-teal transition-all"
+                        style={{ width: `${limit > 0 ? Math.min(100, (posted / limit) * 100) : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="text-[11px] text-charcoal-light mt-3">
+              Max {dailyCost} credits/day
+            </p>
+
+            {/* Credit warnings */}
+            {stats && stats.totalCredits <= 0 && (
+              <div className="mt-3 flex items-start gap-2 bg-coral/[0.06] border border-coral/20 rounded-brand px-4 py-3">
+                <AlertCircle size={16} className="text-coral flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-charcoal">
-                  <span className="font-bold">{autoStatsQuery.data.postedToday}</span>
-                  {" / "}
-                  <span className="font-bold">{localDailyLimit ?? autoStatsQuery.data.dailyAutoLimit}</span>
-                  {" "}posted today
+                  No credits remaining — auto mode won&apos;t post.{" "}
+                  <Link href={routes.dashboard.billing} className="text-teal font-bold hover:text-teal-dark transition-colors">
+                    Go to billing
+                  </Link>
                 </p>
-                <div className="mt-1.5 h-1.5 rounded-full bg-charcoal/[0.06] overflow-hidden max-w-xs">
-                  <div
-                    className="h-full rounded-full bg-teal transition-all"
-                    style={{
-                      width: `${Math.min(100, (autoStatsQuery.data.postedToday / (localDailyLimit ?? autoStatsQuery.data.dailyAutoLimit)) * 100)}%`,
-                    }}
-                  />
-                </div>
+              </div>
+            )}
+            {stats && stats.totalCredits > 0 && stats.totalCredits < dailyCost && (
+              <div className="mt-3 flex items-start gap-2 bg-sunny/[0.08] border border-sunny/20 rounded-brand px-4 py-3">
+                <AlertTriangle size={16} className="text-sunny-dark flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-charcoal">
+                  You have {stats.totalCredits} credit{stats.totalCredits === 1 ? "" : "s"} left — auto-posting may stop early today.{" "}
+                  <Link href={routes.dashboard.billing} className="text-teal font-bold hover:text-teal-dark transition-colors">
+                    Buy more credits
+                  </Link>
+                </p>
               </div>
             )}
           </div>
-
-          {/* Credit warnings */}
-          {autoStatsQuery.data && autoStatsQuery.data.totalCredits <= 0 && (
-            <div className="mt-4 flex items-start gap-2 bg-coral/[0.06] border border-coral/20 rounded-brand px-4 py-3">
-              <AlertCircle size={16} className="text-coral flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-charcoal">
-                No credits remaining — auto mode won&apos;t post.{" "}
-                <Link href={routes.dashboard.billing} className="text-teal font-bold hover:text-teal-dark transition-colors">
-                  Go to billing
-                </Link>
-              </p>
-            </div>
-          )}
-          {autoStatsQuery.data && autoStatsQuery.data.totalCredits > 0 && autoStatsQuery.data.totalCredits < (localDailyLimit ?? autoStatsQuery.data.dailyAutoLimit) && (
-            <div className="mt-4 flex items-start gap-2 bg-sunny/[0.08] border border-sunny/20 rounded-brand px-4 py-3">
-              <AlertTriangle size={16} className="text-sunny-dark flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-charcoal">
-                You have {autoStatsQuery.data.totalCredits} credit{autoStatsQuery.data.totalCredits === 1 ? "" : "s"} left — auto-posting will stop after {autoStatsQuery.data.totalCredits} comment{autoStatsQuery.data.totalCredits === 1 ? "" : "s"}.{" "}
-                <Link href={routes.dashboard.billing} className="text-teal font-bold hover:text-teal-dark transition-colors">
-                  Buy more credits
-                </Link>
-              </p>
-            </div>
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       {/* Keywords */}
       <div className="mb-6 bg-white rounded-brand shadow-brand-sm border border-charcoal/[0.06] p-5">
@@ -993,6 +1003,27 @@ export default function SiteDetailPage() {
         open={showDiscoverySettings}
         onOpenChange={setShowDiscoverySettings}
         siteId={site.id}
+      />
+
+      <DailyBudgetModal
+        mode="persisted"
+        open={showBudgetModal}
+        onOpenChange={(open) => {
+          setShowBudgetModal(open);
+          if (!open) setPendingAutoToggle(false);
+        }}
+        siteId={site.id}
+        onSave={() => {
+          if (pendingAutoToggle) {
+            updateSite.mutate({ id: site.id, mode: "AUTO" });
+            setPendingAutoToggle(false);
+          }
+        }}
+        onInsufficientCredits={() => {
+          setShowBudgetModal(false);
+          setPendingAutoToggle(false);
+          setShowUpgradeModal(true);
+        }}
       />
     </DashboardLayout>
   );
