@@ -33,6 +33,8 @@ export interface DiscoveryJobData {
 
 export interface GenerationJobData {
   opportunityId: string;
+  /** When true, enqueue posting immediately after generation (used by manual approve) */
+  postAfterGeneration?: boolean;
 }
 
 export interface PostingJobData {

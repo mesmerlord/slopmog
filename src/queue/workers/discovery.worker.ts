@@ -16,7 +16,6 @@ import {
 } from "@/services/discovery/scorer";
 import { pMap } from "@/services/shared/parallel";
 import type { Prisma } from "@prisma/client";
-import { parseDailyBudget, type DailyBudget } from "@/services/budget/config";
 import type { KeywordConfig } from "@/services/discovery/site-analyzer";
 import { parseDiscoveryConfig, type DiscoveryConfig } from "@/services/discovery/config";
 import {
@@ -357,37 +356,16 @@ async function processKeywordResults(
 // ─── Budget-Aware Auto Generation ────────────────────────────
 
 async function enqueueAutoGeneration(
-  site: { id: string; mode: string; dailyBudget: unknown },
+  site: { id: string; mode: string },
   run: { id: string },
   platform: "REDDIT" | "YOUTUBE" | "TWITTER",
   runState: RunState,
+  cfg: DiscoveryConfig,
   job: Job<DiscoveryJobData>,
 ): Promise<void> {
   if (site.mode !== "AUTO") return;
 
-  const budget = parseDailyBudget(site.dailyBudget);
-  const platformKey = platform.toLowerCase() as keyof DailyBudget;
-  const platformLimit = budget[platformKey];
-
-  // Count from DB — source of truth
-  const startOfDay = new Date();
-  startOfDay.setUTCHours(0, 0, 0, 0);
-  const postedToday = await prisma.comment.count({
-    where: {
-      siteId: site.id,
-      status: "POSTED",
-      opportunity: { platform },
-      postedAt: { gte: startOfDay },
-    },
-  });
-  const remaining = Math.max(0, platformLimit - postedToday);
-
-  if (remaining === 0) {
-    await job.log(`[${platform}] Budget exhausted (${postedToday}/${platformLimit}) — skipping auto-generation`);
-    return;
-  }
-
-  // Pick top N from THIS run without comments
+  // Just pick top N from this run — generation worker handles budget checks
   const topOpps = await prisma.opportunity.findMany({
     where: {
       discoveryRunId: run.id,
@@ -395,7 +373,7 @@ async function enqueueAutoGeneration(
       comments: { none: {} },
     },
     orderBy: { relevanceScore: "desc" },
-    take: remaining,
+    take: cfg.autoGenerateTopN,
     select: { id: true },
   });
 
@@ -407,7 +385,7 @@ async function enqueueAutoGeneration(
   }
 
   if (topOpps.length > 0) {
-    await job.log(`[${platform}] Enqueued ${topOpps.length} for auto-generation (budget: ${postedToday}/${platformLimit})`);
+    await job.log(`[${platform}] Enqueued ${topOpps.length} for auto-generation`);
   }
 }
 
@@ -626,8 +604,8 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
           job,
         );
 
-        // Budget-aware auto-generation after all discovery is done
-        await enqueueAutoGeneration(site, run, "TWITTER", runState, job);
+        // Auto-generation after all discovery is done (generation worker handles budget)
+        await enqueueAutoGeneration(site, run, "TWITTER", runState, cfg, job);
 
         await prisma.discoveryRun.update({
           where: { id: run.id },
@@ -705,13 +683,13 @@ async function processDiscovery(job: Job<DiscoveryJobData>) {
         }
       }
 
-      // Budget-aware auto-generation after all keywords are processed
+      // Auto-generation after all keywords are processed (generation worker handles budget)
       if (await isRunCancelled(run.id)) {
         await job.log(`[${platform}] Run cancelled — skipping auto-generation and completion`);
         continue;
       }
 
-      await enqueueAutoGeneration(site, run, platform, runState, job);
+      await enqueueAutoGeneration(site, run, platform, runState, cfg, job);
 
       if (!(await isRunCancelled(run.id))) {
         await prisma.discoveryRun.update({

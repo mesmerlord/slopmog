@@ -104,8 +104,9 @@ async function processGeneration(job: Job<GenerationJobData>) {
   const savedText = opportunity.platform === "TWITTER" && result.variants.length > 1
     ? result.variants.map((v) => v.text.replace(/\s*\n+\s*/g, " ").trim()).filter(Boolean).join("\n")
     : best.text;
-  const commentStatus = site.mode === "AUTO" ? "APPROVED" : "DRAFT";
-  const opportunityStatus = site.mode === "AUTO" ? "APPROVED" : "PENDING_REVIEW";
+  const shouldPost = site.mode === "AUTO" || job.data.postAfterGeneration;
+  const commentStatus = shouldPost ? "APPROVED" : "DRAFT";
+  const opportunityStatus = shouldPost ? "APPROVED" : "PENDING_REVIEW";
 
   const comment = await prisma.comment.create({
     data: {
@@ -124,38 +125,40 @@ async function processGeneration(job: Job<GenerationJobData>) {
     data: { status: opportunityStatus },
   });
 
-  // In AUTO mode, check per-platform daily budget (DB-based) then enqueue for posting
-  if (site.mode === "AUTO") {
-    const startOfDay = new Date();
-    startOfDay.setUTCHours(0, 0, 0, 0);
-    const postedToday = await prisma.comment.count({
-      where: {
-        siteId: site.id,
-        status: "POSTED",
-        opportunity: { platform: opportunity.platform },
-        postedAt: { gte: startOfDay },
-      },
-    });
+  // Enqueue for posting when in AUTO mode or explicitly requested
+  if (shouldPost) {
+    // In AUTO mode, check per-platform daily budget (DB-based)
+    if (site.mode === "AUTO") {
+      const startOfDay = new Date();
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const postedToday = await prisma.comment.count({
+        where: {
+          siteId: site.id,
+          status: "POSTED",
+          opportunity: { platform: opportunity.platform },
+          postedAt: { gte: startOfDay },
+        },
+      });
 
-    const budget = parseDailyBudget(site.dailyBudget);
-    const platformKey = opportunity.platform.toLowerCase() as "reddit" | "youtube" | "twitter";
-    const platformLimit = budget[platformKey];
+      const budget = parseDailyBudget(site.dailyBudget);
+      const platformKey = opportunity.platform.toLowerCase() as "reddit" | "youtube" | "twitter";
+      const platformLimit = budget[platformKey];
 
-    if (postedToday >= platformLimit) {
-      // Revert to DRAFT for manual review
-      await prisma.$transaction([
-        prisma.comment.update({
-          where: { id: comment.id },
-          data: { status: "DRAFT" },
-        }),
-        prisma.opportunity.update({
-          where: { id: opportunityId },
-          data: { status: "PENDING_REVIEW" },
-        }),
-      ]);
-      console.log(`[generation] AUTO mode: ${opportunity.platform} daily limit reached (${postedToday}/${platformLimit}) for site ${site.id}, comment ${comment.id} reverted to DRAFT`);
-      await job.log(`AUTO mode: ${opportunity.platform} daily limit reached (${postedToday}/${platformLimit}), comment reverted to DRAFT for manual review`);
-      return;
+      if (postedToday >= platformLimit) {
+        await prisma.$transaction([
+          prisma.comment.update({
+            where: { id: comment.id },
+            data: { status: "DRAFT" },
+          }),
+          prisma.opportunity.update({
+            where: { id: opportunityId },
+            data: { status: "PENDING_REVIEW" },
+          }),
+        ]);
+        console.log(`[generation] AUTO mode: ${opportunity.platform} daily limit reached (${postedToday}/${platformLimit}) for site ${site.id}, comment ${comment.id} reverted to DRAFT`);
+        await job.log(`AUTO mode: ${opportunity.platform} daily limit reached (${postedToday}/${platformLimit}), comment reverted to DRAFT for manual review`);
+        return;
+      }
     }
 
     // Stagger posting with pacing via Redis
@@ -169,7 +172,6 @@ async function processGeneration(job: Job<GenerationJobData>) {
     const postAt = earliest + gapMs;
     const delayMs = postAt - now;
 
-    // Store the scheduled time and expire the key after 1 hour
     await redis.set(redisKey, postAt.toString(), "EX", 3600);
 
     const delayMin = Math.round(delayMs / 60_000);
@@ -179,8 +181,8 @@ async function processGeneration(job: Job<GenerationJobData>) {
       jobId: `post-${comment.id}`,
       delay: delayMs,
     });
-    console.log(`[generation] AUTO mode: enqueued comment ${comment.id} for posting (delay: ${delayMin}m, ${opportunity.platform}: ${postedToday + 1}/${platformLimit})`);
-    await job.log(`AUTO mode: comment ${comment.id} enqueued for posting (delay: ~${delayMin}m, ${opportunity.platform}: ${postedToday + 1}/${platformLimit})`);
+    console.log(`[generation] Enqueued comment ${comment.id} for posting (delay: ${delayMin}m)`);
+    await job.log(`Comment ${comment.id} enqueued for posting (delay: ~${delayMin}m)`);
   }
 
   console.log(`[generation] Generated comment for opportunity ${opportunityId} (${commentStatus})`);
