@@ -12,6 +12,41 @@ import { fetchTweetReplies } from "@/services/discovery/twitter-discovery";
 import type { CommentGenerationInput } from "@/services/generation/types";
 import { parseDailyBudget } from "@/services/budget/config";
 
+/**
+ * Atomically reserve the next posting slot for a platform.
+ * Returns the timestamp (ms) at which the comment should be posted.
+ * Uses a Lua script so concurrent workers can't read the same stale value.
+ */
+const RESERVE_SLOT_SCRIPT = `
+local key   = KEYS[1]
+local now   = tonumber(ARGV[1])
+local gap   = tonumber(ARGV[2])
+local last  = tonumber(redis.call('GET', key) or '0')
+if last == nil then last = 0 end
+local earliest = math.max(now, last)
+local postAt   = earliest + gap
+redis.call('SET', key, tostring(postAt))
+redis.call('EXPIRE', key, 3600)
+return tostring(postAt)
+`;
+
+async function reservePostingSlot(siteId: string, platform: string): Promise<{ postAt: number; delayMs: number }> {
+  const redisKey = `auto:lastScheduled:${siteId}:${platform}`;
+  const now = Date.now();
+  const gapMs = Math.floor(Math.random() * 300_000) + 300_000; // 5–10 min
+
+  const postAtStr = await redis.eval(
+    RESERVE_SLOT_SCRIPT,
+    1,
+    redisKey,
+    now.toString(),
+    gapMs.toString(),
+  ) as string;
+
+  const postAt = parseInt(postAtStr, 10);
+  return { postAt, delayMs: Math.max(0, postAt - now) };
+}
+
 async function processGeneration(job: Job<GenerationJobData>) {
   const { opportunityId } = job.data;
 
@@ -161,18 +196,8 @@ async function processGeneration(job: Job<GenerationJobData>) {
       }
     }
 
-    // Stagger posting with pacing via Redis
-    const redisKey = `auto:lastScheduled:${site.id}:${opportunity.platform}`;
-    const now = Date.now();
-    const gapMs = Math.floor(Math.random() * 300_000) + 300_000; // 5–10 min
-
-    const lastScheduledStr = await redis.get(redisKey);
-    const lastScheduled = lastScheduledStr ? parseInt(lastScheduledStr, 10) : 0;
-    const earliest = Math.max(now, lastScheduled);
-    const postAt = earliest + gapMs;
-    const delayMs = postAt - now;
-
-    await redis.set(redisKey, postAt.toString(), "EX", 3600);
+    // Atomically reserve the next posting slot (safe with concurrency > 1)
+    const { delayMs } = await reservePostingSlot(site.id, opportunity.platform);
 
     const delayMin = Math.round(delayMs / 60_000);
     await postingQueue.add("post", {

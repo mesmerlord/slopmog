@@ -14,7 +14,6 @@ const QuerySchema = z.object({
       category: z.enum([
         "COMPARISON",
         "RECOMMENDATION",
-        "REVIEW",
         "HOW_TO",
         "PROBLEM_SOLVING",
       ]),
@@ -77,45 +76,46 @@ I need:
     messages: [
       {
         role: "system",
-        content: `You generate search queries that potential customers would type into AI chatbots (ChatGPT, Claude, Gemini, Grok). The AI models will use web search and cite Reddit threads and YouTube videos in their answers — we want to find those threads/videos.
+        content: `You generate search queries that real people would type into AI chatbots (ChatGPT, Claude, Gemini, Grok) when they're trying to find a product or make a buying decision. The AI models will use web search and cite Reddit threads and YouTube videos — we want to find those high-traffic threads/videos.
 
-CRITICAL — DIVERSITY RULES:
+THE GOAL: We want to rank higher in LLM recommendations for the kinds of queries people ACTUALLY search. That means generic, high-intent, decision-making queries — NOT branded queries.
+
+CRITICAL RULES:
+- NEVER include the business name in any query. If people are already searching for the brand by name, we've already won. We need to rank for generic searches.
+- Focus on HIGH-TRAFFIC queries — the things thousands of people search for, not niche edge cases.
+- Think about what someone would type when they DON'T know which product to use yet. They're shopping, comparing, or solving a problem.
+- Prioritize "best", "top", "cheapest", "vs", "how to", "what is the best" style queries — these are decision-making moments where LLM recommendations matter most.
 - Each query must target a DIFFERENT angle. Don't just rephrase the same idea.
-- Cover ALL features, use cases, and audiences from the research. Don't fixate on one.
-- Vary the query structure: some questions, some fragments, some comparisons, some problem statements.
-- Mix specificity levels: some broad ("best AI photo editor"), some narrow ("how to fix grainy photos from phone camera").
-- Don't cluster around competitors — spread across the full problem space.
-- Real people don't type the same way twice. Make each query feel like a different person asking.
+- Cover ALL features, use cases, and audiences from the research.
+- Competitor names are OK sparingly (~10% of queries) but only in generic comparison contexts like "X vs Y" — never "vs our brand".
 
 Categories:
-- COMPARISON: The business vs a specific competitor, or business approach vs alternatives
-- RECOMMENDATION: "Best tool for [specific thing]", "What should I use for [specific problem]?"
-- REVIEW: "Has anyone used [tool] for [specific use case]?" or "[tool] review for [niche]"
-- HOW_TO: "How do I [specific task the business helps with]?"
-- PROBLEM_SOLVING: "I'm struggling with [specific pain point]", "[situation] and need help"
+- COMPARISON: Competitor vs competitor, or category comparisons ("X vs Y for Z")
+- RECOMMENDATION: "Best [tool/app] for [use case]", "What is the best [category]", "top [category] apps"
+- HOW_TO: "How do I [task the business helps with]", "how to [solve problem] with AI"
+- PROBLEM_SOLVING: "I need [solution] but [constraint]", "cheapest way to [do thing]", "[situation] what should I use"
 
 Query style:
-- 3-15 words, natural and conversational
+- 3-12 words, natural and conversational
 - Think "what would someone type into ChatGPT at 11pm trying to solve their problem"
-- ~25% include the business name
-- ~15% include a competitor name (always in context of the business's problem space)
-- ~60% are pure problem-space / use-case queries
-- NO generic filler queries like "best tool 2025" — every query should have a specific angle`,
+- These should be queries that get THOUSANDS of searches — generic category-level queries, not hyper-specific niche ones
+- Good examples: "best ai headshot generator", "what is the best ai image generator", "how do I swap faces with ai", "cheapest ai shorts app", "best ai video generator for youtube"
+- Bad examples: "BestPhoto ai model training how does it work", "remini vs BestPhoto for photo restoration" (never use the brand name!)`,
       },
       {
         role: "user",
-        content: `Generate ${count} diverse queries for this business.
+        content: `Generate ${count} diverse queries for a business in this space.
 
-Business: ${siteContext.name} (${siteContext.url})
-Competitors: ${siteContext.keywordConfig.competitors.join(", ") || "none listed"}
+The business operates in this space: ${siteContext.description}
+Competitors in this space: ${siteContext.keywordConfig.competitors.join(", ") || "none listed"}
 Feature keywords: ${siteContext.keywordConfig.features.join(", ") || "none listed"}
 
-Here is detailed research about what this business offers:
+Here is detailed research about what this type of product offers (use this to understand the CATEGORY and USE CASES, not to generate branded queries):
 
 ${siteResearch}
 ${existingList}
 
-Generate exactly ${count} queries. Every single one must target a different angle — if I see two queries that would surface the same Reddit thread, you've failed.
+Generate exactly ${count} queries. These should be generic, high-traffic, decision-making queries that real people search for. ZERO queries should contain the business name "${siteContext.name}". Every query should target a different angle.
 
 Return JSON: { queries: [{ query: string, category: string }] }`,
       },

@@ -10,6 +10,34 @@ import { DISCOVERY_DEFAULTS, parseDiscoveryConfig } from "@/services/discovery/c
 import { parseDailyBudget, DAILY_BUDGET_DEFAULTS, type DailyBudget } from "@/services/budget/config";
 import { generationQueue, type GenerationJobData } from "@/queue/queues";
 
+/**
+ * Atomically reserve the next posting slot for a platform.
+ * Same Lua script as in generation.worker.ts — keeps stagger chains consistent.
+ */
+const RESERVE_SLOT_SCRIPT = `
+local key   = KEYS[1]
+local now   = tonumber(ARGV[1])
+local gap   = tonumber(ARGV[2])
+local last  = tonumber(redis.call('GET', key) or '0')
+if last == nil then last = 0 end
+local earliest = math.max(now, last)
+local postAt   = earliest + gap
+redis.call('SET', key, tostring(postAt))
+redis.call('EXPIRE', key, 3600)
+return tostring(postAt)
+`;
+
+async function reservePostingSlot(siteId: string, platform: string): Promise<{ postAt: number; delayMs: number }> {
+  const redisKey = `auto:lastScheduled:${siteId}:${platform}`;
+  const now = Date.now();
+  const gapMs = Math.floor(Math.random() * 300_000) + 300_000; // 5–10 min
+  const postAtStr = await redis.eval(
+    RESERVE_SLOT_SCRIPT, 1, redisKey, now.toString(), gapMs.toString(),
+  ) as string;
+  const postAt = parseInt(postAtStr, 10);
+  return { postAt, delayMs: Math.max(0, postAt - now) };
+}
+
 const KeywordCategorySchema = z.enum(["features", "competitors", "brand"]);
 
 type SiteKeywordConfig = {
@@ -361,26 +389,24 @@ export const siteRouter = router({
               ]),
             );
 
-            // Schedule posting with staggered delays
-            let cumulativeDelay = isRecent ? 300_000 : 0;
-
-            for (let i = 0; i < schedulable.length; i++) {
-              const c = schedulable[i];
-              const platform = c.opportunity.platform;
-
-              if (i > 0) {
-                cumulativeDelay += Math.floor(Math.random() * 300_000) + 300_000;
+            // If a comment was recently posted, seed the lastScheduled key so
+            // the first slot starts after a gap rather than immediately.
+            if (isRecent) {
+              const platforms = Array.from(new Set(schedulable.map((c) => c.opportunity.platform)));
+              for (const p of platforms) {
+                const seedKey = `auto:lastScheduled:${id}:${p}`;
+                await redis.set(seedKey, now.toString(), "EX", 3600);
               }
+            }
 
-              const redisKey = `auto:lastScheduled:${id}:${platform}`;
-              const postAt = now + cumulativeDelay;
-              await redis.set(redisKey, postAt.toString(), "EX", 3600);
-
+            // Atomically reserve posting slots (safe with concurrent generation workers)
+            for (const c of schedulable) {
+              const { delayMs } = await reservePostingSlot(id, c.opportunity.platform);
               await postingQueue.add("post", {
                 commentId: c.id,
               } satisfies PostingJobData, {
                 jobId: `post-${c.id}`,
-                delay: cumulativeDelay,
+                delay: delayMs,
               });
             }
 

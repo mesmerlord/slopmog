@@ -16,7 +16,7 @@ export interface HVSiteContext {
 
 export interface GeneratedQuery {
   query: string;
-  category: "COMPARISON" | "RECOMMENDATION" | "REVIEW" | "HOW_TO" | "PROBLEM_SOLVING";
+  category: "COMPARISON" | "RECOMMENDATION" | "HOW_TO" | "PROBLEM_SOLVING";
 }
 
 export interface ParsedCitation {
