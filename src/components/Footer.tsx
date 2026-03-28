@@ -46,12 +46,14 @@ export default function Footer({ onScrollTo }: FooterProps) {
                 <li><a href="#pricing" className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors" onClick={handleClick("pricing")}>Pricing</a></li>
                 <li><a href="#faq" className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors" onClick={handleClick("faq")}>FAQ</a></li>
                 <li><Link href={routes.tools.redditCommentGenerator} className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors">Free Tools</Link></li>
+                <li><a href="https://mesmer.tools" target="_blank" rel="noopener" className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors">More AI Tools</a></li>
               </>
             ) : (
               <>
                 <li><Link href="/pricing" className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors">Pricing</Link></li>
                 <li><Link href={routes.tools.redditCommentGenerator} className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors">Free Tools</Link></li>
                 <li><Link href="/dashboard" className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors">Dashboard</Link></li>
+                <li><a href="https://mesmer.tools" target="_blank" rel="noopener" className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors">More AI Tools</a></li>
               </>
             )}
             <li><Link href={routes.legal.privacy} className="text-[0.88rem] text-charcoal-light hover:text-teal transition-colors">Privacy</Link></li>

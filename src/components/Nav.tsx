@@ -116,6 +116,16 @@ export default function Nav({ variant = "app", onScrollTo }: NavProps) {
               )}
             </li>
           ))}
+          <li>
+            <a
+              href="https://mesmer.tools"
+              target="_blank"
+              rel="noopener"
+              className="text-[0.95rem] font-semibold text-charcoal-light hover:text-teal transition-colors"
+            >
+              More AI Tools
+            </a>
+          </li>
 
           {/* Auth-aware right side */}
           {session ? (
@@ -190,6 +200,17 @@ export default function Nav({ variant = "app", onScrollTo }: NavProps) {
               )}
             </li>
           ))}
+          <li>
+            <a
+              href="https://mesmer.tools"
+              target="_blank"
+              rel="noopener"
+              className="text-base font-semibold text-charcoal-light hover:text-teal transition-colors"
+              onClick={() => setMobileNavOpen(false)}
+            >
+              More AI Tools
+            </a>
+          </li>
           {session ? (
             <li>
               <button
