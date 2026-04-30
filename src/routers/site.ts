@@ -142,6 +142,14 @@ export const siteRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const plan = await getUserPlan(ctx.session.user.id);
+
+      if (!plan.isPaid) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "subscription_required",
+        });
+      }
+
       const analysis = await analyzeSite(input.url);
 
       // Build flat keywords array from all categories for display (deduplicated)

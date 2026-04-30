@@ -126,8 +126,6 @@ export const CREDIT_PRICES = {
   1200: { price: 14400 },
 };
 
-export const FREE_CREDITS = 18;
-
 export function getCreditsForPlan(planName: string | null): number {
   if (!planName || planName === "FREE") return 0;
 

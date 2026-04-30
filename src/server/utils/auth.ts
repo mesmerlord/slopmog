@@ -9,7 +9,6 @@ import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/server/utils/db";
-import { FREE_CREDITS } from "@/constants/pricing";
 
 if (!process.env.NEXTAUTH_SECRET) {
   throw new Error("NEXTAUTH_SECRET is not set");
@@ -77,25 +76,10 @@ export const authOptions: NextAuthOptions = {
   ],
   events: {
     async createUser({ user }) {
-      await prisma.$transaction([
-        prisma.user.update({
-          where: { id: user.id },
-          data: {
-            credits: FREE_CREDITS,
-            emailVerified: new Date(),
-          },
-        }),
-        prisma.userCreditHistory.create({
-          data: {
-            userId: user.id,
-            credits: FREE_CREDITS,
-            previousCredits: 0,
-            newCredits: FREE_CREDITS,
-            reason: "REGISTRATION_BONUS",
-            reasonExtra: "Free credits on sign up",
-          },
-        }),
-      ]);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerified: new Date() },
+      });
     },
   },
   callbacks: {

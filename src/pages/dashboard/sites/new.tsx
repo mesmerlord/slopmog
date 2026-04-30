@@ -35,6 +35,7 @@ export default function NewSitePage() {
   );
 
   const planQuery = trpc.user.getPlanInfo.useQuery();
+  const isPaid = planQuery.data?.isPaid ?? false;
   const canUseAuto = planQuery.data?.canPost ?? false;
 
   const createSite = trpc.site.create.useMutation({
@@ -45,8 +46,9 @@ export default function NewSitePage() {
       router.push(routes.dashboard.sites.detail(site.id) + "?new=1");
     },
     onError: (err) => {
-      if (err.data?.code === "FORBIDDEN" && err.message.toLowerCase().includes("site limit")) {
+      if (err.data?.code === "FORBIDDEN") {
         setShowUpgradeModal(true);
+        if (err.message === "subscription_required") return;
       }
       toast.error(err.message);
     },
@@ -61,6 +63,11 @@ export default function NewSitePage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!url || platforms.length === 0) return;
+
+    if (!isPaid) {
+      setShowUpgradeModal(true);
+      return;
+    }
 
     let normalizedUrl = url.trim();
     if (!normalizedUrl.startsWith("http")) {
@@ -353,6 +360,12 @@ export default function NewSitePage() {
       <SubscriptionModal
         open={showUpgradeModal}
         onOpenChange={setShowUpgradeModal}
+        title={isPaid ? "Time to level up" : "Pick a plan to get started"}
+        description={
+          isPaid
+            ? "Pick a plan to unlock more keywords and start posting."
+            : "Subscribe to add a site and start showing up in AI recommendations."
+        }
       />
 
       <DiscoverySettingsModal

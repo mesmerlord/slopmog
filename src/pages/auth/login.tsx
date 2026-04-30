@@ -66,7 +66,7 @@ export default function LoginPage() {
         redirect: false,
       });
       if (result?.ok) {
-        toast.success("Welcome to SlopMog! You got 3 free credits.");
+        toast.success("Welcome to SlopMog!");
         router.push(callbackUrl);
       } else {
         toast.error("Account created but sign-in failed. Please try logging in.");
@@ -155,7 +155,7 @@ export default function LoginPage() {
             </h1>
             <p className="text-charcoal-light text-[0.95rem] mb-8">
               {mode === "signup"
-                ? "Create your account and get 3 free credits to start."
+                ? "Create your account to get started."
                 : "Sign in to your account and keep the recommendations flowing."}
             </p>
 

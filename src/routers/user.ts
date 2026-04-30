@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, protectedProcedure } from "@/server/trpc";
 import Stripe from "stripe";
-import { CREDIT_PRICES, FREE_CREDITS } from "@/constants/pricing";
+import { CREDIT_PRICES } from "@/constants/pricing";
 import { getUserPlan } from "@/server/utils/plan";
 import type { PrismaClient } from "@prisma/client";
 
@@ -96,27 +96,13 @@ export const userRouter = router({
 
       const hashedPassword = await bcrypt.hash(input.password, 12);
 
-      await ctx.prisma.$transaction(async (tx) => {
-        const user = await tx.user.create({
-          data: {
-            name: input.name,
-            email: input.email,
-            password: hashedPassword,
-            credits: FREE_CREDITS,
-            emailVerified: new Date(),
-          },
-        });
-
-        await tx.userCreditHistory.create({
-          data: {
-            userId: user.id,
-            credits: FREE_CREDITS,
-            previousCredits: 0,
-            newCredits: FREE_CREDITS,
-            reason: "REGISTRATION_BONUS",
-            reasonExtra: "Free credits on sign up",
-          },
-        });
+      await ctx.prisma.user.create({
+        data: {
+          name: input.name,
+          email: input.email,
+          password: hashedPassword,
+          emailVerified: new Date(),
+        },
       });
 
       return { success: true };

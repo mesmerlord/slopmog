@@ -39,10 +39,6 @@ const PRICING_FAQ = [
     q: "What's HV Discovery?",
     a: "HV Discovery finds the specific threads that AI chatbots like ChatGPT, Gemini, and Claude are citing when people ask for recommendations. Getting your brand into those threads means showing up in AI answers — not just search results.",
   },
-  {
-    q: "Is there a free trial?",
-    a: "Every new account gets 18 free credits to try the service. No credit card required. Post 3 comments, see the results, then decide if you want more.",
-  },
 ];
 
 const CREDIT_PACK_INFO: Record<number, { label: string; perCredit: string }> = {

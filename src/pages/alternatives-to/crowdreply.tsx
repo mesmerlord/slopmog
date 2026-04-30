@@ -51,7 +51,7 @@ const FEATURE_COMPARISON: {
     winner: "slopmog" as const,
   },
   {
-    feature: "Free trial / low entry",
+    feature: "Low-entry option",
     competitor: "Free signup, but $99/mo minimum to post",
     slopmog: "$49/mo starter plan",
     winner: "slopmog" as const,
@@ -184,7 +184,7 @@ const SWITCHING_REASONS = [
       "You approve before anything goes live",
       "No need to become a platform expert yourself",
     ],
-    ctaText: "Try SlopMog Free",
+    ctaText: "Try SlopMog",
     ctaRoute: "/#cta",
   },
 ];
@@ -351,7 +351,7 @@ export default function CrowdReplyAlternative() {
               href="/#cta"
               className="bg-coral text-white px-8 py-3.5 rounded-full font-bold text-sm md:text-base text-center shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl hover:shadow-coral/30 transition-all"
             >
-              Try SlopMog Free
+              Try SlopMog
             </Link>
             <a
               href="#comparison"
@@ -1037,7 +1037,7 @@ export default function CrowdReplyAlternative() {
                 href="/#pricing"
                 className="inline-block bg-coral text-white px-8 py-3.5 rounded-full font-bold text-base shadow-lg shadow-coral/25 hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-xl transition-all"
               >
-                Try SlopMog Free
+                Try SlopMog
               </Link>
               <p className="mt-3.5 text-xs text-white/[0.45]">
                 No contracts. Cancel anytime. Results within 30 days.

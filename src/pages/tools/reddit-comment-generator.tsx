@@ -130,7 +130,7 @@ const SEO_SECTIONS: {
       "Posting through aged, managed Reddit accounts",
     ],
     Illustration: BrandMentionAnimation,
-    cta: { text: "Start Free Trial", href: routes.auth.login },
+    cta: { text: "Get Started", href: routes.auth.login },
   },
 ];
 
@@ -604,7 +604,7 @@ export default function RedditCommentGenerator() {
               href={routes.auth.login}
               className="inline-flex items-center gap-2 bg-coral text-white px-8 py-3 rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all relative"
             >
-              Start Free Trial
+              Get Started
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -662,7 +662,7 @@ export default function RedditCommentGenerator() {
               href={routes.auth.login}
               className="inline-flex items-center gap-2 bg-coral text-white px-7 py-2.5 rounded-full font-bold text-sm hover:bg-coral-dark hover:-translate-y-0.5 hover:shadow-lg transition-all"
             >
-              Start Free Trial
+              Get Started
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
