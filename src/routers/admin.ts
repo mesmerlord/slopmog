@@ -1,8 +1,14 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import Stripe from "stripe";
 import { router, adminProcedure } from "@/server/trpc";
 import { discoveryQueue, hvDiscoveryQueue, healthCheckQueue } from "@/queue/queues";
 import type { HealthCheckMetadata } from "@/services/health-check/types";
+import {
+  startImpersonation as redisStartImpersonation,
+  stopImpersonation as redisStopImpersonation,
+  getImpersonation,
+} from "@/server/utils/redis";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-12-15.clover",
@@ -1021,4 +1027,72 @@ export const adminRouter = router({
         },
       };
     }),
+
+  startImpersonation: adminProcedure
+    .input(
+      z.object({
+        targetUserId: z.string(),
+        ttlMinutes: z.number().min(1).max(60).default(5),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.targetUserId === ctx.session.user.id) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot impersonate yourself",
+        });
+      }
+
+      const targetUser = await ctx.prisma.user.findUnique({
+        where: { id: input.targetUserId },
+        select: { id: true, email: true, name: true },
+      });
+
+      if (!targetUser) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      }
+
+      await redisStartImpersonation(
+        ctx.session.user.id,
+        targetUser.id,
+        targetUser.email,
+        targetUser.name,
+        input.ttlMinutes * 60,
+      );
+
+      return {
+        success: true,
+        targetUser: {
+          id: targetUser.id,
+          email: targetUser.email,
+          name: targetUser.name,
+        },
+        expiresInMinutes: input.ttlMinutes,
+      };
+    }),
+
+  stopImpersonation: adminProcedure.mutation(async ({ ctx }) => {
+    await redisStopImpersonation(ctx.session.user.id);
+    return { success: true };
+  }),
+
+  getImpersonationStatus: adminProcedure.query(async ({ ctx }) => {
+    const data = await getImpersonation(ctx.session.user.id);
+    if (!data) {
+      return {
+        isImpersonating: false,
+        targetUserId: null,
+        targetUserEmail: null,
+        targetUserName: null,
+        startedAt: null,
+      };
+    }
+    return {
+      isImpersonating: true,
+      targetUserId: data.targetUserId,
+      targetUserEmail: data.targetUserEmail,
+      targetUserName: data.targetUserName,
+      startedAt: data.startedAt,
+    };
+  }),
 });

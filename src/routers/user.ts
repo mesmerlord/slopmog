@@ -336,4 +336,24 @@ export const userRouter = router({
   getPlanInfo: protectedProcedure.query(async ({ ctx }) => {
     return getUserPlan(ctx.session.user.id);
   }),
+
+  getImpersonationStatus: protectedProcedure.query(async ({ ctx }) => {
+    const { isImpersonating, impersonationData } = ctx.impersonation;
+    if (!isImpersonating || !impersonationData) {
+      return {
+        isImpersonating: false as const,
+        targetUserId: null,
+        targetUserEmail: null,
+        targetUserName: null,
+        startedAt: null,
+      };
+    }
+    return {
+      isImpersonating: true as const,
+      targetUserId: impersonationData.targetUserId,
+      targetUserEmail: impersonationData.targetUserEmail,
+      targetUserName: impersonationData.targetUserName,
+      startedAt: impersonationData.startedAt,
+    };
+  }),
 });

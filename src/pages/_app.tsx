@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import ReactGA from "react-ga4";
 import { trpc } from "@/utils/trpc";
 import { useAnalyticsIdentify } from "@/hooks/useAnalyticsIdentify";
+import ImpersonationBanner from "@/components/ImpersonationBanner";
 import "@/styles/globals.css";
 
 const AnalyticsInit = () => {
@@ -23,6 +24,7 @@ function App({ Component, pageProps }: AppProps) {
   return (
     <SessionProvider session={session as never}>
       <AnalyticsInit />
+      <ImpersonationBanner />
       <Component {...rest} />
       <Toaster position="top-right" richColors />
     </SessionProvider>

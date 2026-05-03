@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { GetServerSideProps } from "next";
-import { Search, ChevronLeft, ChevronRight, Ban } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Ban, UserCog } from "lucide-react";
 import Seo from "@/components/Seo";
 import AdminLayout from "@/components/layouts/AdminLayout";
 import PageHeader from "@/components/shared/PageHeader";
@@ -53,6 +53,16 @@ export default function AdminUsersPage() {
       utils.admin.getOverviewStats.invalidate();
     },
     onError: () => toast.error("Failed to ban user"),
+  });
+
+  const impersonateMutation = trpc.admin.startImpersonation.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        `Impersonating ${data.targetUser.email ?? data.targetUser.name ?? "user"} for ${data.expiresInMinutes}m`,
+      );
+      window.open("/dashboard", "_blank");
+    },
+    onError: (error) => toast.error(error.message),
   });
 
   return (
@@ -144,14 +154,27 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         {user.role !== "ADMIN" && (
-                          <button
-                            onClick={() => setBanTarget({ id: user.id, email: user.email })}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold text-coral border border-coral/20 hover:bg-coral/[0.06] transition-all"
-                            title="Ban user"
-                          >
-                            <Ban size={12} />
-                            Ban
-                          </button>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() =>
+                                impersonateMutation.mutate({ targetUserId: user.id })
+                              }
+                              disabled={impersonateMutation.isPending}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold text-lavender-dark border border-lavender/30 hover:bg-lavender/[0.08] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                              title="Impersonate user"
+                            >
+                              <UserCog size={12} />
+                              Impersonate
+                            </button>
+                            <button
+                              onClick={() => setBanTarget({ id: user.id, email: user.email })}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold text-coral border border-coral/20 hover:bg-coral/[0.06] transition-all"
+                              title="Ban user"
+                            >
+                              <Ban size={12} />
+                              Ban
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
