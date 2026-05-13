@@ -1,5 +1,6 @@
 import { fetchWithRetry, type RateLimitConfig } from "@/services/shared/http";
 import { cacheGet, cacheSet } from "@/services/shared/cache";
+import { mesmertoolsGetWithScrapeCreatorsFallback } from "@/services/discovery/with-mesmertools";
 
 const BASE_URL = "https://api.scrapecreators.com/v1";
 
@@ -47,6 +48,49 @@ async function apiGet<T>(path: string, params: Record<string, string | undefined
 
   if (cacheTtl) {
     cacheSet(url, data, cacheTtl);
+  }
+
+  return data;
+}
+
+/**
+ * Reddit-only API call: try mesmertools first, fall back to scrapecreators.
+ *
+ * Cache + scrapecreators rate-limiting are shared with the regular `apiGet`
+ * path — the cache key is the scrapecreators URL so cache hits work
+ * regardless of which provider answers a miss. On a mesmertools failure
+ * the fallback is reported via Sentry inside the helper.
+ */
+async function redditApiGet<T>(
+  path: string,
+  params: Record<string, string | undefined>,
+  cacheTtl?: number,
+): Promise<T> {
+  const fallbackUrl = buildUrl(path, params);
+
+  if (cacheTtl) {
+    const cached = cacheGet<T>(fallbackUrl);
+    if (cached) {
+      console.log(`[scrape-creators] Cache hit: ${path}`);
+      return cached;
+    }
+  }
+
+  const data = await mesmertoolsGetWithScrapeCreatorsFallback<T>(
+    path,
+    params,
+    () =>
+      fetchWithRetry<T>(fallbackUrl, {
+        headers: {
+          "x-api-key": getApiKey(),
+          "Content-Type": "application/json",
+        },
+        rateLimit: RATE_LIMIT,
+      }),
+  );
+
+  if (cacheTtl) {
+    cacheSet(fallbackUrl, data, cacheTtl);
   }
 
   return data;
@@ -108,7 +152,7 @@ export async function searchReddit(
 ): Promise<RedditSearchResult> {
   console.log(`[scrape-creators] Reddit search: "${query}"${options?.after ? ` (after: ${options.after})` : ""}`);
 
-  const data = await apiGet<RedditSearchResponse>("/reddit/search", {
+  const data = await redditApiGet<RedditSearchResponse>("/reddit/search", {
     query,
     sort: options?.sort ?? "comment_count",
     timeframe: options?.timeframe ?? "day",
@@ -143,7 +187,7 @@ interface RedditCommentsResponse {
 export async function getRedditComments(postUrl: string): Promise<RedditComment[]> {
   console.log(`[scrape-creators] Fetching Reddit comments: ${postUrl}`);
 
-  const data = await apiGet<RedditCommentsResponse>("/reddit/post/comments", {
+  const data = await redditApiGet<RedditCommentsResponse>("/reddit/post/comments", {
     url: postUrl,
   }, CACHE_TTL_DETAIL);
 
@@ -165,7 +209,7 @@ export async function getRedditComments(postUrl: string): Promise<RedditComment[
 export async function getRedditCommentsLive(postUrl: string): Promise<RedditComment[]> {
   console.log(`[scrape-creators] Fetching Reddit comments (live): ${postUrl}`);
 
-  const data = await apiGet<RedditCommentsResponse>("/reddit/post/comments", {
+  const data = await redditApiGet<RedditCommentsResponse>("/reddit/post/comments", {
     url: postUrl,
   });
 
@@ -203,7 +247,7 @@ export async function getRedditPostWithComments(postUrl: string): Promise<Reddit
   console.log(`[scrape-creators] Fetching Reddit post + comments: ${postUrl}`);
 
   try {
-    const data = await apiGet<RedditPostCommentsResponse>("/reddit/post/comments", {
+    const data = await redditApiGet<RedditPostCommentsResponse>("/reddit/post/comments", {
       url: postUrl,
     }, CACHE_TTL_DETAIL);
 
